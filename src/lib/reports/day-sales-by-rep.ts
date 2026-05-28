@@ -6,6 +6,8 @@ export type SalesRepDayMetrics = {
   name: string;
   leadsLocal: number;
   leadsLongDistance: number;
+  leadsQualified: number;
+  leadsUnqualified: number;
   proposalsSent: number;
   bookedJobs: number;
   bookingRatePercent: number;
@@ -49,6 +51,8 @@ export function buildSalesRepDayMetrics(
 
   const localParts = splitAcrossReps(sales.leadsLocal, seedBase);
   const ldParts = splitAcrossReps(sales.leadsLongDistance, seedBase + 10);
+  const qualifiedParts = splitAcrossReps(sales.leadsQualified, seedBase + 15);
+  const unqualifiedParts = splitAcrossReps(sales.leadsUnqualified, seedBase + 18);
   const proposalParts = splitAcrossReps(sales.proposalsSent, seedBase + 20);
   const bookedParts = splitAcrossReps(sales.bookedJobs, seedBase + 30);
 
@@ -56,6 +60,8 @@ export function buildSalesRepDayMetrics(
     const repSales: DaySalesMetrics = {
       leadsLocal: localParts[i]!,
       leadsLongDistance: ldParts[i]!,
+      leadsQualified: qualifiedParts[i]!,
+      leadsUnqualified: unqualifiedParts[i]!,
       proposalsSent: proposalParts[i]!,
       bookedJobs: bookedParts[i]!,
     };

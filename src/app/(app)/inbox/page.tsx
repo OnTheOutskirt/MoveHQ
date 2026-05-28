@@ -1,8 +1,9 @@
-import { ModulePage } from "@/components/shared/ModulePage";
-import { pageMeta } from "@/lib/navigation/page-meta";
+import { InboxWorkspace } from "@/components/inbox/InboxWorkspace";
 
-const meta = pageMeta["/inbox"];
-
-export default function InboxAllPage() {
-  return <ModulePage title={meta.title} description={meta.description} />;
+export default function InboxPage() {
+  return (
+    <div className="flex h-[calc(100dvh-6rem)] flex-col overflow-hidden lg:h-[calc(100dvh-7rem)]">
+      <InboxWorkspace />
+    </div>
+  );
 }

@@ -1,12 +1,8 @@
 import { buildMockDay } from "@/lib/calendar/mock-data";
-import type { DayPipelineRow } from "@/lib/calendar/types";
 import { parseDateKey, toDateKey } from "@/lib/calendar/date-utils";
+import { ftaBookingFromCalendarSlot } from "@/lib/dispatch/fta";
 import { isMoveLost } from "@/lib/moves/move-pipeline";
 import type { MoveJobDay, MoveRecord } from "@/lib/moves/types";
-import {
-  ftaBookingFromCalendarSlot,
-  parseFtaLabel,
-} from "@/lib/dispatch/fta";
 import { resolveDayBeforeConfirmation } from "./day-before-confirmation";
 import type { DispatchDaySnapshot, DispatchJob } from "./types";
 
@@ -38,6 +34,7 @@ function jobDayToDispatchJob(move: MoveRecord, day: MoveJobDay, referenceDate: D
     label: day.label,
     status: day.status,
     arrivalWindow: day.arrivalWindow,
+    departureWindow: day.departureWindow,
     durationLabel: day.durationLabel,
     originSummary: locationSummary(day, "origin") ?? move.originAddress,
     destinationSummary: locationSummary(day, "destination") ?? move.destinationAddress,
@@ -58,43 +55,12 @@ function jobDayToDispatchJob(move: MoveRecord, day: MoveJobDay, referenceDate: D
   };
 }
 
-function pipelineRowToDispatchJob(
-  row: DayPipelineRow,
-  dateKey: string,
-  referenceDate: Date,
-): DispatchJob | null {
-  if (row.stage !== "booked") return null;
-  const ftaBooking = parseFtaLabel(row.fta) ?? undefined;
-  const id = `cal:${dateKey}:${row.id}`;
-  return {
-    id,
-    source: "calendar",
-    moveId: row.moveId,
-    customerName: row.personName,
-    date: dateKey,
-    label: "Booked job",
-    status: "booked",
-    crewSizeNeeded: row.movers,
-    trucksNeeded: row.trucks,
-    dispatchNotes: undefined,
-    pinnedNote: row.fta ? "FTA booking — see slot details" : undefined,
-    ftaLabel: row.fta,
-    ftaBooking,
-    isFtaJob: Boolean(row.fta || ftaBooking),
-    dayBeforeConfirmation: resolveDayBeforeConfirmation(dateKey, {
-      jobId: id,
-      referenceDate,
-    }),
-  };
-}
-
 export function collectDispatchDay(
   moves: MoveRecord[],
   dateKey: string,
   today: Date = new Date(),
 ): DispatchDaySnapshot {
   const date = parseDateKey(dateKey);
-  const calendarDay = buildMockDay(date, today);
 
   const fromMoves: DispatchJob[] = [];
 
@@ -107,23 +73,13 @@ export function collectDispatchDay(
     }
   }
 
-  const fromCalendar: DispatchJob[] = [];
-  for (const row of calendarDay.pipeline) {
-    const job = pipelineRowToDispatchJob(row, dateKey, today);
-    if (!job) continue;
-    const duplicate =
-      job.moveId &&
-      fromMoves.some((j) => j.moveId === job.moveId && j.customerName === job.customerName);
-    if (duplicate) continue;
-    fromCalendar.push(job);
-  }
-
-  const jobs = [...fromMoves, ...fromCalendar].sort((a, b) => {
+  const jobs = [...fromMoves].sort((a, b) => {
     const aw = a.arrivalWindow ?? "99:99";
     const bw = b.arrivalWindow ?? "99:99";
     return aw.localeCompare(bw) || a.customerName.localeCompare(b.customerName);
   });
 
+  const calendarDay = buildMockDay(date, today);
   const ftaBookings = calendarDay.ftas.map(ftaBookingFromCalendarSlot);
 
   return {

@@ -16,7 +16,7 @@ import { Plus } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
-const meta = pageMeta["/people"];
+const meta = pageMeta["/sales/directory"];
 
 type DirectoryTab = "people" | "organizations";
 
@@ -27,7 +27,7 @@ const TABS = [
 
 export function PeopleWorkspace() {
   const searchParams = useSearchParams();
-  const [tab, setTab] = usePersistedState<DirectoryTab>("jm-tab-/people", "people");
+  const [tab, setTab] = usePersistedState<DirectoryTab>("jm-tab-/sales/directory", "people");
   const [selectedPerson, setSelectedPerson] = useState<PersonRecord | null>(null);
   const [selectedOrg, setSelectedOrg] = useState<OrganizationRecord | null>(null);
   const counts = directoryCounts();

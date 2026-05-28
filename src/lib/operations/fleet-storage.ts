@@ -1,4 +1,5 @@
 import { defaultFleetStore } from "./fleet-defaults";
+import { normalizeFleetTruck, normalizeTemporaryRental } from "./fleet-types";
 import type { FleetStore } from "./fleet-types";
 
 const STORAGE_KEY = "jm-fleet-store-v1";
@@ -12,7 +13,16 @@ export function loadFleetStore(): FleetStore {
     const defaults = defaultFleetStore();
     return {
       crew: parsed.crew?.length ? parsed.crew : defaults.crew,
-      trucks: parsed.trucks?.length ? parsed.trucks : defaults.trucks,
+      trucks: parsed.trucks?.length
+        ? parsed.trucks.map((t) =>
+            normalizeFleetTruck(t as Parameters<typeof normalizeFleetTruck>[0]),
+          )
+        : defaults.trucks,
+      temporaryRentals: Array.isArray(parsed.temporaryRentals)
+        ? parsed.temporaryRentals.map((r) =>
+            normalizeTemporaryRental(r as Parameters<typeof normalizeTemporaryRental>[0]),
+          )
+        : defaults.temporaryRentals,
       schedules: parsed.schedules?.length ? parsed.schedules : defaults.schedules,
       timeOffRequests: parsed.timeOffRequests ?? defaults.timeOffRequests,
       truckOutages: parsed.truckOutages ?? defaults.truckOutages,

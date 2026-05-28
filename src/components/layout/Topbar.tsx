@@ -1,6 +1,7 @@
 "use client";
 
 import { useMoves } from "@/components/moves/MovesProvider";
+import { ROUTES } from "@/lib/navigation/routes";
 import { followUpSummaryForRep } from "@/lib/moves/follow-ups";
 import { CURRENT_USER } from "@/lib/session/current-user";
 import { Bell, Menu, Search } from "lucide-react";
@@ -47,7 +48,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
 
       <div className="ml-auto flex shrink-0 items-center gap-2">
         <Link
-          href="/follow-ups"
+          href={ROUTES.salesFollowUps}
           className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100"
           aria-label={
             notificationCount > 0

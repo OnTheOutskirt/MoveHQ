@@ -14,6 +14,7 @@ import {
   referralPartnerLabel,
 } from "@/lib/moves/lead-referral";
 import type { MoveLinkedPerson, MoveRecord } from "@/lib/moves/types";
+import { salesDirectoryPersonPath } from "@/lib/navigation/routes";
 import { cn } from "@/lib/utils";
 import { Mail, Phone, User, X } from "lucide-react";
 import Link from "next/link";
@@ -36,7 +37,7 @@ function ReferralContactCard({
       <div className="flex flex-wrap items-start gap-2 pr-6">
         {person.personId ? (
           <Link
-            href={`/people?person=${person.personId}`}
+            href={salesDirectoryPersonPath(person.personId)}
             className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-900 hover:text-brand-700"
             onClick={(e) => e.stopPropagation()}
           >

@@ -1,7 +1,5 @@
-import {
-  crewRoleBadgeClass,
-  crewRoleInitial,
-} from "@/lib/dispatch/crew-display";
+import { crewRoleBadgeClass } from "@/lib/dispatch/crew-display";
+import { useTerminology } from "@/lib/terminology/use-terminology";
 import type { CrewRole } from "@/lib/dispatch/types";
 import { cn } from "@/lib/utils";
 
@@ -13,6 +11,7 @@ type CrewRoleBadgesProps = {
 };
 
 export function CrewRoleBadges({ roles, className }: CrewRoleBadgesProps) {
+  const { initial, label } = useTerminology();
   const active = ROLE_ORDER.filter((r) => roles.includes(r));
   if (active.length === 0) return null;
 
@@ -25,9 +24,9 @@ export function CrewRoleBadges({ roles, className }: CrewRoleBadgesProps) {
             "rounded px-1 py-px text-[9px] font-bold leading-none",
             crewRoleBadgeClass(role),
           )}
-          title={role}
+          title={label(role)}
         >
-          {crewRoleInitial(role)}
+          {initial(role)}
         </span>
       ))}
     </span>

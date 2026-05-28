@@ -1,5 +1,6 @@
 "use client";
 
+import { DispatchDayRequirementsBar } from "@/components/dispatch/DispatchDayRequirementsBar";
 import { DispatchResourcesPanel } from "@/components/dispatch/DispatchResourcesPanel";
 import { DispatchDayPicker } from "@/components/dispatch/DispatchDayPicker";
 import { DispatchPublishActions } from "@/components/dispatch/DispatchPublishActions";
@@ -28,6 +29,8 @@ export function DispatchWorkspace() {
             <DispatchPublishActions />
           </div>
 
+          <DispatchDayRequirementsBar />
+
           {day.importantNotes ? (
             <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
               {day.importantNotes}
@@ -50,7 +53,7 @@ export function DispatchWorkspace() {
                 <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center">
                   <p className="text-sm text-slate-600">No jobs scheduled for this day.</p>
                   <p className="mt-1 text-xs text-slate-400">
-                    Booked moves from the calendar and job days on moves appear here.
+                    Job days on booked moves appear here.
                   </p>
                 </div>
               ) : (

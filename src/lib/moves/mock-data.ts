@@ -1,8 +1,28 @@
 import { enrichMockMove } from "./mock-extras";
 import { attachFollowUps } from "./mock-follow-ups";
-import type { MoveRecord } from "./types";
+import type { IntakeProgress, MoveRecord, QuoteChannel, WebsiteIntakeMeta } from "./types";
 
-type MoveCore = Omit<MoveRecord, "jobDays" | "linkedPeople" | "intake" | "followUps" | "followUpDue">;
+type MoveCore = Omit<
+  MoveRecord,
+  | "jobDays"
+  | "linkedPeople"
+  | "intake"
+  | "followUps"
+  | "followUpDue"
+  | "quoteChannel"
+  | "intakeProgress"
+  | "websiteIntake"
+  | "lostQualification"
+  | "lostReasonId"
+  | "lostNotes"
+> & {
+  quoteChannel?: QuoteChannel;
+  intakeProgress?: IntakeProgress;
+  websiteIntake?: WebsiteIntakeMeta | null;
+  lostQualification?: MoveRecord["lostQualification"];
+  lostReasonId?: string | null;
+  lostNotes?: string | null;
+};
 
 const RAW_MOVES: MoveCore[] = [
   {
@@ -16,6 +36,14 @@ const RAW_MOVES: MoveCore[] = [
     lostFromStage: null,
     lostReason: null,
     leadChannel: "google",
+    quoteChannel: "web_ai",
+    intakeProgress: "started",
+    websiteIntake: {
+      sessionId: "web-sess-okonkwo",
+      lastStepCompleted: "inventory",
+      quotedAt: null,
+      bookedAt: null,
+    },
     contactId: "person-mv-new-lead-customer",
     customerName: "James Okonkwo",
     customerPhone: "(216) 555-0411",
@@ -158,6 +186,52 @@ const RAW_MOVES: MoveCore[] = [
     ],
   },
   {
+    id: "mv-web-quoted",
+    reference: "MV-WEBQ",
+    pipelineStage: "quote_sent",
+    waitingSubstage: null,
+    conditionStatus: "active",
+    bookingReviewStatus: "not_required",
+    lostAt: null,
+    lostFromStage: null,
+    lostReason: null,
+    leadChannel: "google",
+    quoteChannel: "web_ai",
+    intakeProgress: "quoted",
+    websiteIntake: {
+      sessionId: "web-sess-hayes",
+      lastStepCompleted: "quote",
+      quotedAt: "2026-05-19T14:30:00Z",
+      bookedAt: null,
+    },
+    contactId: "person-mv-web-quoted-customer",
+    customerName: "Hayes Family",
+    customerPhone: "(216) 555-0622",
+    customerEmail: "hayes.family@example.com",
+    status: "quote_sent",
+    source: "Website",
+    assignedRep: "Alex Rivera",
+    coordinator: null,
+    moveType: "Local",
+    originAddress: "9584 Doliver Dr, Houston, TX 77063",
+    destinationAddress: "11210 Memorial Dr, Houston, TX 77024",
+    preferredDate: "2026-06-18",
+    quoteAmount: 2240,
+    quoteType: "flat",
+    bedrooms: 3,
+    createdAt: "2026-05-19T14:30:00Z",
+    updatedAt: "2026-05-19T14:30:00Z",
+    activities: [
+      {
+        id: "wq1",
+        type: "document",
+        at: "2026-05-19T14:30:00Z",
+        summary: "AI flat-rate quote generated on website — not booked yet",
+        actor: "System",
+      },
+    ],
+  },
+  {
     id: "mv-needs-contract",
     reference: "MV-CONTRACT",
     pipelineStage: "needs_contract",
@@ -244,6 +318,14 @@ const RAW_MOVES: MoveCore[] = [
     lostFromStage: null,
     lostReason: null,
     leadChannel: "website",
+    quoteChannel: "web_ai",
+    intakeProgress: "booked",
+    websiteIntake: {
+      sessionId: "web-sess-ortiz",
+      lastStepCompleted: "book",
+      quotedAt: "2026-05-20T05:55:00Z",
+      bookedAt: "2026-05-20T06:00:00Z",
+    },
     contactId: "person-mv-ai-booked-customer",
     customerName: "Riley & Sam Ortiz",
     customerPhone: "(216) 555-0555",
@@ -363,7 +445,10 @@ const RAW_MOVES: MoveCore[] = [
     bookingReviewStatus: "not_required",
     lostAt: "2026-05-08T14:00:00Z",
     lostFromStage: "quote_sent",
-    lostReason: "Chose competitor after proposal",
+    lostReason: "Qualified · Chose competitor",
+    lostQualification: "qualified",
+    lostReasonId: "competitor",
+    lostNotes: null,
     leadChannel: "facebook",
     contactId: "person-mv-lost-customer",
     customerName: "Former Lead — Lee Household",
@@ -437,11 +522,31 @@ function withFollowUps(core: MoveCore): MoveRecord {
           linkedStage: "booked",
         },
       ]);
+    case "mv-new-lead":
+      return attachFollowUps(enriched, [
+        {
+          type: "first_contact",
+          title: "Web intake abandoned — finish quote or call back",
+          dueAt: "2026-05-19T17:00:00Z",
+          channel: "call",
+          linkedStage: "new_lead",
+        },
+      ]);
+    case "mv-web-quoted":
+      return attachFollowUps(enriched, [
+        {
+          type: "proposal_follow_up",
+          title: "Web AI quote — follow up to book",
+          dueAt: "2026-05-21T10:00:00Z",
+          channel: "call",
+          linkedStage: "quote_sent",
+        },
+      ]);
     case "mv-ai-booked":
       return attachFollowUps(enriched, [
         {
           type: "booking_confirm",
-          title: "Review AI booking — call client",
+          title: "Review AI booking — kickoff call & verify quote",
           dueAt: "2026-05-20T12:00:00Z",
           channel: "call",
           linkedStage: "booked",
@@ -468,6 +573,7 @@ export const MOCK_MOVES: MoveRecord[] = RAW_MOVES.map(withFollowUps);
 
 export const PIPELINE_DEMO_MOVE_IDS = [
   "mv-new-lead",
+  "mv-web-quoted",
   "mv-waiting-info",
   "mv-waiting-walkthrough",
   "mv-quote-sent",

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { DetailSidebar } from "@/components/ui/DetailSidebar";
 import { useCalendarSettings } from "@/components/providers/CalendarSettingsProvider";
+import { useFleet } from "@/components/providers/FleetProvider";
 import {
   capacityToneStyle,
   holdPillStyle,
@@ -19,9 +20,12 @@ import {
   getCapacityTone,
   getDayCapacityStatus,
   getDayWarningLabels,
+  moverCapacityLabel,
+  moverHoldLabel,
 } from "@/lib/calendar/capacity";
+import { useTerminology } from "@/lib/terminology/use-terminology";
 import type { CalendarColorTheme } from "@/lib/calendar/settings/colors";
-import { formatDayLong } from "@/lib/calendar/date-utils";
+import { formatDayLong, toDateKey } from "@/lib/calendar/date-utils";
 import { closedDayDisplayText } from "@/lib/calendar/settings/apply-closed";
 import { CalendarMoveRowLink } from "@/components/calendar/CalendarMoveRowLink";
 import { DayPipelineTable } from "@/components/calendar/DayPipelineTable";
@@ -56,12 +60,14 @@ function CapacityStatColumn({
   booked,
   capacity,
   hold,
+  holdLabel,
   colors,
 }: {
   label: string;
   booked: number;
   capacity: number;
   hold: number;
+  holdLabel: string | null;
   colors: CalendarColorTheme;
 }) {
   const tone = getCapacityTone(booked, capacity);
@@ -71,17 +77,6 @@ function CapacityStatColumn({
       ? { color: colors.holdBookedText, fontWeight: 600 as const }
       : capacityStyle;
 
-  const holdLabel =
-    hold === 0
-      ? null
-      : hold === 1
-        ? label === "Movers"
-          ? "1 mover on hold"
-          : "1 truck on hold"
-        : label === "Movers"
-          ? `${hold} movers on hold`
-          : `${hold} trucks on hold`;
-
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-3">
       <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
@@ -90,11 +85,11 @@ function CapacityStatColumn({
         <span className="text-slate-400">/</span>
         <span style={capacityStyle}>{capacity}</span>
       </p>
-      {holdLabel && (
+      {holdLabel ? (
         <span className={HOLD_PILL_CLASS} style={holdPillStyle(colors)}>
           {holdLabel}
         </span>
-      )}
+      ) : null}
     </div>
   );
 }
@@ -201,12 +196,14 @@ function SidebarCustomerTable({
   entries,
   tableStyle,
   borderColor,
+  moverColumnLabel,
 }: {
   title: string;
   emptyMessage: string;
   entries: CustomerTableEntry[];
   tableStyle: ReturnType<typeof holdTableStyle>;
   borderColor: string;
+  moverColumnLabel: string;
 }) {
   return (
     <section className="min-w-0">
@@ -222,7 +219,7 @@ function SidebarCustomerTable({
                 style={tableStyle.header}
               >
                 <th className="px-2 py-1.5">Customer</th>
-                <th className="px-2 py-1.5 text-right">Movers</th>
+                <th className="px-2 py-1.5 text-right">{moverColumnLabel}</th>
                 <th className="px-2 py-1.5 text-right">Trucks</th>
               </tr>
             </thead>
@@ -366,6 +363,8 @@ export function DayDetailSidebar({
   const [confirmReopenOpen, setConfirmReopenOpen] = useState(false);
   const [markDayOffOpen, setMarkDayOffOpen] = useState(false);
   const { colors } = useCalendarSettings();
+  const { getTruckCapacityBreakdownForDate } = useFleet();
+  const { terminology, leftHeading, plural } = useTerminology();
 
   if (!date || !day) return null;
 
@@ -433,8 +432,9 @@ export function DayDetailSidebar({
   }
 
   const status = getDayCapacityStatus(day);
-  const dayWarnings = getDayWarningLabels(day);
+  const dayWarnings = getDayWarningLabels(day, terminology);
   const ftaPills = expandFtaPillLabels(day.ftas);
+  const truckBreakdown = getTruckCapacityBreakdownForDate(toDateKey(date));
 
   return (
     <DetailSidebar
@@ -473,10 +473,11 @@ export function DayDetailSidebar({
           >
             <div className="grid grid-cols-2 gap-3">
             <CapacityStatColumn
-              label="Movers"
+              label={moverCapacityLabel(terminology)}
               booked={effectiveMoversBooked(day)}
               capacity={day.moversCapacity}
               hold={day.moversOnHold}
+              holdLabel={moverHoldLabel(day.moversOnHold, terminology)}
               colors={colors}
             />
             <CapacityStatColumn
@@ -484,9 +485,27 @@ export function DayDetailSidebar({
               booked={effectiveTrucksBooked(day)}
               capacity={day.trucksCapacity}
               hold={day.trucksOnHold}
+              holdLabel={
+                day.trucksOnHold === 0
+                  ? null
+                  : day.trucksOnHold === 1
+                    ? "1 truck on hold"
+                    : `${day.trucksOnHold} trucks on hold`
+              }
               colors={colors}
             />
           </div>
+            {truckBreakdown.rentals > 0 ? (
+              <p className="mt-2 text-xs text-slate-500">
+                Includes {truckBreakdown.rentals} rental{" "}
+                {truckBreakdown.rentals === 1 ? "truck" : "trucks"} (
+                {truckBreakdown.roster} roster
+                {truckBreakdown.outOfService > 0
+                  ? `, ${truckBreakdown.outOfService} out of service`
+                  : ""}
+                )
+              </p>
+            ) : null}
 
             <div className="mt-4">
               <p className="text-xs font-medium text-slate-500">FTAs available</p>
@@ -509,13 +528,13 @@ export function DayDetailSidebar({
 
             <div className="mt-4 grid grid-cols-4 gap-2">
               <ResourceMini
-                label="Skippers left"
+                label={leftHeading("skipper")}
                 value={day.skippersLeft}
                 depleted={day.skippersLeft === 0}
                 colors={colors}
               />
               <ResourceMini
-                label="Drivers left"
+                label={leftHeading("driver")}
                 value={day.driversLeft}
                 depleted={day.driversLeft === 0}
                 colors={colors}
@@ -572,6 +591,7 @@ export function DayDetailSidebar({
               entries={day.holds}
               tableStyle={holdTableStyle(colors)}
               borderColor={colors.holdBorder}
+              moverColumnLabel={plural("mover")}
             />
             <SidebarCustomerTable
               title="Waitlist"
@@ -579,6 +599,7 @@ export function DayDetailSidebar({
               entries={day.waitlist}
               tableStyle={waitlistTableStyle(colors)}
               borderColor={colors.waitlistBorder}
+              moverColumnLabel={plural("mover")}
             />
           </div>
         </div>

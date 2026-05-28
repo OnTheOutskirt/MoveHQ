@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/Badge";
 import { pipelineStageLabel } from "@/lib/calendar/day-jobs-mock";
 import { calendarMoveDetailHref } from "@/lib/calendar/resolve-move-link";
 import type { DayPipelineRow } from "@/lib/calendar/types";
+import { useTerminology } from "@/lib/terminology/use-terminology";
 import { cn } from "@/lib/utils";
 
 function stageBadgeVariant(stage: DayPipelineRow["stage"]) {
@@ -19,6 +20,7 @@ type DayPipelineTableProps = {
 };
 
 export function DayPipelineTable({ rows }: DayPipelineTableProps) {
+  const { plural } = useTerminology();
   return (
     <section>
       <h3 className="text-xs font-medium uppercase tracking-wide text-slate-400">Moves</h3>
@@ -38,7 +40,7 @@ export function DayPipelineTable({ rows }: DayPipelineTableProps) {
             <thead>
               <tr className="border-b border-slate-100 text-[10px] font-medium uppercase tracking-wide text-slate-400">
                 <th className="px-2 py-1.5 text-left font-medium">Person</th>
-                <th className="px-1.5 py-1.5 text-right font-medium">Movers</th>
+                <th className="px-1.5 py-1.5 text-right font-medium">{plural("mover")}</th>
                 <th className="px-1.5 py-1.5 text-right font-medium">Trucks</th>
                 <th className="px-1.5 py-1.5 text-right font-medium">Est. Hrs</th>
                 <th className="px-1.5 py-1.5 text-left font-medium">Stage</th>

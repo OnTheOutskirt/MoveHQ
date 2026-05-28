@@ -1,8 +1,6 @@
-import { ModulePage } from "@/components/shared/ModulePage";
-import { pageMeta } from "@/lib/navigation/page-meta";
+import { redirect } from "next/navigation";
+import { ROUTES } from "@/lib/navigation/routes";
 
-const meta = pageMeta["/documents"];
-
-export default function DocumentsPage() {
-  return <ModulePage title={meta.title} description={meta.description} />;
+export default function DocumentsRedirectPage() {
+  redirect(ROUTES.salesDocuments);
 }

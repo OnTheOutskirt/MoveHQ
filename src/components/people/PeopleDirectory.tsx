@@ -1,5 +1,6 @@
 "use client";
 
+import { DirectoryContactActions } from "@/components/people/DirectoryContactActions";
 import { DataTable, type Column } from "@/components/ui/DataTable";
 import { getOrganizationForPerson, MOCK_PEOPLE } from "@/lib/people/mock-data";
 import {
@@ -11,6 +12,7 @@ import {
 import type { PersonKind, PersonRecord, ReferralPartnerType } from "@/lib/people/types";
 import { REFERRAL_PARTNER_TYPES } from "@/lib/people/types";
 import { cn } from "@/lib/utils";
+import { ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
 
 type PeopleDirectoryProps = {
@@ -57,10 +59,20 @@ export function PeopleDirectory({ onSelectPerson }: PeopleDirectoryProps) {
         key: "name",
         header: "Name",
         cell: (p) => (
-          <div>
-            <p className="font-medium text-slate-900">{p.name}</p>
-            {p.title ? <p className="text-xs text-slate-500">{p.title}</p> : null}
-          </div>
+          <button
+            type="button"
+            onClick={() => onSelectPerson(p)}
+            className="group flex w-full min-w-0 items-center gap-1 text-left"
+          >
+            <div className="min-w-0 flex-1">
+              <p className="font-medium text-slate-900 group-hover:text-brand-700">
+                {p.name}
+              </p>
+              {p.title ? <p className="text-xs text-slate-500">{p.title}</p> : null}
+              {p.email ? <p className="truncate text-xs text-slate-400">{p.email}</p> : null}
+            </div>
+            <ChevronRight className="h-4 w-4 shrink-0 text-slate-300 opacity-0 transition-opacity group-hover:opacity-100" />
+          </button>
         ),
       },
       {
@@ -97,13 +109,17 @@ export function PeopleDirectory({ onSelectPerson }: PeopleDirectoryProps) {
         },
       },
       {
-        key: "contact",
+        key: "actions",
         header: "Contact",
+        className: "w-32",
         cell: (p) => (
-          <div className="text-sm text-slate-600">
-            {p.phone ? <p>{p.phone}</p> : null}
-            {p.email ? <p className="truncate text-xs">{p.email}</p> : null}
-          </div>
+          <DirectoryContactActions
+            name={p.name}
+            phone={p.phone}
+            email={p.email}
+            moveIds={p.moveIds}
+            stopPropagation
+          />
         ),
       },
       {
@@ -114,7 +130,7 @@ export function PeopleDirectory({ onSelectPerson }: PeopleDirectoryProps) {
         ),
       },
     ],
-    [],
+    [onSelectPerson],
   );
 
   const kindPills: { id: KindFilter; label: string }[] = [

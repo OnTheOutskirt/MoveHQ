@@ -1,9 +1,8 @@
 "use client";
 
-import { DashboardPreviewBanner } from "@/components/dashboard/DashboardPreviewBanner";
 import { DashboardViewPanel } from "@/components/dashboard/DashboardViewPanel";
-import { ModulePage } from "@/components/shared/ModulePage";
 import { TabBar } from "@/components/shared/TabBar";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { dashboardViews, dashboardTabs } from "@/lib/dashboard/views";
 import type { DashboardView } from "@/lib/dashboard/types";
 import { pageMeta } from "@/lib/navigation/page-meta";
@@ -27,9 +26,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <ModulePage title={meta.title} description={meta.description} />
-
-      <DashboardPreviewBanner />
+      <PageHeader title={meta.title} />
 
       <TabBar tabs={dashboardTabs} activeTab={activeView} onChange={setView} />
 

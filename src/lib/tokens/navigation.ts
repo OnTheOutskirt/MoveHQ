@@ -1,3 +1,4 @@
+import { ROUTES } from "@/lib/navigation/routes";
 import type { LucideIcon } from "lucide-react";
 import {
   Building2,
@@ -7,13 +8,17 @@ import {
   FileText,
   Inbox,
   LayoutDashboard,
+  Globe,
   ListChecks,
   MapPin,
   Package,
   Route,
+  Scale,
   BarChart2,
+  Plug,
   Settings,
   Sliders,
+  Timer,
   Truck,
   UserCog,
   Users,
@@ -59,10 +64,11 @@ export const navigation: NavEntry[] = [
     label: "Sales",
     icon: MapPin,
     items: [
-      { type: "link", label: "Moves", href: "/moves", icon: Package },
-      { type: "link", label: "Directory", href: "/people", icon: Users },
-      { type: "link", label: "Follow-Ups", href: "/follow-ups", icon: ListChecks },
-      { type: "link", label: "Documents", href: "/documents", icon: FileText },
+      { type: "link", label: "Moves", href: ROUTES.salesMoves, icon: Package },
+      { type: "link", label: "Web quotes", href: ROUTES.salesWebQuotes, icon: Globe },
+      { type: "link", label: "Follow-Ups", href: ROUTES.salesFollowUps, icon: ListChecks },
+      { type: "link", label: "Documents", href: ROUTES.salesDocuments, icon: FileText },
+      { type: "link", label: "Directory", href: ROUTES.salesDirectory, icon: Users },
     ],
   },
   {
@@ -72,13 +78,20 @@ export const navigation: NavEntry[] = [
     items: [
       { type: "link", label: "Jobs", href: "/operations/jobs", icon: ClipboardList },
       { type: "link", label: "Dispatch", href: "/operations/dispatch", icon: Route },
+      { type: "link", label: "Claims", href: "/operations/claims", icon: Scale },
       { type: "link", label: "Crew", href: "/operations/crew", icon: Users },
-      { type: "link", label: "Trucks", href: "/operations/trucks", icon: Truck },
+      { type: "link", label: "Fleet", href: "/operations/fleet", icon: Truck },
       {
         type: "link",
-        label: "Forms & Fieldwork",
+        label: "Field Forms",
         href: "/operations/forms",
         icon: FileSignature,
+      },
+      {
+        type: "link",
+        label: "Payroll & Time",
+        href: "/operations/payroll",
+        icon: Timer,
       },
     ],
   },
@@ -90,7 +103,7 @@ export const navigation: NavEntry[] = [
   },
   {
     type: "link",
-    label: "Planning",
+    label: "MoveHQ Planning",
     href: "/planning",
     icon: ClipboardList,
   },
@@ -101,6 +114,7 @@ export const navigation: NavEntry[] = [
     items: [
       { type: "link", label: "Staff", href: "/admin/staff", icon: UserCog },
       { type: "link", label: "Company", href: "/admin/company", icon: Building2 },
+      { type: "link", label: "Integrations", href: "/admin/integrations", icon: Plug },
       { type: "link", label: "Templates", href: "/admin/templates", icon: FileText },
       { type: "link", label: "Setup", href: "/admin/setup", icon: Sliders },
     ],

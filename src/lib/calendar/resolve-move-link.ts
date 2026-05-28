@@ -1,4 +1,5 @@
 import { MOCK_MOVES } from "@/lib/moves/mock-data";
+import { salesMovePath } from "@/lib/navigation/routes";
 
 function normalize(label: string): string {
   return label
@@ -50,5 +51,5 @@ export function resolveMoveIdForCalendarLabel(label: string): string | undefined
 
 export function calendarMoveDetailHref(label: string, moveId?: string): string | null {
   const id = moveId ?? resolveMoveIdForCalendarLabel(label);
-  return id ? `/moves/${id}` : null;
+  return id ? salesMovePath(id) : null;
 }

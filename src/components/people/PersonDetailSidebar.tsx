@@ -1,17 +1,18 @@
 "use client";
 
+import { DirectoryContactActions } from "@/components/people/DirectoryContactActions";
+import { DirectoryCommunicationHistory } from "@/components/people/DirectoryCommunicationHistory";
+import { DirectoryRelatedMoves } from "@/components/people/DirectoryRelatedMoves";
 import { DetailSidebar } from "@/components/ui/DetailSidebar";
-import { formatMoveDate } from "@/lib/moves/format";
 import { MOCK_MOVES } from "@/lib/moves/mock-data";
-import { moveStageDisplayLabel } from "@/lib/moves/move-pipeline";
 import { getOrganizationForPerson } from "@/lib/people/mock-data";
+import { telHref } from "@/lib/people/phone-links";
 import {
   organizationTypeLabel,
   personKindConfig,
   referralPartnerTypeLabel,
 } from "@/lib/people/display";
 import type { PersonRecord } from "@/lib/people/types";
-import Link from "next/link";
 
 type PersonDetailSidebarProps = {
   person: PersonRecord | null;
@@ -38,11 +39,9 @@ export function PersonDetailSidebar({ person, onClose }: PersonDetailSidebarProp
       open={person != null}
       onClose={onClose}
       title={person?.name ?? ""}
-      description={person ? personKindConfig[person.kind].label : undefined}
-    >
-      {person ? (
-        <div className="space-y-6">
-          <div className="flex flex-wrap gap-2">
+      headerBelow={
+        person ? (
+          <>
             <span
               className={`inline-flex rounded-md px-2 py-0.5 text-xs font-semibold ${personKindConfig[person.kind].badge}`}
             >
@@ -53,12 +52,27 @@ export function PersonDetailSidebar({ person, onClose }: PersonDetailSidebarProp
                 {referralPartnerTypeLabel(person.referralType)}
               </span>
             ) : null}
-          </div>
-
+          </>
+        ) : null
+      }
+      headerExtra={
+        person ? (
+          <DirectoryContactActions
+            name={person.name}
+            phone={person.phone}
+            email={person.email}
+            moveIds={person.moveIds}
+            size="md"
+          />
+        ) : null
+      }
+    >
+      {person ? (
+        <div className="space-y-6">
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Phone">
               {person.phone ? (
-                <a href={`tel:${person.phone}`} className="text-brand-600 hover:underline">
+                <a href={telHref(person.phone)} className="text-brand-600 hover:underline">
                   {person.phone}
                 </a>
               ) : (
@@ -83,31 +97,25 @@ export function PersonDetailSidebar({ person, onClose }: PersonDetailSidebarProp
               <p className="text-[10px] font-semibold uppercase text-slate-500">Organization</p>
               <p className="mt-1 font-medium text-slate-900">{org.name}</p>
               <p className="text-xs text-slate-500">{organizationTypeLabel(org.orgType)}</p>
+              {org.phone ? (
+                <div className="mt-3 flex items-center justify-between gap-2 border-t border-slate-200/80 pt-3">
+                  <span className="text-sm text-slate-700">{org.phone}</span>
+                  <DirectoryContactActions
+                    name={org.name}
+                    phone={org.phone}
+                    email={org.email}
+                    moveIds={person.moveIds}
+                  />
+                </div>
+              ) : null}
             </div>
           ) : null}
 
           {person.notes ? <Field label="Notes">{person.notes}</Field> : null}
 
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-              Related moves ({moves.length})
-            </p>
-            <ul className="mt-2 space-y-2">
-              {moves.map((move) => (
-                <li key={move.id}>
-                  <Link
-                    href={`/moves/${move.id}`}
-                    className="block rounded-lg border border-slate-200 px-3 py-2 text-sm hover:border-brand-300 hover:bg-brand-50/40"
-                  >
-                    <p className="font-medium text-slate-900">{move.reference}</p>
-                    <p className="text-xs text-slate-500">
-                      {moveStageDisplayLabel(move)} · {formatMoveDate(move.preferredDate)}
-                    </p>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <DirectoryRelatedMoves moves={moves} showCustomerName />
+
+          <DirectoryCommunicationHistory moveIds={person.moveIds} />
         </div>
       ) : null}
     </DetailSidebar>

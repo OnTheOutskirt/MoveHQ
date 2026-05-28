@@ -36,6 +36,10 @@ export type DayCapacityStatus = "healthy" | "warning" | "critical" | "closed";
 export type DaySalesMetrics = {
   leadsLocal: number;
   leadsLongDistance: number;
+  /** Real opportunities (excludes unqualified leads marked lost early). */
+  leadsQualified: number;
+  /** Spam, out of area, duplicate, couldn't reach, etc. */
+  leadsUnqualified: number;
   proposalsSent: number;
   bookedJobs: number;
 };

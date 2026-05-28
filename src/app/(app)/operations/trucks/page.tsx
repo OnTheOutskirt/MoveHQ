@@ -1,5 +1,5 @@
-import { TrucksWorkspace } from "@/components/operations/trucks/TrucksWorkspace";
+import { redirect } from "next/navigation";
 
-export default function TrucksPage() {
-  return <TrucksWorkspace />;
+export default function TrucksRedirectPage() {
+  redirect("/operations/fleet");
 }

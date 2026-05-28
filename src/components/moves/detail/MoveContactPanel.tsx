@@ -3,6 +3,7 @@
 import { MOCK_PEOPLE } from "@/lib/people/mock-data";
 import { leadChannelLabels } from "@/lib/moves/move-priority-tier";
 import type { MoveRecord } from "@/lib/moves/types";
+import { salesDirectoryPersonPath } from "@/lib/navigation/routes";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { Mail, Phone, User } from "lucide-react";
@@ -66,7 +67,7 @@ export function MoveContactPanel({ move, className }: MoveContactPanelProps) {
 
       {person ? (
         <Link
-          href={`/people?person=${person.id}`}
+          href={salesDirectoryPersonPath(person.id)}
           className="mt-3 inline-block text-xs font-medium text-brand-600 hover:text-brand-700"
         >
           View full contact history →

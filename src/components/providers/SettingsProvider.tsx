@@ -3,6 +3,8 @@
 import { defaultSettings } from "@/lib/settings/defaults";
 import { applyBrandingMeta, applyBrandingToDocument } from "@/lib/settings/apply-branding";
 import { loadSettings, saveSettings } from "@/lib/settings/storage";
+import { mergeTerminology } from "@/lib/terminology/normalize";
+import type { TerminologySettings } from "@/lib/terminology/types";
 import type { AppSettings } from "@/lib/settings/types";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
@@ -11,6 +13,7 @@ type SettingsContextValue = {
   updateBranding: (patch: Partial<AppSettings["branding"]>) => void;
   updateCompany: (patch: Partial<AppSettings["company"]>) => void;
   updateDefaults: (patch: Partial<AppSettings["defaults"]>) => void;
+  updateTerminology: (patch: Partial<TerminologySettings>) => void;
   resetSettings: () => void;
   isReady: boolean;
 };
@@ -48,6 +51,15 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     setSettings((prev) => commit({ ...prev, defaults: { ...prev.defaults, ...patch } }));
   }, []);
 
+  const updateTerminology = useCallback((patch: Partial<TerminologySettings>) => {
+    setSettings((prev) =>
+      commit({
+        ...prev,
+        terminology: mergeTerminology(patch, prev.terminology),
+      }),
+    );
+  }, []);
+
   const resetSettings = useCallback(() => {
     setSettings(commit(defaultSettings));
   }, []);
@@ -58,10 +70,19 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       updateBranding,
       updateCompany,
       updateDefaults,
+      updateTerminology,
       resetSettings,
       isReady,
     }),
-    [settings, updateBranding, updateCompany, updateDefaults, resetSettings, isReady],
+    [
+      settings,
+      updateBranding,
+      updateCompany,
+      updateDefaults,
+      updateTerminology,
+      resetSettings,
+      isReady,
+    ],
   );
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;

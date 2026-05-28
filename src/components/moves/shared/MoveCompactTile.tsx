@@ -1,6 +1,7 @@
 "use client";
 
 import { QuadrantBadge, quadrantCardAccentClass } from "@/components/moves/shared/QuadrantBadge";
+import { WebPipelineBadge } from "@/components/moves/shared/WebPipelineBadge";
 import { formatMoveDate, formatQuote } from "@/lib/moves/format";
 import { moveHasOverdueFollowUp } from "@/lib/moves/move-follow-ups";
 import {
@@ -9,6 +10,7 @@ import {
   waitingSubstageLabel,
 } from "@/lib/moves/move-pipeline";
 import type { MoveRecord } from "@/lib/moves/types";
+import { salesMovePath } from "@/lib/navigation/routes";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import type { CSSProperties } from "react";
@@ -39,18 +41,17 @@ export function MoveCompactTile({
   const router = useRouter();
   const lost = isMoveLost(move);
   const overdue = !lost && moveHasOverdueFollowUp(move);
-
   return (
     <div
       {...dragHandleProps}
       style={dragStyle}
       role="button"
       tabIndex={0}
-      onClick={() => router.push(`/moves/${move.id}`)}
+      onClick={() => router.push(salesMovePath(move.id))}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          router.push(`/moves/${move.id}`);
+          router.push(salesMovePath(move.id));
         }
       }}
       className={cn(
@@ -64,13 +65,16 @@ export function MoveCompactTile({
     >
       <div className="flex items-start justify-between gap-2">
         <p className="truncate font-medium text-slate-900">{move.customerName}</p>
-        <div className="flex shrink-0 items-center gap-1">
-          <QuadrantBadge move={move} />
-          {overdue ? (
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          <div className="flex items-center gap-1">
+            <QuadrantBadge move={move} />
+            {overdue ? (
             <span className="text-[10px] font-bold uppercase text-amber-800" title="Follow-up overdue">
               !
             </span>
           ) : null}
+          </div>
+          <WebPipelineBadge move={move} />
         </div>
       </div>
 

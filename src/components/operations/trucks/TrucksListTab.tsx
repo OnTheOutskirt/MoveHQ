@@ -5,16 +5,30 @@ import { Button } from "@/components/ui/Button";
 import { DataTable, type Column } from "@/components/ui/DataTable";
 import { DetailSidebar } from "@/components/ui/DetailSidebar";
 import {
-  formatTruckInline,
-  formatTruckType,
-  TRUCK_TYPES,
+  CAB_SIZES,
+  formatTruckVehicleType,
+  TRUCK_VEHICLE_TYPES,
+  truckSupportsLiftgate,
+  truckSupportsLength,
   type FleetTruck,
+  type TruckFormInput,
+  type TruckVehicleType,
 } from "@/lib/operations/fleet";
 import { cn } from "@/lib/utils";
 import { Pencil, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 
 type PanelMode = { type: "closed" } | { type: "edit"; id: string } | { type: "add" };
+
+function formatLength(lengthFt?: string): string {
+  if (!lengthFt?.trim()) return "—";
+  return `${lengthFt.trim()} ft`;
+}
+
+function formatLiftgate(truck: FleetTruck): string {
+  if (!truckSupportsLiftgate(truck.vehicleType)) return "—";
+  return truck.hasLiftgate ? "Yes" : "No";
+}
 
 export function TrucksListTab() {
   const { trucks, addTruck, updateTruck } = useFleet();
@@ -25,19 +39,32 @@ export function TrucksListTab() {
     () => [
       {
         key: "label",
-        header: "Truck",
-        cell: (row) => (
-          <span className="font-medium text-slate-900">{formatTruckInline(row)}</span>
-        ),
+        header: "Label",
+        cell: (row) => <span className="font-medium text-slate-900">{row.label}</span>,
       },
       {
-        key: "type",
+        key: "vehicleType",
         header: "Type",
-        cell: (row) => formatTruckType(row.type),
+        cell: (row) => formatTruckVehicleType(row.vehicleType),
+      },
+      {
+        key: "length",
+        header: "Length",
+        cell: (row) => formatLength(row.lengthFt),
+      },
+      {
+        key: "cabSize",
+        header: "Cab",
+        cell: (row) => (row.cabSize ? `${row.cabSize}-pass` : "—"),
+      },
+      {
+        key: "liftgate",
+        header: "Liftgate",
+        cell: (row) => formatLiftgate(row),
       },
       {
         key: "status",
-        header: "Status",
+        header: "Roster",
         cell: (row) => (
           <span
             className={cn(
@@ -122,12 +149,20 @@ function TruckForm({
   onCancel,
 }: {
   initial?: FleetTruck;
-  onSave: (data: { label: string; type: string; active: boolean }) => void;
+  onSave: (data: TruckFormInput) => void;
   onCancel: () => void;
 }) {
   const [label, setLabel] = useState(initial?.label ?? "");
-  const [type, setType] = useState(initial?.type ?? "26ft");
+  const [vehicleType, setVehicleType] = useState<TruckVehicleType>(
+    initial?.vehicleType ?? "box_truck",
+  );
+  const [lengthFt, setLengthFt] = useState(initial?.lengthFt ?? "");
+  const [cabSize, setCabSize] = useState<number | "">(initial?.cabSize ?? 3);
+  const [hasLiftgate, setHasLiftgate] = useState(initial?.hasLiftgate ?? true);
   const [active, setActive] = useState(initial?.active ?? true);
+
+  const showLength = truckSupportsLength(vehicleType);
+  const showLiftgate = truckSupportsLiftgate(vehicleType);
 
   return (
     <form
@@ -135,11 +170,20 @@ function TruckForm({
       onSubmit={(e) => {
         e.preventDefault();
         if (!label.trim()) return;
-        onSave({ label: label.trim(), type, active });
+        onSave({
+          label: label.trim(),
+          vehicleType,
+          lengthFt: showLength ? lengthFt.trim() || undefined : undefined,
+          cabSize: cabSize === "" ? undefined : cabSize,
+          hasLiftgate: showLiftgate ? hasLiftgate : undefined,
+          active,
+        });
       }}
     >
       <div>
-        <label className="block text-xs font-semibold uppercase text-slate-500">Label</label>
+        <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+          Truck label
+        </label>
         <input
           value={label}
           onChange={(e) => setLabel(e.target.value)}
@@ -148,21 +192,75 @@ function TruckForm({
           required
         />
       </div>
+
       <div>
-        <label className="block text-xs font-semibold uppercase text-slate-500">Type</label>
+        <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+          Truck type
+        </label>
         <select
-          value={type}
-          onChange={(e) => setType(e.target.value)}
+          value={vehicleType}
+          onChange={(e) => setVehicleType(e.target.value as TruckVehicleType)}
           className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
         >
-          {TRUCK_TYPES.map((t) => (
+          {TRUCK_VEHICLE_TYPES.map((t) => (
             <option key={t} value={t}>
-              {formatTruckType(t)}
+              {formatTruckVehicleType(t)}
             </option>
           ))}
         </select>
       </div>
-      <label className="flex items-center gap-2 text-sm">
+
+      {showLength ? (
+        <div>
+          <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Length (ft)
+          </label>
+          <div className="relative mt-1">
+            <input
+              value={lengthFt}
+              onChange={(e) => setLengthFt(e.target.value)}
+              placeholder="26"
+              inputMode="decimal"
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 pr-10 text-sm"
+            />
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">
+              ft
+            </span>
+          </div>
+        </div>
+      ) : null}
+
+      <div>
+        <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+          Cab size
+        </label>
+        <select
+          value={cabSize}
+          onChange={(e) => setCabSize(e.target.value ? Number(e.target.value) : "")}
+          className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+        >
+          <option value="">Not set</option>
+          {CAB_SIZES.map((size) => (
+            <option key={size} value={size}>
+              {size} people
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {showLiftgate ? (
+        <label className="flex items-center gap-2 text-sm text-slate-800">
+          <input
+            type="checkbox"
+            checked={hasLiftgate}
+            onChange={(e) => setHasLiftgate(e.target.checked)}
+            className="h-4 w-4 rounded border-slate-300 text-brand-600"
+          />
+          Has liftgate
+        </label>
+      ) : null}
+
+      <label className="flex items-center gap-2 text-sm text-slate-800">
         <input
           type="checkbox"
           checked={active}
@@ -171,6 +269,11 @@ function TruckForm({
         />
         Active on roster
       </label>
+
+      <p className="text-xs text-slate-500">
+        Inactive trucks are hidden from dispatch assignment.
+      </p>
+
       <div className="flex gap-2">
         <Button type="button" variant="secondary" onClick={onCancel}>
           Cancel

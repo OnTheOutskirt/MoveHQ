@@ -1,5 +1,6 @@
-import { MovesWorkspace } from "@/components/moves/MovesWorkspace";
+import { redirect } from "next/navigation";
+import { ROUTES } from "@/lib/navigation/routes";
 
-export default function MovesPage() {
-  return <MovesWorkspace />;
+export default function MovesRedirectPage() {
+  redirect(ROUTES.salesMoves);
 }

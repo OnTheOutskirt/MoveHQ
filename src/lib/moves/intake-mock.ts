@@ -1,7 +1,27 @@
 import type { FlatRateIntake, IntakeRoomInventory } from "./flat-rate-intake";
-import type { MoveRecord } from "./types";
+import type { IntakeProgress, MoveRecord, QuoteChannel, WebsiteIntakeMeta } from "./types";
 
-type MoveCore = Omit<MoveRecord, "jobDays" | "linkedPeople" | "intake" | "followUps" | "followUpDue">;
+type MoveCore = Omit<
+  MoveRecord,
+  | "jobDays"
+  | "linkedPeople"
+  | "intake"
+  | "followUps"
+  | "followUpDue"
+  | "quoteChannel"
+  | "intakeProgress"
+  | "websiteIntake"
+  | "lostQualification"
+  | "lostReasonId"
+  | "lostNotes"
+> & {
+  quoteChannel?: QuoteChannel;
+  intakeProgress?: IntakeProgress;
+  websiteIntake?: WebsiteIntakeMeta | null;
+  lostQualification?: MoveRecord["lostQualification"];
+  lostReasonId?: string | null;
+  lostNotes?: string | null;
+};
 
 function defaultAccess(type: string): Record<string, string> {
   if (type === "2-story") {
@@ -201,8 +221,14 @@ const INTAKE_BY_ID: Partial<Record<string, Partial<FlatRateIntake>>> = {
     jobType: "standard",
     homeSizeKey: "2000",
     homeSizeLabel: "3BR / long-distance",
+    packingDensity: "avg",
+    estimatedBoxCount: 95,
     packingService: "partial",
     partialPackRooms: ["kitchen", "fragile"],
+    hasSpecialtyItems: true,
+    specialtyNotes: "Baby grand piano — coordinate Shamrock crating",
+    hasTimingComplexity: true,
+    timingNotes: "Linehaul · book crew hotel near Charlotte between load and delivery days",
     moveDate: "2026-06-01",
     origin: {
       street: "4521 Euclid Ave",

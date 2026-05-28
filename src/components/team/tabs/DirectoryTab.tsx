@@ -212,8 +212,8 @@ export function DirectoryTab() {
         title={panel.type === "add" ? "Add team member" : `Edit — ${editing ? memberDisplayName(editing) : ""}`}
         description={
           panel.type === "add"
-            ? "Add a new person to Jonah's Movers."
-            : "Update access, roles, and pay for this team member."
+            ? "Add a new person to Jonah's Movers. Rippling employee # is required for payroll."
+            : "Update access, roles, and pay. Rippling employee # is required for payroll."
         }
         widthClassName="max-w-lg"
       >

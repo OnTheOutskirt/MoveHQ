@@ -11,12 +11,23 @@ import {
   type CrewSlotRef,
 } from "@/lib/dispatch/crew-slots";
 import {
+  clampCrew,
+  clampTrucks,
+  effectiveDispatchJob,
+  effectiveRequirements,
+  trimAssignmentToRequirements,
+} from "@/lib/dispatch/job-requirements";
+import {
   getJobAssignment,
   readDispatchAssignments,
   setJobAssignment,
   writeDispatchAssignments,
   type DispatchAssignmentStore,
 } from "@/lib/dispatch/storage";
+import {
+  evaluateDayRequirements,
+  type DispatchDayRequirements,
+} from "@/lib/dispatch/day-requirements";
 import {
   evaluateDispatchSchedule,
   collectAssignedIds,
@@ -54,11 +65,16 @@ type DispatchContextValue = {
   unassignTruck: (jobId: string, truckId: string) => void;
   setDispatchNotes: (jobId: string, notes: string) => void;
   setJobNote: (jobId: string, note: string) => void;
+  setCrewSizeNeeded: (jobId: string, size: number) => void;
+  setTrucksNeeded: (jobId: string, count: number) => void;
+  resetCrewSizeToPlanned: (jobId: string) => void;
+  resetTrucksToPlanned: (jobId: string) => void;
   crewOffIds: string[];
   crewOff: DispatchDaySnapshot["crewOff"];
   assignedCrewIds: Set<string>;
   assignedTruckIds: Set<string>;
   scheduleStatus: DispatchScheduleStatus;
+  dayRequirements: DispatchDayRequirements;
   publishRecord: DispatchPublishRecord | null;
   publishToCrewApp: () => void;
 };
@@ -112,7 +128,11 @@ export function DispatchProvider({ children, initialDateKey }: DispatchProviderP
   );
 
   const getAssignmentForJob = useCallback(
-    (job: DispatchJob) => ensureDriverMoverLengths(job, getAssignmentRaw(job.id)),
+    (job: DispatchJob) => {
+      const raw = getAssignmentRaw(job.id);
+      const effective = effectiveDispatchJob(job, raw);
+      return ensureDriverMoverLengths(effective, raw);
+    },
     [getAssignmentRaw],
   );
 
@@ -132,35 +152,78 @@ export function DispatchProvider({ children, initialDateKey }: DispatchProviderP
     [assignments, dateKey, persist],
   );
 
+  const applyRequirementOverrides = useCallback(
+    (
+      jobId: string,
+      overrides: {
+        crewSizeOverride?: number | null;
+        trucksNeededOverride?: number | null;
+      },
+    ) => {
+      const job = findJob(jobId);
+      if (!job) return;
+      const current = getAssignmentRaw(jobId);
+      const merged: DispatchJobAssignment = {
+        ...current,
+        crewSizeOverride:
+          overrides.crewSizeOverride !== undefined
+            ? overrides.crewSizeOverride
+            : current.crewSizeOverride ?? null,
+        trucksNeededOverride:
+          overrides.trucksNeededOverride !== undefined
+            ? overrides.trucksNeededOverride
+            : current.trucksNeededOverride ?? null,
+      };
+      const { crewSizeNeeded, trucksNeeded } = effectiveRequirements(job, merged);
+      const trim = trimAssignmentToRequirements(job, current, crewSizeNeeded, trucksNeeded);
+      patchJob(jobId, {
+        ...trim,
+        crewSizeOverride: merged.crewSizeOverride ?? null,
+        trucksNeededOverride: merged.trucksNeededOverride ?? null,
+      });
+    },
+    [findJob, getAssignmentRaw, patchJob],
+  );
+
   const assignCrewSlot = useCallback(
     (jobId: string, slot: CrewSlotRef, crewId: string | null) => {
       const job = findJob(jobId);
       if (!job) return;
-      const current = getAssignmentForJob(job);
-      const next = setSlotCrew(job, current, slot, crewId);
+      const raw = getAssignmentRaw(jobId);
+      const effective = effectiveDispatchJob(job, raw);
+      const current = ensureDriverMoverLengths(effective, raw);
+      const next = setSlotCrew(effective, current, slot, crewId);
       patchJob(jobId, {
         skipperId: next.skipperId,
         driverIds: next.driverIds,
         moverIds: next.moverIds,
       });
     },
-    [findJob, getAssignmentForJob, patchJob],
+    [findJob, getAssignmentRaw, patchJob],
   );
 
   const setTrucks = useCallback(
     (jobId: string, truckIds: string[]) => {
-      patchJob(jobId, { truckIds });
+      const job = findJob(jobId);
+      if (!job) return;
+      const raw = getAssignmentRaw(jobId);
+      const { trucksNeeded } = effectiveRequirements(job, raw);
+      patchJob(jobId, { truckIds: truckIds.slice(0, trucksNeeded) });
     },
-    [patchJob],
+    [findJob, getAssignmentRaw, patchJob],
   );
 
   const assignTruck = useCallback(
     (jobId: string, truckId: string) => {
+      const job = findJob(jobId);
+      if (!job) return;
       const current = getAssignmentRaw(jobId);
       if (current.truckIds.includes(truckId)) return;
+      const { trucksNeeded } = effectiveRequirements(job, current);
+      if (current.truckIds.length >= trucksNeeded) return;
       patchJob(jobId, { truckIds: [...current.truckIds, truckId] });
     },
-    [getAssignmentRaw, patchJob],
+    [findJob, getAssignmentRaw, patchJob],
   );
 
   const unassignTruck = useCallback(
@@ -185,6 +248,34 @@ export function DispatchProvider({ children, initialDateKey }: DispatchProviderP
     [patchJob],
   );
 
+  const setCrewSizeNeeded = useCallback(
+    (jobId: string, size: number) => {
+      applyRequirementOverrides(jobId, { crewSizeOverride: clampCrew(size) });
+    },
+    [applyRequirementOverrides],
+  );
+
+  const setTrucksNeeded = useCallback(
+    (jobId: string, count: number) => {
+      applyRequirementOverrides(jobId, { trucksNeededOverride: clampTrucks(count) });
+    },
+    [applyRequirementOverrides],
+  );
+
+  const resetCrewSizeToPlanned = useCallback(
+    (jobId: string) => {
+      applyRequirementOverrides(jobId, { crewSizeOverride: null });
+    },
+    [applyRequirementOverrides],
+  );
+
+  const resetTrucksToPlanned = useCallback(
+    (jobId: string) => {
+      applyRequirementOverrides(jobId, { trucksNeededOverride: null });
+    },
+    [applyRequirementOverrides],
+  );
+
   const getAssignmentForSchedule = useCallback(
     (jobId: string) => getAssignment(jobId),
     [getAssignment],
@@ -197,6 +288,11 @@ export function DispatchProvider({ children, initialDateKey }: DispatchProviderP
 
   const scheduleStatus = useMemo(
     () => evaluateDispatchSchedule(day, getAssignmentForSchedule),
+    [day, getAssignmentForSchedule],
+  );
+
+  const dayRequirements = useMemo(
+    () => evaluateDayRequirements(day, getAssignmentForSchedule),
     [day, getAssignmentForSchedule],
   );
 
@@ -225,11 +321,16 @@ export function DispatchProvider({ children, initialDateKey }: DispatchProviderP
       unassignTruck,
       setDispatchNotes,
       setJobNote,
+      setCrewSizeNeeded,
+      setTrucksNeeded,
+      resetCrewSizeToPlanned,
+      resetTrucksToPlanned,
       crewOffIds: day.crewOffIds,
       crewOff: day.crewOff,
       assignedCrewIds,
       assignedTruckIds,
       scheduleStatus,
+      dayRequirements,
       publishRecord,
       publishToCrewApp,
     }),
@@ -245,9 +346,14 @@ export function DispatchProvider({ children, initialDateKey }: DispatchProviderP
       unassignTruck,
       setDispatchNotes,
       setJobNote,
+      setCrewSizeNeeded,
+      setTrucksNeeded,
+      resetCrewSizeToPlanned,
+      resetTrucksToPlanned,
       assignedCrewIds,
       assignedTruckIds,
       scheduleStatus,
+      dayRequirements,
       publishRecord,
       publishToCrewApp,
     ],

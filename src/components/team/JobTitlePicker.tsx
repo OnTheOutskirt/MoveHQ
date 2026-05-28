@@ -1,7 +1,10 @@
 "use client";
 
-import { JOB_TITLES, type JobTitle } from "@/lib/team/types";
+import type { JobTitle } from "@/lib/team/types";
+import { fieldJobTitleOptions } from "@/lib/operations/crew-sync";
+import { useTerminology } from "@/lib/terminology/use-terminology";
 import { cn } from "@/lib/utils";
+import { useMemo } from "react";
 
 type JobTitlePickerProps = {
   value: JobTitle[];
@@ -9,6 +12,12 @@ type JobTitlePickerProps = {
 };
 
 export function JobTitlePicker({ value, onChange }: JobTitlePickerProps) {
+  const { terminology } = useTerminology();
+  const options = useMemo(
+    () => ["Manager" as const, ...fieldJobTitleOptions(terminology)] as JobTitle[],
+    [terminology],
+  );
+
   function toggle(title: JobTitle) {
     if (value.includes(title)) {
       onChange(value.filter((t) => t !== title));
@@ -19,7 +28,7 @@ export function JobTitlePicker({ value, onChange }: JobTitlePickerProps) {
 
   return (
     <div className="flex flex-wrap gap-2">
-      {JOB_TITLES.map((title) => {
+      {options.map((title) => {
         const selected = value.includes(title);
         return (
           <button

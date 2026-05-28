@@ -24,16 +24,112 @@ export const defaultFleetStore = (): FleetStore => {
     { id: "crew-casey", name: "Casey Wu", roles: ["mover"], active: true },
   ];
 
-  const trucks = [
-    { id: "truck-1", label: "Truck 1", type: "26ft", active: true },
-    { id: "truck-2", label: "Truck 2", type: "26ft", active: true },
-    { id: "truck-3", label: "Truck 3", type: "26ft", active: true },
-    { id: "truck-4", label: "Truck 4", type: "26ft", active: true },
-    { id: "truck-5", label: "Truck 5", type: "26ft", active: true },
-    { id: "truck-6", label: "Truck 6", type: "26ft", active: true },
-    { id: "truck-7", label: "Truck 7", type: "26ft", active: true },
-    { id: "truck-8", label: "Enterprise truck 8", type: "enterprise", active: true },
-    { id: "truck-9", label: "Enterprise truck 9", type: "enterprise", active: true },
+  const trucks: FleetStore["trucks"] = [
+    {
+      id: "truck-1",
+      label: "Truck 1",
+      type: "26ft Box truck",
+      active: true,
+      vehicleType: "box_truck",
+      lengthFt: "26",
+      cabSize: 3,
+      hasLiftgate: true,
+    },
+    {
+      id: "truck-2",
+      label: "Truck 2",
+      type: "26ft Box truck",
+      active: true,
+      vehicleType: "box_truck",
+      lengthFt: "26",
+      cabSize: 3,
+      hasLiftgate: true,
+    },
+    {
+      id: "truck-3",
+      label: "Truck 3",
+      type: "26ft Box truck",
+      active: true,
+      vehicleType: "box_truck",
+      lengthFt: "26",
+      cabSize: 3,
+      hasLiftgate: false,
+    },
+    {
+      id: "truck-4",
+      label: "Truck 4",
+      type: "24ft Box truck",
+      active: true,
+      vehicleType: "box_truck",
+      lengthFt: "24",
+      cabSize: 3,
+      hasLiftgate: true,
+    },
+    {
+      id: "truck-5",
+      label: "Truck 5",
+      type: "26ft Box truck",
+      active: true,
+      vehicleType: "box_truck",
+      lengthFt: "26",
+      cabSize: 3,
+      hasLiftgate: true,
+    },
+    {
+      id: "truck-6",
+      label: "Truck 6",
+      type: "26ft Box truck",
+      active: true,
+      vehicleType: "box_truck",
+      lengthFt: "26",
+      cabSize: 2,
+      hasLiftgate: false,
+    },
+    {
+      id: "truck-7",
+      label: "Truck 7",
+      type: "26ft Box truck",
+      active: true,
+      vehicleType: "box_truck",
+      lengthFt: "26",
+      cabSize: 3,
+      hasLiftgate: true,
+    },
+    {
+      id: "truck-8",
+      label: "Enterprise truck 8",
+      type: "26ft Rental truck",
+      active: true,
+      vehicleType: "rental_truck",
+      lengthFt: "26",
+      cabSize: 2,
+      hasLiftgate: true,
+    },
+    {
+      id: "truck-9",
+      label: "Enterprise truck 9",
+      type: "26ft Rental truck",
+      active: true,
+      vehicleType: "rental_truck",
+      lengthFt: "26",
+      cabSize: 2,
+      hasLiftgate: true,
+    },
+  ];
+
+  const temporaryRentals: FleetStore["temporaryRentals"] = [
+    {
+      id: "rental-uhaul-1",
+      label: "U-Haul 26ft",
+      vendor: "U-Haul",
+      vehicleType: "rental_truck",
+      lengthFt: "26",
+      cabSize: 2,
+      hasLiftgate: false,
+      startDate: daysFromToday(2),
+      endDate: daysFromToday(4),
+      notes: "Weekend overflow — return Sunday PM",
+    },
   ];
 
   const schedules = crew.map((c) => ({
@@ -119,5 +215,5 @@ export const defaultFleetStore = (): FleetStore => {
     },
   ];
 
-  return { crew, trucks, schedules, timeOffRequests, truckOutages, maintenance };
+  return { crew, trucks, temporaryRentals, schedules, timeOffRequests, truckOutages, maintenance };
 };

@@ -5,6 +5,8 @@ import {
   DetailFieldGrid,
   DetailSection,
 } from "@/components/moves/detail/DetailSection";
+import { WebsiteIntakePanel } from "@/components/moves/detail/WebsiteIntakePanel";
+import { quoteChannelLabel } from "@/lib/moves/acquisition";
 import { formatMoveDate, formatQuote } from "@/lib/moves/format";
 import { leadSourceLabel } from "@/lib/moves/lead-referral";
 import { moveStatusLabel } from "@/lib/moves/status";
@@ -51,6 +53,8 @@ export function MoveDetailQuoteTab({ move }: MoveDetailQuoteTabProps) {
 
   return (
     <div className="space-y-4">
+      <WebsiteIntakePanel move={move} />
+
       <div className="grid gap-4 lg:grid-cols-2">
         <DetailSection title="Flat rate total">
           <p className="text-3xl font-semibold tabular-nums text-slate-900">
@@ -77,7 +81,8 @@ export function MoveDetailQuoteTab({ move }: MoveDetailQuoteTabProps) {
         <DetailSection title="Sales">
           <DetailFieldGrid>
             <DetailField label="Stage" value={moveStatusLabel(move.status)} />
-            <DetailField label="Lead source" value={leadSourceLabel(move.leadChannel)} />
+            <DetailField label="Quote built via" value={quoteChannelLabel(move.quoteChannel)} />
+            <DetailField label="Lead source (marketing)" value={leadSourceLabel(move.leadChannel)} />
             <DetailField label="Salesperson" value={move.assignedRep} />
             <DetailField
               label="Follow-up due"

@@ -13,8 +13,11 @@ import {
   effectiveTrucksBooked,
   getDayCapacityStatus,
   getDayWarningLabels,
+  moverCapacityLabel,
+  moverHoldLabel,
   totalFtaSlots,
 } from "@/lib/calendar/capacity";
+import { useTerminology } from "@/lib/terminology/use-terminology";
 import { isBeforeToday, isSameDay } from "@/lib/calendar/date-utils";
 import { closedDayDisplayText } from "@/lib/calendar/settings/apply-closed";
 import { bookingRatePercent } from "@/lib/calendar/sales-metrics";
@@ -85,6 +88,7 @@ function BookingRateLabel({
 
 export function MonthDayCell({ date, today, day, onSelect, onEditNotes }: MonthDayCellProps) {
   const { colors } = useCalendarSettings();
+  const { terminology, quantityLabel } = useTerminology();
   const isToday = isSameDay(date, today);
   const isPast = isBeforeToday(date, today);
   const bookingRate = bookingRatePercent(day.sales);
@@ -134,7 +138,7 @@ export function MonthDayCell({ date, today, day, onSelect, onEditNotes }: MonthD
   const driversDepleted = day.driversLeft === 0;
   const ecDepleted = day.extraCabsLeft === 0;
   const f150Depleted = day.f150Count === 0;
-  const dayWarnings = !isPast ? getDayWarningLabels(day) : [];
+  const dayWarnings = !isPast ? getDayWarningLabels(day, terminology) : [];
 
   const cellStyle = isPast
     ? { backgroundColor: colors.dayPastBg }
@@ -225,15 +229,11 @@ export function MonthDayCell({ date, today, day, onSelect, onEditNotes }: MonthD
 
       <div className="mt-0.5 space-y-0.5">
         <CapacityLine
-          label="Movers"
+          label={moverCapacityLabel(terminology)}
           booked={moversDisplay}
           capacity={day.moversCapacity}
           hold={day.moversOnHold}
-          holdPillText={
-            day.moversOnHold === 1
-              ? "1 mover on hold"
-              : `${day.moversOnHold} movers on hold`
-          }
+          holdPillText={moverHoldLabel(day.moversOnHold, terminology) ?? undefined}
           large
           muted={isPast}
           colors={colors}
@@ -263,7 +263,7 @@ export function MonthDayCell({ date, today, day, onSelect, onEditNotes }: MonthD
       <div className="mt-auto flex items-end justify-between gap-2 pt-0.5 text-[9px] leading-tight sm:text-[10px]">
         <span className="min-w-0 flex flex-wrap items-center gap-x-0.5">
           <ResourcePart
-            label={`${day.skippersLeft} Skippers`}
+            label={quantityLabel("skipper", day.skippersLeft)}
             depleted={skippersDepleted}
             muted={isPast}
             depletedColor={colors.resourceDepletedText}
@@ -272,7 +272,7 @@ export function MonthDayCell({ date, today, day, onSelect, onEditNotes }: MonthD
           />
           <span style={{ color: isPast ? colors.resourceMutedText : "#cbd5e1" }}> · </span>
           <ResourcePart
-            label={`${day.driversLeft} Drivers`}
+            label={quantityLabel("driver", day.driversLeft)}
             depleted={driversDepleted}
             muted={isPast}
             depletedColor={colors.resourceDepletedText}

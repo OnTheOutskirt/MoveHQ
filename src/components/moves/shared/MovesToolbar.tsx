@@ -17,7 +17,7 @@ type MovesToolbarProps = {
 };
 
 export function MovesToolbar({ filters, view, onViewChange }: MovesToolbarProps) {
-  const { repFilter, setRepFilter, reps } = filters;
+  const { repFilter, setRepFilter, quoteChannelFilter, setQuoteChannelFilter, reps } = filters;
 
   return (
     <div className="flex flex-wrap items-center gap-3">
@@ -27,6 +27,21 @@ export function MovesToolbar({ filters, view, onViewChange }: MovesToolbarProps)
         onChange={onViewChange}
         ariaLabel="Moves view"
       />
+
+      <select
+        value={quoteChannelFilter}
+        onChange={(e) =>
+          setQuoteChannelFilter(e.target.value as typeof quoteChannelFilter)
+        }
+        aria-label="Filter by quote channel"
+        className="h-9 shrink-0 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+      >
+        <option value="all">All quote channels</option>
+        <option value="web_ai">Website quote</option>
+        <option value="phone">Phone quote</option>
+        <option value="office">Office quote</option>
+        <option value="web_review">Web booking · needs review</option>
+      </select>
 
       <select
         value={repFilter}

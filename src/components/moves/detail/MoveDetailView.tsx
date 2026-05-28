@@ -12,6 +12,7 @@ import { MoveDetailRightRail } from "@/components/moves/detail/MoveDetailRightRa
 import { MoveQuickActionSidebar } from "@/components/moves/detail/MoveQuickActionSidebar";
 import type { MoveDetailMainTabId, MoveQuickActionId } from "@/lib/moves/detail-layout";
 import type { MoveRecord } from "@/lib/moves/types";
+import { ROUTES } from "@/lib/navigation/routes";
 
 type MoveDetailViewProps = {
   move: MoveRecord;
@@ -84,7 +85,7 @@ export function MoveDetailNotFound({ moveId }: MoveDetailNotFoundProps) {
       <p className="text-sm font-medium text-slate-900">Move not found</p>
       <p className="mt-1 text-sm text-slate-500">No record for &ldquo;{moveId}&rdquo;.</p>
       <Link
-        href="/moves"
+        href={ROUTES.salesMoves}
         className="mt-4 inline-block text-sm font-medium text-brand-600 hover:text-brand-700"
       >
         Return to Moves

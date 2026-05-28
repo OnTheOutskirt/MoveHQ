@@ -130,15 +130,33 @@ function buildSalesMetrics(seed: number, fill: number): DaySalesMetrics {
   const localRatio = 0.52 + seeded(seed + 51) * 0.28;
   const leadsLocal = Math.max(0, Math.floor(totalLeads * localRatio));
   const leadsLongDistance = Math.max(0, totalLeads - leadsLocal);
+  const maxUnqualified = Math.min(totalLeads, Math.max(0, Math.floor(1 + r * 3)));
+  const leadsUnqualified = Math.min(
+    maxUnqualified,
+    Math.floor(totalLeads * (0.05 + seeded(seed + 52) * 0.12)),
+  );
+  const leadsQualified = Math.max(0, totalLeads - leadsUnqualified);
   const proposalsSent = Math.max(
     0,
-    Math.floor(leadsLocal * 0.65 + leadsLongDistance * 0.45 + fill * 4 + r * 3),
+    Math.floor(
+      leadsQualified * (0.58 + fill * 0.12) +
+        leadsLocal * 0.08 +
+        leadsLongDistance * 0.05 +
+        r * 2,
+    ),
   );
   const bookedJobs = Math.max(
     0,
     Math.min(proposalsSent, Math.floor(proposalsSent * (0.22 + fill * 0.38 + r * 0.12))),
   );
-  return { leadsLocal, leadsLongDistance, proposalsSent, bookedJobs };
+  return {
+    leadsLocal,
+    leadsLongDistance,
+    leadsQualified,
+    leadsUnqualified,
+    proposalsSent,
+    bookedJobs,
+  };
 }
 
 function buildCrewOff(seed: number, fill: number): CrewMemberOff[] {

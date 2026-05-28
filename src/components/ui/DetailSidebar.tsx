@@ -9,6 +9,8 @@ type DetailSidebarProps = {
   onClose: () => void;
   title: string;
   description?: string;
+  /** Rendered below the title row (e.g. type badges). */
+  headerBelow?: React.ReactNode;
   /** Rendered beside the title (e.g. header controls). */
   headerExtra?: React.ReactNode;
   children: React.ReactNode;
@@ -25,6 +27,7 @@ export function DetailSidebar({
   onClose,
   title,
   description,
+  headerBelow,
   headerExtra,
   children,
   footer,
@@ -61,10 +64,14 @@ export function DetailSidebar({
         )}
       >
         <header className="shrink-0 border-b border-slate-200 px-5 py-4">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-              <h2 className="shrink-0 text-lg font-semibold text-slate-900">{title}</h2>
-              {headerExtra}
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="shrink-0 text-lg font-semibold text-slate-900">{title}</h2>
+                {headerExtra}
+              </div>
+              {headerBelow ? <div className="mt-2 flex flex-wrap gap-2">{headerBelow}</div> : null}
+              {description ? <p className="mt-2 text-sm text-slate-500">{description}</p> : null}
             </div>
             <button
               type="button"
@@ -75,7 +82,6 @@ export function DetailSidebar({
               <X className="h-5 w-5" />
             </button>
           </div>
-          {description ? <p className="mt-2 text-sm text-slate-500">{description}</p> : null}
         </header>
         <div
           className={cn(

@@ -13,6 +13,7 @@ import {
   pipelineStageConfig,
   pipelineStageIndex,
 } from "@/lib/moves/move-pipeline";
+import { quoteChannelLabel } from "@/lib/moves/acquisition";
 import {
   compareSalesPriority,
   getMoveEstimatedValue,
@@ -22,6 +23,7 @@ import {
 } from "@/lib/moves/move-priority-tier";
 import type { MoveRecord } from "@/lib/moves/types";
 import { useRouter } from "next/navigation";
+import { salesMovePath } from "@/lib/navigation/routes";
 import { useCallback, useMemo, useState } from "react";
 
 type MoveListViewProps = {
@@ -169,7 +171,11 @@ export function MoveListView({ moves }: MoveListViewProps) {
             <p className="text-slate-600">
               {moveRouteLabel(move.originAddress, move.destinationAddress)}
             </p>
-            <p className="text-xs text-slate-500">{leadChannelLabels[move.leadChannel]}</p>
+            <p className="text-xs text-slate-500">
+              {quoteChannelLabel(move.quoteChannel)}
+              <span className="text-slate-300"> · </span>
+              {leadChannelLabels[move.leadChannel]}
+            </p>
           </div>
         ),
       },
@@ -211,7 +217,7 @@ export function MoveListView({ moves }: MoveListViewProps) {
       sortKey={sort?.key}
       sortDirection={sort?.direction ?? null}
       onSortColumn={handleSortColumn}
-      onRowClick={(move) => router.push(`/moves/${move.id}`)}
+      onRowClick={(move) => router.push(salesMovePath(move.id))}
       getRowKey={(move) => move.id}
       emptyMessage="No moves match your filters."
     />

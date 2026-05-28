@@ -4,6 +4,20 @@ const STORAGE_KEY = "jm-dispatch-day-before-confirmation-v1";
 
 type ConfirmationStore = Record<string, DayBeforeConfirmationStatus>;
 
+type ConfirmationListener = () => void;
+
+const listeners = new Set<ConfirmationListener>();
+
+/** Re-read overrides when another dispatch surface (card vs sidebar) updates storage. */
+export function subscribeConfirmationStore(listener: ConfirmationListener): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+function notifyConfirmationStore() {
+  listeners.forEach((listener) => listener());
+}
+
 function readStore(): ConfirmationStore {
   if (typeof window === "undefined") return {};
   try {
@@ -31,4 +45,5 @@ export function writeConfirmationOverride(
     store[jobId] = status;
   }
   localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+  notifyConfirmationStore();
 }

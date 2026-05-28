@@ -4,7 +4,7 @@ export const staffTabRedirect: Record<string, string> = {
   people: "people",
   permissions: "roles",
   roles: "roles",
-  access: "access",
+  access: "people",
   pay: "pay",
 };
 
@@ -20,8 +20,10 @@ export const setupTabRedirect: Record<string, string> = {
   pricing: "pricing",
   fields: "fields",
   statuses: "fields",
-  integrations: "integrations",
 };
+
+/** Legacy setup ?tab=integrations → dedicated integrations route. */
+export const SETUP_INTEGRATIONS_PATH = "/admin/integrations";
 
 export function resolveRedirectTab(
   map: Record<string, string>,

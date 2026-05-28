@@ -4,8 +4,15 @@ import {
   DISPATCH_CREW_DRAG_TYPE,
   parseCrewDragPayload,
 } from "@/components/dispatch/DispatchCrewPanel";
-import type { CrewSlotRef } from "@/lib/dispatch/crew-slots";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import {
+  crewFitsSlot,
+  requiredRoleForSlot,
+  type CrewSlotRef,
+} from "@/lib/dispatch/crew-slots";
+import { useTerminology } from "@/lib/terminology/use-terminology";
 import { useFleet } from "@/components/providers/FleetProvider";
+import type { CrewRole } from "@/lib/dispatch/types";
 import { cn } from "@/lib/utils";
 import { X } from "lucide-react";
 import { useState } from "react";
@@ -20,12 +27,6 @@ type CrewRoleSlotProps = {
   compact?: boolean;
 };
 
-function slotBadgeLetter(slot: CrewSlotRef): string {
-  if (slot.kind === "skipper") return "S";
-  if (slot.kind === "driver") return "D";
-  return "M";
-}
-
 function badgeClass(slot: CrewSlotRef, filled: boolean): string {
   return cn(
     "flex h-6 w-6 shrink-0 items-center justify-center rounded text-[10px] font-bold",
@@ -35,6 +36,12 @@ function badgeClass(slot: CrewSlotRef, filled: boolean): string {
   );
 }
 
+type RoleMismatchPrompt = {
+  crewId: string;
+  memberName: string;
+  requiredRole: CrewRole;
+};
+
 export function CrewRoleSlot({
   label,
   slot,
@@ -43,12 +50,29 @@ export function CrewRoleSlot({
   onClear,
   compact,
 }: CrewRoleSlotProps) {
+  const { label: roleLabel, initial, formatRoles } = useTerminology();
   const [dragOver, setDragOver] = useState(false);
+  const [roleMismatch, setRoleMismatch] = useState<RoleMismatchPrompt | null>(null);
   const { activeCrewForDispatch } = useFleet();
   const roster = activeCrewForDispatch();
   const member = crewId ? roster.find((c) => c.id === crewId) : undefined;
-  const slotBadge = slotBadgeLetter(slot);
+  const slotBadge = initial(slot.kind);
   const filled = Boolean(member);
+
+  function tryAssign(id: string) {
+    const candidate = roster.find((c) => c.id === id);
+    if (!candidate) return;
+    const required = requiredRoleForSlot(slot);
+    if (required && !crewFitsSlot(candidate, slot)) {
+      setRoleMismatch({
+        crewId: id,
+        memberName: candidate.name,
+        requiredRole: required,
+      });
+      return;
+    }
+    onAssign(id);
+  }
 
   const dropHandlers = {
     onDragOver: (e: React.DragEvent) => {
@@ -66,12 +90,36 @@ export function CrewRoleSlot({
         e.dataTransfer.getData(DISPATCH_CREW_DRAG_TYPE) ||
         e.dataTransfer.getData("text/plain");
       const id = parseCrewDragPayload(raw);
-      if (id) onAssign(id);
+      if (id) tryAssign(id);
     },
   };
 
+  const mismatchMember = roleMismatch
+    ? roster.find((c) => c.id === roleMismatch.crewId)
+    : undefined;
+
+  const confirmDialog = roleMismatch ? (
+    <ConfirmDialog
+      open
+      onClose={() => setRoleMismatch(null)}
+      onConfirm={() => {
+        onAssign(roleMismatch.crewId);
+        setRoleMismatch(null);
+      }}
+      title={`Assign as ${roleLabel(roleMismatch.requiredRole)}?`}
+      description={
+        mismatchMember
+          ? `${roleMismatch.memberName} is listed as ${formatRoles(mismatchMember.roles)}, not ${roleLabel(roleMismatch.requiredRole).toLowerCase()}. Place them in the ${label} slot anyway?`
+          : `This person may not be qualified for the ${label} slot. Assign anyway?`
+      }
+      confirmLabel="Assign anyway"
+    />
+  ) : null;
+
   if (compact) {
     return (
+      <>
+      {confirmDialog}
       <div
         {...dropHandlers}
         title={member ? `${label}: ${member.name}` : `${label} — drop crew`}
@@ -105,10 +153,13 @@ export function CrewRoleSlot({
           </button>
         ) : null}
       </div>
+      </>
     );
   }
 
   return (
+    <>
+    {confirmDialog}
     <div
       {...dropHandlers}
       className={cn(
@@ -141,5 +192,6 @@ export function CrewRoleSlot({
         <span className="flex-1 text-[11px] text-slate-400">Drop crew</span>
       )}
     </div>
+    </>
   );
 }

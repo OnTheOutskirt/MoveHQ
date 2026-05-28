@@ -1,17 +1,9 @@
-"use client";
+import { redirect } from "next/navigation";
+import { salesMovePath } from "@/lib/navigation/routes";
 
-import { MoveDetailNotFound, MoveDetailView } from "@/components/moves/detail/MoveDetailView";
-import { useMoves } from "@/components/moves/MovesProvider";
-import { useParams } from "next/navigation";
+type Props = { params: Promise<{ id: string }> };
 
-export default function MoveDetailPage() {
-  const { id } = useParams<{ id: string }>();
-  const { getMoveById } = useMoves();
-  const move = getMoveById(id);
-
-  if (!move) {
-    return <MoveDetailNotFound moveId={id} />;
-  }
-
-  return <MoveDetailView move={move} />;
+export default async function MoveDetailRedirectPage({ params }: Props) {
+  const { id } = await params;
+  redirect(salesMovePath(id));
 }

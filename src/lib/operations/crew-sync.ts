@@ -1,21 +1,34 @@
 import type { CrewRole } from "@/lib/dispatch/types";
+import { DEFAULT_TERMINOLOGY } from "@/lib/terminology/defaults";
+import {
+  fieldJobTitleOptions,
+  isFieldJobTitle,
+  matchRoleFromJobTitle,
+  roleSingular,
+} from "@/lib/terminology/labels";
+import type { TerminologySettings } from "@/lib/terminology/types";
 import type { JobTitle, TeamMemberFormData, TeamMemberRecord } from "@/lib/team/types";
 
-const FIELD_TITLES: JobTitle[] = ["Skipper", "Driver", "Mover"];
-
-export function crewRolesToJobTitles(roles: CrewRole[]): JobTitle[] {
+export function crewRolesToJobTitles(
+  roles: CrewRole[],
+  terms: TerminologySettings = DEFAULT_TERMINOLOGY,
+): JobTitle[] {
   const titles: JobTitle[] = [];
-  if (roles.includes("skipper")) titles.push("Skipper");
-  if (roles.includes("driver")) titles.push("Driver");
-  if (roles.includes("mover")) titles.push("Mover");
+  if (roles.includes("skipper")) titles.push(roleSingular(terms, "skipper") as JobTitle);
+  if (roles.includes("driver")) titles.push(roleSingular(terms, "driver") as JobTitle);
+  if (roles.includes("mover")) titles.push(roleSingular(terms, "mover") as JobTitle);
   return titles;
 }
 
-export function jobTitlesToCrewRoles(titles: JobTitle[]): CrewRole[] {
+export function jobTitlesToCrewRoles(
+  titles: JobTitle[],
+  terms: TerminologySettings = DEFAULT_TERMINOLOGY,
+): CrewRole[] {
   const roles: CrewRole[] = [];
-  if (titles.includes("Skipper")) roles.push("skipper");
-  if (titles.includes("Driver")) roles.push("driver");
-  if (titles.includes("Mover")) roles.push("mover");
+  for (const title of titles) {
+    const role = matchRoleFromJobTitle(title, terms);
+    if (role && !roles.includes(role)) roles.push(role);
+  }
   return roles;
 }
 
@@ -23,9 +36,10 @@ export function jobTitlesToCrewRoles(titles: JobTitle[]): CrewRole[] {
 export function mergeJobTitlesFromCrewRoles(
   existing: JobTitle[],
   roles: CrewRole[],
+  terms: TerminologySettings = DEFAULT_TERMINOLOGY,
 ): JobTitle[] {
-  const preserved = existing.filter((t) => !FIELD_TITLES.includes(t));
-  const field = crewRolesToJobTitles(roles);
+  const preserved = existing.filter((t) => !isFieldJobTitle(t, terms));
+  const field = crewRolesToJobTitles(roles, terms);
   return [...preserved, ...field];
 }
 
@@ -33,10 +47,13 @@ export function applyCrewToTeamMember(
   member: TeamMemberRecord,
   roles: CrewRole[],
   active: boolean,
+  terms: TerminologySettings = DEFAULT_TERMINOLOGY,
 ): TeamMemberFormData {
   return {
     ...member,
-    jobTitles: mergeJobTitlesFromCrewRoles(member.jobTitles, roles),
+    jobTitles: mergeJobTitlesFromCrewRoles(member.jobTitles, roles, terms),
     status: active ? "active" : "inactive",
   };
 }
+
+export { fieldJobTitleOptions };

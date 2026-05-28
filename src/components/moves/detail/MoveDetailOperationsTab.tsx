@@ -1,8 +1,10 @@
 "use client";
 
 import { DetailSection } from "@/components/moves/detail/DetailSection";
+import { MoveClaimsSection } from "@/components/moves/detail/MoveClaimsSection";
 import { MoveDetailSectionAnchor } from "@/components/moves/detail/MoveDetailSectionAnchor";
 import { MoveDetailTabSections } from "@/components/moves/detail/MoveDetailTabSections";
+import { useClaims } from "@/components/providers/ClaimsProvider";
 import { formatJobDayDate } from "@/lib/moves/job-days-plan";
 import { jobDayStatusLabel } from "@/lib/moves/job-days";
 import { jobDayCrewLine, jobDayTruckLine } from "@/lib/moves/job-day-display";
@@ -11,6 +13,7 @@ import {
   OPERATIONS_SECTIONS,
 } from "@/lib/moves/move-detail-sections";
 import type { MoveJobDay, MoveRecord } from "@/lib/moves/types";
+import { claimsForMove, formatClaimMoney } from "@/lib/operations/claims";
 import { cn } from "@/lib/utils";
 import { FileText, ShieldAlert, Users } from "lucide-react";
 
@@ -21,9 +24,13 @@ type MoveDetailOperationsTabProps = {
 function MoveDayOpsBlock({
   day,
   index,
+  dayClaimCount,
+  dayClaimTotal,
 }: {
   day: MoveJobDay;
   index: number;
+  dayClaimCount: number;
+  dayClaimTotal: number;
 }) {
   const crew = jobDayCrewLine(day);
   const truck = jobDayTruckLine(day);
@@ -90,6 +97,8 @@ function MoveDayOpsBlock({
 }
 
 export function MoveDetailOperationsTab({ move }: MoveDetailOperationsTabProps) {
+  const { claims } = useClaims();
+  const moveClaims = claimsForMove(claims, move.id);
   const days = [...move.jobDays].sort(
     (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
   );
@@ -105,22 +114,26 @@ export function MoveDetailOperationsTab({ move }: MoveDetailOperationsTabProps) 
           </DetailSection>
         ) : (
           <div className="space-y-4">
-            {days.map((day, i) => (
-              <MoveDayOpsBlock key={day.id} day={day} index={i} />
-            ))}
+            {days.map((day, i) => {
+              const dayClaims = moveClaims.filter((c) => c.jobDayId === day.id);
+              const dayClaimTotal = dayClaims.reduce((s, c) => s + c.amountClaimed, 0);
+              return (
+                <MoveDayOpsBlock
+                  key={day.id}
+                  day={day}
+                  index={i}
+                  dayClaimCount={dayClaims.length}
+                  dayClaimTotal={dayClaimTotal}
+                />
+              );
+            })}
           </div>
         )}
       </MoveDetailSectionAnchor>
 
       <MoveDetailSectionAnchor id={OPERATIONS_SECTION_IDS.claims}>
         <DetailSection title="Claims (move-wide)">
-          <div
-            className={cn(
-              "rounded-lg border border-dashed border-slate-200 bg-slate-50/50 px-4 py-10 text-center text-sm text-slate-500",
-            )}
-          >
-            Claims log and resolution — coming soon
-          </div>
+          <MoveClaimsSection move={move} />
         </DetailSection>
       </MoveDetailSectionAnchor>
 

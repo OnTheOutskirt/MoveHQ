@@ -1,7 +1,11 @@
 "use client";
 
 import { useCalendarSettings } from "@/components/providers/CalendarSettingsProvider";
-import { bookingRatePercent } from "@/lib/calendar/sales-metrics";
+import {
+  bookingRatePercent,
+  formatLeadsQualification,
+  totalLeads,
+} from "@/lib/calendar/sales-metrics";
 import { toDateKey } from "@/lib/calendar/date-utils";
 import type { DaySalesMetrics } from "@/lib/calendar/types";
 import { dayReportHref } from "@/lib/reports/day-sales-by-rep";
@@ -26,7 +30,7 @@ type DaySalesSectionProps = {
 export function DaySalesSection({ sales, date }: DaySalesSectionProps) {
   const { colors } = useCalendarSettings();
   const rate = bookingRatePercent(sales);
-  const totalLeads = sales.leadsLocal + sales.leadsLongDistance;
+  const leadsTotal = totalLeads(sales);
   const reportHref = dayReportHref(toDateKey(date));
 
   return (
@@ -45,10 +49,13 @@ export function DaySalesSection({ sales, date }: DaySalesSectionProps) {
         <div className="grid grid-cols-4 gap-2">
           <SalesMetric label="Leads">
             <p className="text-base font-semibold tabular-nums leading-tight text-slate-900">
-              {totalLeads}
+              {leadsTotal}
+            </p>
+            <p className="mt-0.5 text-[10px] leading-tight text-slate-600">
+              {formatLeadsQualification(sales)}
             </p>
             <p className="mt-0.5 text-[10px] leading-tight text-slate-500">
-              ({sales.leadsLocal} Local/{sales.leadsLongDistance} LD)
+              ({sales.leadsLocal} local / {sales.leadsLongDistance} LD)
             </p>
           </SalesMetric>
           <SalesMetric label="Proposals sent">
@@ -68,6 +75,7 @@ export function DaySalesSection({ sales, date }: DaySalesSectionProps) {
             >
               {rate}%
             </p>
+            <p className="mt-0.5 text-[10px] leading-tight text-slate-500">booked ÷ proposals</p>
           </SalesMetric>
         </div>
       </div>

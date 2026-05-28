@@ -10,13 +10,14 @@ import {
   type FollowUpBucket,
 } from "@/lib/moves/follow-ups";
 import { pageMeta } from "@/lib/navigation/page-meta";
+import { ROUTES } from "@/lib/navigation/routes";
 import { CURRENT_USER } from "@/lib/session/current-user";
 import { cn } from "@/lib/utils";
 import { ListChecks } from "lucide-react";
 import Link from "next/link";
 import { useMemo } from "react";
 
-const meta = pageMeta["/follow-ups"];
+const meta = pageMeta["/sales/follow-ups"];
 
 const BUCKET_META: Record<
   FollowUpBucket,
@@ -66,7 +67,7 @@ export function FollowUpsWorkspace() {
           description="When a move assigned to you has a follow-up date, it will show up here."
         >
           <Link
-            href="/moves"
+            href={ROUTES.salesMoves}
             className="mt-4 inline-block text-sm font-medium text-brand-600 hover:text-brand-700"
           >
             View all moves

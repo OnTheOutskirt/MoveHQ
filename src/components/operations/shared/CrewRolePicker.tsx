@@ -1,13 +1,8 @@
 "use client";
 
 import { CREW_ROLES, type CrewRole } from "@/lib/dispatch/types";
+import { useTerminology } from "@/lib/terminology/use-terminology";
 import { cn } from "@/lib/utils";
-
-const LABELS: Record<CrewRole, string> = {
-  skipper: "Skipper",
-  driver: "Driver",
-  mover: "Mover",
-};
 
 type CrewRolePickerProps = {
   value: CrewRole[];
@@ -16,6 +11,7 @@ type CrewRolePickerProps = {
 };
 
 export function CrewRolePicker({ value, onChange, compact }: CrewRolePickerProps) {
+  const { label } = useTerminology();
   function toggle(role: CrewRole) {
     if (value.includes(role)) {
       const next = value.filter((r) => r !== role);
@@ -46,7 +42,7 @@ export function CrewRolePicker({ value, onChange, compact }: CrewRolePickerProps
                 : "border-slate-200 bg-white text-slate-600 hover:border-slate-300",
             )}
           >
-            {LABELS[role]}
+            {label(role)}
           </button>
         );
       })}

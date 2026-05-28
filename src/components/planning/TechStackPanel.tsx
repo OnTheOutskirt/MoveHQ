@@ -14,6 +14,7 @@ import {
   Phone,
   Plug,
   Server,
+  Truck,
 } from "lucide-react";
 
 const ICON_BY_NAME: Record<string, typeof Server> = {
@@ -31,6 +32,7 @@ const ICON_BY_NAME: Record<string, typeof Server> = {
   OpenAI: Bot,
   "Vapi or Retell": Phone,
   Rippling: Plug,
+  Samsara: Truck,
 };
 
 function StackCard({ item }: { item: (typeof TECH_STACK)[number] }) {

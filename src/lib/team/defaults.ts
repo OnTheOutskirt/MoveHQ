@@ -3,6 +3,7 @@ import type { TeamMemberRecord } from "./types";
 export const defaultTeamMembers: TeamMemberRecord[] = [
   {
     id: "tm_1",
+    ripplingEmpNo: "0001",
     firstName: "Jonah",
     lastName: "Morrison",
     nickname: "",
@@ -19,6 +20,7 @@ export const defaultTeamMembers: TeamMemberRecord[] = [
   },
   {
     id: "tm_2",
+    ripplingEmpNo: "0002",
     firstName: "Sarah",
     lastName: "Kim",
     nickname: "",
@@ -35,6 +37,7 @@ export const defaultTeamMembers: TeamMemberRecord[] = [
   },
   {
     id: "tm_3",
+    ripplingEmpNo: "2003",
     firstName: "Lisa",
     lastName: "Parker",
     nickname: "",
@@ -51,6 +54,7 @@ export const defaultTeamMembers: TeamMemberRecord[] = [
   },
   {
     id: "tm_4",
+    ripplingEmpNo: "1005",
     firstName: "Carlos",
     lastName: "Rivera",
     nickname: "Carlos",
@@ -67,6 +71,7 @@ export const defaultTeamMembers: TeamMemberRecord[] = [
   },
   {
     id: "tm_5",
+    ripplingEmpNo: "1003",
     firstName: "Devon",
     lastName: "Lee",
     nickname: "Dev",
@@ -83,6 +88,7 @@ export const defaultTeamMembers: TeamMemberRecord[] = [
   },
   {
     id: "tm_6",
+    ripplingEmpNo: "1001",
     firstName: "Marcus",
     lastName: "Thompson",
     nickname: "",
@@ -99,6 +105,7 @@ export const defaultTeamMembers: TeamMemberRecord[] = [
   },
   {
     id: "tm_7",
+    ripplingEmpNo: "1006",
     firstName: "Jordan",
     lastName: "Klein",
     nickname: "",

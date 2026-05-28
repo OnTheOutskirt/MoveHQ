@@ -5,12 +5,10 @@ import { MoveDetailSectionAnchor } from "@/components/moves/detail/MoveDetailSec
 import { MoveDetailTabSections } from "@/components/moves/detail/MoveDetailTabSections";
 import { MoveJobDaysHorizontalTimeline } from "@/components/moves/detail/MoveJobDaysHorizontalTimeline";
 import {
-  ScopeAppliancesSection,
   ScopeInventorySection,
   ScopeLocationsSection,
   ScopeMoveDetailsSection,
   ScopeSpecialtySection,
-  ScopeWardrobeSection,
 } from "@/components/moves/detail/scope/ScopeSections";
 import {
   MOVE_PLAN_SECTION_IDS,
@@ -34,8 +32,6 @@ export function MoveDetailMovePlanTab({ move }: MoveDetailMovePlanTabProps) {
       <ScopeMoveDetailsSection move={move} />
       <ScopeLocationsSection move={move} />
       <ScopeInventorySection move={move} />
-      <ScopeAppliancesSection move={move} />
-      <ScopeWardrobeSection move={move} />
       <ScopeSpecialtySection move={move} />
     </MoveDetailTabSections>
   );

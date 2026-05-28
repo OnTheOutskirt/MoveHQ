@@ -1,7 +1,11 @@
 "use client";
 
 import { useCalendarSettings } from "@/components/providers/CalendarSettingsProvider";
-import { bookingRatePercent } from "@/lib/calendar/sales-metrics";
+import {
+  bookingRatePercent,
+  formatLeadsQualification,
+  totalLeads,
+} from "@/lib/calendar/sales-metrics";
 import type { DaySalesMetrics } from "@/lib/calendar/types";
 import { formatDayLong, toDateKey } from "@/lib/calendar/date-utils";
 import { buildSalesRepDayMetrics, type SalesRepDayMetrics } from "@/lib/reports/day-sales-by-rep";
@@ -22,12 +26,12 @@ type PipelineRow = {
 };
 
 function buildPipelineRows(sales: DaySalesMetrics): PipelineRow[] {
-  const leads = sales.leadsLocal + sales.leadsLongDistance;
+  const leads = totalLeads(sales);
   return [
     {
       stage: "Leads",
       count: leads,
-      detail: `${sales.leadsLocal} local · ${sales.leadsLongDistance} long distance`,
+      detail: `${formatLeadsQualification(sales)} · ${sales.leadsLocal} local · ${sales.leadsLongDistance} long distance`,
     },
     {
       stage: "Proposals sent",
@@ -73,8 +77,8 @@ export function DayPipelineReport({ date, sales }: DayPipelineReportProps) {
       cell: (row) => (
         <span className="tabular-nums">
           {row.leadsLocal + row.leadsLongDistance}
-          <span className="ml-1 text-slate-500">
-            ({row.leadsLocal}L/{row.leadsLongDistance}LD)
+          <span className="ml-1 block text-xs font-normal text-slate-500">
+            {row.leadsQualified} qual · {row.leadsUnqualified} unqual
           </span>
         </span>
       ),
@@ -142,6 +146,7 @@ export function DayPipelineReport({ date, sales }: DayPipelineReportProps) {
               {rate}%
             </p>
             <p className="text-xs text-slate-500">Booking rate</p>
+            <p className="mt-0.5 text-[10px] text-slate-500">booked ÷ proposals</p>
           </CardContent>
         </Card>
       </div>

@@ -3,7 +3,6 @@
 import { useTeamMembers } from "@/components/providers/TeamMembersProvider";
 import { ModulePage } from "@/components/shared/ModulePage";
 import { TabBar } from "@/components/shared/TabBar";
-import { AccessTab } from "@/components/team/tabs/AccessTab";
 import { DirectoryTab } from "@/components/team/tabs/DirectoryTab";
 import { PayRatesTab } from "@/components/team/tabs/PayRatesTab";
 import { PermissionsTab } from "@/components/team/tabs/PermissionsTab";
@@ -14,7 +13,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 const TABS = [
   { id: "people", label: "People" },
   { id: "roles", label: "Roles" },
-  { id: "access", label: "Access" },
   { id: "pay", label: "Pay" },
 ] as const;
 
@@ -26,8 +24,6 @@ function TabPanel({ tab }: { tab: TabId }) {
       return <DirectoryTab />;
     case "roles":
       return <PermissionsTab />;
-    case "access":
-      return <AccessTab />;
     case "pay":
       return <PayRatesTab />;
     default:

@@ -1,3 +1,4 @@
+import { DEFAULT_TERMINOLOGY } from "@/lib/terminology/defaults";
 import type { AppSettings, DocumentTemplate, DocumentTemplateType } from "./types";
 
 export const defaultSettings: AppSettings = {
@@ -25,6 +26,7 @@ export const defaultSettings: AppSettings = {
     businessHoursEnd: "18:00",
     defaultPricingType: "flat_rate",
   },
+  terminology: DEFAULT_TERMINOLOGY,
 };
 
 const TEMPLATE_META: Record<

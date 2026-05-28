@@ -2,9 +2,12 @@
 
 import { MoveLifecycleStepper } from "@/components/moves/detail/MoveLifecycleStepper";
 import { PricingTypeBadge } from "@/components/moves/detail/PricingTypeBadge";
+import { QuoteChannelBadge } from "@/components/moves/shared/QuoteChannelBadge";
 import { QuadrantBadge } from "@/components/moves/shared/QuadrantBadge";
+import { MarkMoveLostAction } from "@/components/moves/detail/MarkMoveLostAction";
 import { useMoves } from "@/components/moves/MovesProvider";
 import { Button } from "@/components/ui/Button";
+import { formatLostMoveSummary, lostQualificationBadgeClass } from "@/lib/moves/lost-reasons";
 import { formatQuote } from "@/lib/moves/format";
 import {
   bookingReviewConfig,
@@ -28,8 +31,9 @@ type MoveDetailSummaryHeaderProps = {
 };
 
 export function MoveDetailSummaryHeader({ move, className }: MoveDetailSummaryHeaderProps) {
-  const { markAsLost, reopenMove } = useMoves();
+  const { reopenMove } = useMoves();
   const lost = isMoveLost(move);
+  const lostSummary = formatLostMoveSummary(move);
   const est = getMoveEstimatedValue(move);
   const nextFu = getNextOpenFollowUp(move);
   const condCfg = conditionStatusConfig[move.conditionStatus];
@@ -49,8 +53,18 @@ export function MoveDetailSummaryHeader({ move, className }: MoveDetailSummaryHe
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3">
           <p className="text-sm text-red-900">
             <span className="font-semibold">Lost</span>
+            {move.lostQualification ? (
+              <span
+                className={cn(
+                  "ml-2 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase",
+                  lostQualificationBadgeClass(move.lostQualification),
+                )}
+              >
+                {move.lostQualification}
+              </span>
+            ) : null}
             {move.lostFromStage ? ` · was ${moveDetailPipelineStageLabel(move.lostFromStage)}` : ""}
-            {move.lostReason ? ` — ${move.lostReason}` : ""}
+            {lostSummary ? ` — ${lostSummary}` : ""}
           </p>
           <Button type="button" size="sm" variant="secondary" onClick={() => reopenMove(move.id)}>
             Re-open
@@ -65,6 +79,7 @@ export function MoveDetailSummaryHeader({ move, className }: MoveDetailSummaryHe
               {moveDisplayTitle(move)}
             </h1>
             <QuadrantBadge move={move} />
+            <QuoteChannelBadge move={move} showIntakeProgress />
             <span className={cn("rounded px-2 py-0.5 text-[10px] font-semibold", condCfg.badge)}>
               {condCfg.label}
             </span>
@@ -87,7 +102,9 @@ export function MoveDetailSummaryHeader({ move, className }: MoveDetailSummaryHe
           </p>
 
           <p className="text-sm text-slate-600">{moveDetailStageDisplayLabel(move)}</p>
-          <p className="text-sm text-slate-600">{leadChannelLabels[move.leadChannel]}</p>
+          <p className="text-sm text-slate-600">
+            Marketing: {leadChannelLabels[move.leadChannel]}
+          </p>
           <p className="text-sm text-slate-600">{move.assignedRep}</p>
 
           {nextFu && !lost ? (
@@ -101,15 +118,7 @@ export function MoveDetailSummaryHeader({ move, className }: MoveDetailSummaryHe
 
       {!lost ? (
         <div className="mt-3 flex justify-end">
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            className="text-red-600 hover:bg-red-50"
-            onClick={() => markAsLost(move.id)}
-          >
-            Mark lost
-          </Button>
+          <MarkMoveLostAction move={move} />
         </div>
       ) : null}
 

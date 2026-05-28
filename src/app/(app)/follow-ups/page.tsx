@@ -1,5 +1,6 @@
-import { FollowUpsWorkspace } from "@/components/follow-ups/FollowUpsWorkspace";
+import { redirect } from "next/navigation";
+import { ROUTES } from "@/lib/navigation/routes";
 
-export default function FollowUpsPage() {
-  return <FollowUpsWorkspace />;
+export default function FollowUpsRedirectPage() {
+  redirect(ROUTES.salesFollowUps);
 }

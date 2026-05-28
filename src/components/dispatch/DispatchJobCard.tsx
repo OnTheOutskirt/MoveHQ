@@ -2,11 +2,28 @@
 
 import { CrewRoleSlot } from "@/components/dispatch/CrewRoleSlot";
 import {
+  DayBeforeConfirmationPill,
+  useDayBeforeConfirmationForJob,
+} from "@/components/dispatch/DayBeforeConfirmationPill";
+import {
   DISPATCH_TRUCK_DRAG_TYPE,
   parseTruckDragPayload,
 } from "@/components/dispatch/DispatchTrucksPanel";
 import { useDispatch } from "@/components/dispatch/DispatchProvider";
-import { countFilledCrewSlots, getSlotCrewId, jobCrewSlots } from "@/lib/dispatch/crew-slots";
+import { useMoves } from "@/components/moves/MovesProvider";
+import {
+  countFilledCrewSlots,
+  countFilledRoleSlots,
+  driversNeededForJob,
+  getSlotCrewId,
+  skippersNeededForJob,
+} from "@/lib/dispatch/crew-slots";
+import { useTerminology } from "@/lib/terminology/use-terminology";
+import {
+  formatDispatchScheduleLine,
+  formatDispatchSlotCount,
+} from "@/lib/dispatch/job-card-display";
+import { effectiveDispatchJob, effectiveRequirements } from "@/lib/dispatch/job-requirements";
 import { formatFtaBooking } from "@/lib/dispatch/fta";
 import { jobHasVisibleNote } from "@/lib/dispatch/job-notes";
 import { useFleet } from "@/components/providers/FleetProvider";
@@ -23,20 +40,50 @@ type DispatchJobCardProps = {
 };
 
 export function DispatchJobCard({ job, selected, onSelect }: DispatchJobCardProps) {
-  const { getAssignmentForJob, assignCrewSlot, assignTruck, unassignTruck } = useDispatch();
+  const {
+    dateKey,
+    getAssignmentForJob,
+    getAssignment,
+    assignCrewSlot,
+    assignTruck,
+    unassignTruck,
+  } = useDispatch();
+  const { getMoveById } = useMoves();
+  const move = job.moveId ? getMoveById(job.moveId) : undefined;
+  const { confirmation: dayBeforeConfirmation } = useDayBeforeConfirmationForJob(job, move);
   const assignment = getAssignmentForJob(job);
+  const rawAssignment = getAssignment(job.id);
+  const effectiveJob = useMemo(
+    () => effectiveDispatchJob(job, rawAssignment),
+    [job, rawAssignment],
+  );
+  const requirements = useMemo(
+    () => (rawAssignment ? effectiveRequirements(job, rawAssignment) : null),
+    [job, rawAssignment],
+  );
   const [truckDragOver, setTruckDragOver] = useState(false);
+  const { initial, slotsForJob } = useTerminology();
 
-  const slots = useMemo(() => jobCrewSlots(job), [job]);
-  const { filled, required } = countFilledCrewSlots(job, assignment);
+  const slots = useMemo(() => slotsForJob(effectiveJob), [slotsForJob, effectiveJob]);
+  const { filled, required } = countFilledCrewSlots(effectiveJob, assignment);
+  const scheduleLine = formatDispatchScheduleLine(job);
 
   const { activeTrucksForDispatch } = useFleet();
-  const truckRoster = activeTrucksForDispatch();
+  const truckRoster = activeTrucksForDispatch(dateKey);
   const assignedTrucks = assignment.truckIds
     .map((id) => truckRoster.find((t) => t.id === id))
     .filter(Boolean);
 
   const hasNote = jobHasVisibleNote(job, assignment);
+  const roleFilled = countFilledRoleSlots(effectiveJob, assignment);
+  const skippersNeeded = skippersNeededForJob(effectiveJob);
+  const driversNeeded = driversNeededForJob(effectiveJob);
+  const trucksNeeded = effectiveJob.trucksNeeded;
+  const jobShort =
+    filled < required ||
+    roleFilled.skippers < skippersNeeded ||
+    roleFilled.drivers < driversNeeded ||
+    assignedTrucks.length < trucksNeeded;
 
   function handleTruckDrop(e: React.DragEvent) {
     e.preventDefault();
@@ -76,11 +123,10 @@ export function DispatchJobCard({ job, selected, onSelect }: DispatchJobCardProp
                 />
               ) : null}
             </div>
-            <p className="text-xs text-slate-500">
-              {job.label}
-              {job.arrivalWindow ? ` · ${job.arrivalWindow}` : ""}
-              {job.durationLabel ? ` · ${job.durationLabel}` : ""}
-            </p>
+            <p className="text-xs text-slate-500">{job.label}</p>
+            {scheduleLine ? (
+              <p className="mt-0.5 truncate text-[11px] text-slate-600">{scheduleLine}</p>
+            ) : null}
             {job.ftaBooking ? (
               <p className="mt-1 text-[10px] font-medium text-emerald-800">
                 FTA · {formatFtaBooking(job.ftaBooking)}
@@ -93,9 +139,13 @@ export function DispatchJobCard({ job, selected, onSelect }: DispatchJobCardProp
                 {job.ftaLabel}
               </span>
             ) : null}
-            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium capitalize text-slate-600">
-              {job.status.replace("_", " ")}
-            </span>
+            {dayBeforeConfirmation ? (
+              <DayBeforeConfirmationPill
+                jobId={job.id}
+                confirmation={dayBeforeConfirmation}
+                compact
+              />
+            ) : null}
           </div>
         </div>
 
@@ -112,6 +162,34 @@ export function DispatchJobCard({ job, selected, onSelect }: DispatchJobCardProp
       </div>
 
       <div className="space-y-2.5 px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
+        {jobShort ? (
+          <p className="flex flex-wrap gap-x-2 gap-y-0.5 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-[10px] font-medium text-amber-900">
+            <span className={filled < required ? "text-amber-900" : "text-amber-800/70"}>
+              Crew {filled}/{required}
+            </span>
+            <span
+              className={
+                roleFilled.skippers < skippersNeeded ? "text-amber-900" : "text-amber-800/70"
+              }
+            >
+              {initial("skipper")} {roleFilled.skippers}/{skippersNeeded}
+            </span>
+            <span
+              className={
+                roleFilled.drivers < driversNeeded ? "text-amber-900" : "text-amber-800/70"
+              }
+            >
+              {initial("driver")} {roleFilled.drivers}/{driversNeeded}
+            </span>
+            <span
+              className={
+                assignedTrucks.length < trucksNeeded ? "text-amber-900" : "text-amber-800/70"
+              }
+            >
+              T {assignedTrucks.length}/{trucksNeeded}
+            </span>
+          </p>
+        ) : null}
         <div>
           <p className="mb-1.5 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
             <Users className="h-3 w-3" />
@@ -122,7 +200,12 @@ export function DispatchJobCard({ job, selected, onSelect }: DispatchJobCardProp
                 filled < required ? "text-amber-700" : "text-slate-500",
               )}
             >
-              ({filled}/{required})
+              {formatDispatchSlotCount(
+                filled,
+                required,
+                job.crewSizeNeeded,
+                requirements?.crewOverridden ?? false,
+              )}
             </span>
           </p>
           <div className="flex flex-wrap items-stretch gap-1.5">
@@ -151,12 +234,17 @@ export function DispatchJobCard({ job, selected, onSelect }: DispatchJobCardProp
             <span
               className={cn(
                 "tabular-nums",
-                assignedTrucks.length < job.trucksNeeded
+                assignedTrucks.length < effectiveJob.trucksNeeded
                   ? "text-amber-700"
                   : "text-slate-500",
               )}
             >
-              ({assignedTrucks.length}/{job.trucksNeeded})
+              {formatDispatchSlotCount(
+                assignedTrucks.length,
+                effectiveJob.trucksNeeded,
+                job.trucksNeeded,
+                requirements?.trucksOverridden ?? false,
+              )}
             </span>
           </p>
           <div

@@ -4,8 +4,6 @@ export const SCOPE_SECTION_IDS = {
   moveDetails: "scope-move-details",
   locations: "scope-locations",
   inventory: "scope-inventory",
-  appliances: "scope-appliances",
-  wardrobe: "scope-wardrobe",
   specialty: "scope-specialty",
 } as const;
 
@@ -19,9 +17,7 @@ export const MOVE_PLAN_SECTIONS = [
   { id: MOVE_PLAN_SECTION_IDS.jobDays, label: "Job days" },
   { id: MOVE_PLAN_SECTION_IDS.moveDetails, label: "Move Details" },
   { id: MOVE_PLAN_SECTION_IDS.locations, label: "Locations & Access" },
-  { id: MOVE_PLAN_SECTION_IDS.inventory, label: "Inventory" },
-  { id: MOVE_PLAN_SECTION_IDS.appliances, label: "Appliances" },
-  { id: MOVE_PLAN_SECTION_IDS.wardrobe, label: "Wardrobe boxes" },
+  { id: MOVE_PLAN_SECTION_IDS.inventory, label: "Inventory & extras" },
   { id: MOVE_PLAN_SECTION_IDS.specialty, label: "Specialty & high-value" },
 ] as const;
 

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { DataTable, type Column } from "@/components/ui/DataTable";
 import { DetailSidebar } from "@/components/ui/DetailSidebar";
 import { formatCrewRolesList, type FleetCrewMember } from "@/lib/operations/fleet";
-import { memberDisplayName } from "@/lib/team/types";
+import { useTerminology } from "@/lib/terminology/use-terminology";
 import { cn } from "@/lib/utils";
 import { ExternalLink, Pencil, Plus } from "lucide-react";
 import Link from "next/link";
@@ -21,7 +21,7 @@ type PanelMode =
 
 export function CrewListTab() {
   const { crew, updateCrewMember, addCrewMember } = useFleet();
-  const { getMember } = useTeamMembers();
+  const { terminology } = useTerminology();
   const [panel, setPanel] = useState<PanelMode>({ type: "closed" });
 
   const editing = panel.type === "edit" ? crew.find((c) => c.id === panel.id) : undefined;
@@ -31,19 +31,7 @@ export function CrewListTab() {
       {
         key: "name",
         header: "Name",
-        cell: (row) => {
-          const tm = row.teamMemberId ? getMember(row.teamMemberId) : undefined;
-          return (
-            <div>
-              <p className="font-medium text-slate-900">{row.name}</p>
-              {tm ? (
-                <p className="text-[11px] text-slate-500">
-                  Team: {memberDisplayName(tm)}
-                </p>
-              ) : null}
-            </div>
-          );
-        },
+        cell: (row) => <p className="font-medium text-slate-900">{row.name}</p>,
       },
       {
         key: "roles",
@@ -51,7 +39,9 @@ export function CrewListTab() {
         cell: (row) => (
           <div className="flex flex-wrap items-center gap-2">
             <CrewRoleBadges roles={row.roles} />
-            <span className="text-xs text-slate-500">{formatCrewRolesList(row.roles)}</span>
+            <span className="text-xs text-slate-500">
+              {formatCrewRolesList(row.roles, terminology)}
+            </span>
           </div>
         ),
       },
@@ -87,25 +77,16 @@ export function CrewListTab() {
         ),
       },
     ],
-    [getMember],
+    [terminology],
   );
 
   return (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-slate-600">
-          Field roles sync to{" "}
-          <Link href="/admin/settings?tab=team-members" className="font-medium text-brand-600 hover:text-brand-700">
-            Settings → Team Members
-          </Link>{" "}
-          when linked.
-        </p>
-        <div className="flex flex-wrap gap-2">
-          <Button type="button" size="sm" variant="secondary" onClick={() => setPanel({ type: "add" })}>
-            <Plus className="h-4 w-4" />
-            Add crew
-          </Button>
-        </div>
+      <div className="flex flex-wrap items-center justify-end gap-3">
+        <Button type="button" size="sm" variant="secondary" onClick={() => setPanel({ type: "add" })}>
+          <Plus className="h-4 w-4" />
+          Add crew
+        </Button>
       </div>
 
       <DataTable

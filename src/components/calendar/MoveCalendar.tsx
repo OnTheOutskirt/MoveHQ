@@ -6,6 +6,7 @@ import { DayDetailSidebar } from "@/components/calendar/DayDetailSidebar";
 import { MonthView } from "@/components/calendar/MonthView";
 import { CalendarSettingsSidebar } from "@/components/calendar/settings/CalendarSettingsSidebar";
 import { useCalendarSettings } from "@/components/providers/CalendarSettingsProvider";
+import { useFleet } from "@/components/providers/FleetProvider";
 import {
   addMonths,
   formatMonthYear,
@@ -28,19 +29,35 @@ export function MoveCalendar() {
     addClosedDay,
     removeClosedDayForDate,
   } = useCalendarSettings();
+  const { isReady: fleetReady, getTruckCapacityForDate } = useFleet();
   const [anchor, setAnchor] = useState(() => startOfMonth(today));
   const [days, setDays] = useState<Record<string, CalendarDayData>>({});
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [daySidebarOpen, setDaySidebarOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
+  function withFleetTruckCapacity(map: Record<string, CalendarDayData>) {
+    if (!fleetReady) return map;
+    const next = { ...map };
+    for (const key of Object.keys(next)) {
+      if (next[key].isClosed) continue;
+      next[key] = {
+        ...next[key],
+        trucksCapacity: getTruckCapacityForDate(key),
+      };
+    }
+    return next;
+  }
+
   useEffect(() => {
     if (!isReady) return;
     setDays((prev) => ({
       ...prev,
-      ...buildMockMonth(anchor, today, closedDays, federalHolidayBookedDates),
+      ...withFleetTruckCapacity(
+        buildMockMonth(anchor, today, closedDays, federalHolidayBookedDates),
+      ),
     }));
-  }, [isReady, anchor, today, closedDays, federalHolidayBookedDates]);
+  }, [isReady, fleetReady, anchor, today, closedDays, federalHolidayBookedDates, getTruckCapacityForDate]);
 
   const selectedDay = selectedDate ? (days[toDateKey(selectedDate)] ?? null) : null;
   const selectedClosedEntry = selectedDate
@@ -53,7 +70,9 @@ export function MoveCalendar() {
   function mergeMonth(monthAnchor: Date) {
     setDays((prev) => ({
       ...prev,
-      ...buildMockMonth(monthAnchor, today, closedDays, federalHolidayBookedDates),
+      ...withFleetTruckCapacity(
+        buildMockMonth(monthAnchor, today, closedDays, federalHolidayBookedDates),
+      ),
     }));
   }
 

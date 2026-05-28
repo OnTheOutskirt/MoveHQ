@@ -3,6 +3,10 @@
 import { Button } from "@/components/ui/Button";
 import { linkedPersonRoleConfig, linkedPersonRoleLabel } from "@/lib/moves/linked-people";
 import type { MoveLinkedPerson, MoveRecord } from "@/lib/moves/types";
+import {
+  ROUTES,
+  salesDirectoryPersonPath,
+} from "@/lib/navigation/routes";
 import { cn } from "@/lib/utils";
 import { ExternalLink, Plus, User } from "lucide-react";
 import Link from "next/link";
@@ -53,7 +57,7 @@ function PersonRow({ person }: { person: MoveLinkedPerson }) {
   if (person.personId) {
     return (
       <Link
-        href={`/people?person=${person.personId}`}
+        href={salesDirectoryPersonPath(person.personId)}
         className={cn(rowClass, "block transition-colors hover:bg-slate-50/80")}
         title="Open in People directory"
       >
@@ -126,7 +130,7 @@ export function MoveDetailPeopleTab({ move }: MoveDetailPeopleTabProps) {
 
       {others.some((p) => p.personId) ? (
         <Link
-          href="/people"
+          href={ROUTES.salesDirectory}
           className="inline-flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900"
         >
           Open People directory

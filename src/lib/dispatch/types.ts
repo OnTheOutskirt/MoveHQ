@@ -31,6 +31,7 @@ export type DispatchJob = {
   label: string;
   status: JobDayStatus | "booked";
   arrivalWindow?: string;
+  departureWindow?: string;
   durationLabel?: string;
   originSummary?: string;
   destinationSummary?: string;
@@ -58,6 +59,9 @@ export type DispatchJobAssignment = {
   dispatchNotes: string;
   /** Per-job dispatch pin (card icon + sidebar) */
   jobNote: string;
+  /** Operations override — null/undefined uses planned count from move/job day. */
+  crewSizeOverride?: number | null;
+  trucksNeededOverride?: number | null;
 };
 
 export type DispatchDaySnapshot = {

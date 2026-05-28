@@ -1,3 +1,4 @@
+import { isWebAiQuote } from "./acquisition";
 import type { MoveFollowUp, MoveRecord, PipelineStageId } from "./types";
 
 function dueDateKey(iso: string): string {
@@ -110,7 +111,9 @@ export function defaultFollowUpForStage(
       return {
         ...base,
         type: "booking_confirm",
-        title: "Confirm booking details",
+        title: isWebAiQuote(move)
+          ? "Review web booking — kickoff call & verify quote"
+          : "Confirm booking details",
         dueAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
         channel: "call",
       };

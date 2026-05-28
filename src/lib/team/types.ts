@@ -20,6 +20,8 @@ export type PayType = (typeof PAY_TYPES)[number];
 
 export type TeamMemberRecord = {
   id: string;
+  /** Rippling employee number — required for payroll CSV export; not shown on directory list. */
+  ripplingEmpNo: string;
   firstName: string;
   lastName: string;
   nickname: string;
@@ -45,6 +47,7 @@ export function memberDisplayName(
 
 export function createEmptyMember(): TeamMemberFormData {
   return {
+    ripplingEmpNo: "",
     firstName: "",
     lastName: "",
     nickname: "",
@@ -79,6 +82,7 @@ export function normalizeMemberRecord(raw: Record<string, unknown> & { id: strin
   const permissionLevel = normalizePermissionLevel(raw.permissionLevel);
   const record: TeamMemberRecord = {
     id: raw.id,
+    ripplingEmpNo: String(raw.ripplingEmpNo ?? "").trim(),
     firstName: String(raw.firstName ?? ""),
     lastName: String(raw.lastName ?? ""),
     nickname: String(raw.nickname ?? ""),

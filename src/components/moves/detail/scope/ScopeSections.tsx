@@ -322,8 +322,8 @@ export function ScopeInventorySection({ move }: { move: MoveRecord }) {
   return (
     <MoveDetailSectionAnchor id={SCOPE_SECTION_IDS.inventory}>
       <DetailSection
-        title="Inventory"
-        description="Room-by-room list from intake or walkthrough."
+        title="Inventory & extras"
+        description="Room-by-room inventory plus appliances, wardrobe boxes, and disconnect handling."
       >
         <div className="flex items-center justify-between gap-3">
           <p className="text-sm text-slate-600">
@@ -390,12 +390,15 @@ export function ScopeInventorySection({ move }: { move: MoveRecord }) {
             )}
           </div>
         )}
+
+        <ScopeExtrasBlock move={move} />
       </DetailSection>
     </MoveDetailSectionAnchor>
   );
 }
 
-export function ScopeAppliancesSection({ move }: { move: MoveRecord }) {
+/** Appliances + wardrobe boxes — nested under Inventory & extras. */
+function ScopeExtrasBlock({ move }: { move: MoveRecord }) {
   const { intake, disabled, patch, patchFn } = useMoveIntakeEdit(move.id);
   if (!intake) return null;
 
@@ -427,13 +430,16 @@ export function ScopeAppliancesSection({ move }: { move: MoveRecord }) {
   }
 
   return (
-    <MoveDetailSectionAnchor id={SCOPE_SECTION_IDS.appliances}>
-      <DetailSection title="Appliances">
+    <div className="mt-8 border-t border-slate-200 pt-6">
+      <h3 className="text-sm font-semibold text-slate-900">Extras</h3>
+      <p className="mt-0.5 text-sm text-slate-600">
+        Appliances to move, disconnect handling, and wardrobe box counts.
+      </p>
+
+      <div className="mt-4">
         <div className="flex items-center justify-between gap-3">
-          <p className="text-sm text-slate-600">
-            {intake.appliances.length === 0
-              ? "None listed"
-              : `${intake.appliances.length} appliance${intake.appliances.length === 1 ? "" : "s"}`}
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Appliances
           </p>
           {!disabled ? (
             <Button type="button" size="sm" variant="secondary" onClick={addAppliance}>
@@ -443,10 +449,12 @@ export function ScopeAppliancesSection({ move }: { move: MoveRecord }) {
           ) : null}
         </div>
 
-        {intake.appliances.length > 0 ? (
-          <ul className="mt-3 divide-y divide-slate-100 rounded-lg border border-slate-200">
+        {intake.appliances.length === 0 ? (
+          <p className="mt-2 text-sm text-slate-500">None listed</p>
+        ) : (
+          <ul className="mt-3 divide-y divide-slate-100 rounded-lg border border-slate-200 bg-slate-50/40">
             {intake.appliances.map((a) => (
-              <li key={a.id} className="group flex items-start gap-2 p-3">
+              <li key={a.id} className="group flex items-start gap-2 bg-white p-3">
                 <div className="grid min-w-0 flex-1 gap-2 sm:grid-cols-[1fr_5rem]">
                   <InlineField
                     label="Appliance"
@@ -478,45 +486,38 @@ export function ScopeAppliancesSection({ move }: { move: MoveRecord }) {
               </li>
             ))}
           </ul>
-        ) : null}
+        )}
 
-        <div className="mt-4 border-t border-slate-100 pt-4">
-          <DetailFieldGrid cols={3}>
-            <InlineField
-              label="Disconnect / reconnect"
-              type="select"
-              options={APPLIANCE_HANDLING_OPTIONS}
-              value={intake.applianceDisconnectHandling ?? ""}
-              displayValue={
-                intake.applianceDisconnectHandling === "client"
-                  ? "Client will handle"
-                  : intake.applianceDisconnectHandling === "referral"
-                    ? "Needs third-party referral"
-                    : "—"
-              }
-              onSave={(v) =>
-                patch({
-                  applianceDisconnectHandling: v as "client" | "referral" | "",
-                })
-              }
-              disabled={disabled}
-              fullWidth
-            />
-          </DetailFieldGrid>
+        <div className="mt-4">
+          <InlineField
+            label="Disconnect / reconnect"
+            type="select"
+            options={APPLIANCE_HANDLING_OPTIONS}
+            value={intake.applianceDisconnectHandling ?? ""}
+            displayValue={
+              intake.applianceDisconnectHandling === "client"
+                ? "Client will handle"
+                : intake.applianceDisconnectHandling === "referral"
+                  ? "Needs third-party referral"
+                  : "—"
+            }
+            onSave={(v) =>
+              patch({
+                applianceDisconnectHandling: v as "client" | "referral" | "",
+              })
+            }
+            disabled={disabled}
+            fullWidth
+          />
         </div>
-      </DetailSection>
-    </MoveDetailSectionAnchor>
-  );
-}
+      </div>
 
-export function ScopeWardrobeSection({ move }: { move: MoveRecord }) {
-  const { intake, disabled, patch } = useMoveIntakeEdit(move.id);
-  if (!intake) return null;
-
-  return (
-    <MoveDetailSectionAnchor id={SCOPE_SECTION_IDS.wardrobe}>
-      <DetailSection title="Wardrobe boxes">
-        <DetailFieldGrid cols={3}>
+      <div className="mt-6">
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          Wardrobe boxes
+        </p>
+        <div className="mt-3">
+        <DetailFieldGrid cols={2}>
           <InlineField
             label="Jonah's wardrobe boxes"
             type="number"
@@ -558,8 +559,9 @@ export function ScopeWardrobeSection({ move }: { move: MoveRecord }) {
             disabled={disabled}
           />
         </DetailFieldGrid>
-      </DetailSection>
-    </MoveDetailSectionAnchor>
+        </div>
+      </div>
+    </div>
   );
 }
 

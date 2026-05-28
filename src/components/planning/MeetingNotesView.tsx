@@ -3,7 +3,10 @@
 import { ChecklistGroup } from "@/components/planning/ChecklistGroup";
 import { usePlanningProgress } from "@/components/planning/PlanningProgressProvider";
 import { Card, CardContent } from "@/components/ui/Card";
-import { MEETING_NOTES_GROUPS } from "@/lib/planning/meeting-notes";
+import {
+  MEETING_NOTES_DATE_LABEL,
+  MEETING_NOTES_GROUPS,
+} from "@/lib/planning/meeting-notes";
 import { ClipboardList } from "lucide-react";
 
 export function MeetingNotesView() {
@@ -16,9 +19,11 @@ export function MeetingNotesView() {
           <div className="flex items-start gap-3">
             <ClipboardList className="mt-0.5 h-5 w-5 shrink-0 text-slate-600" />
             <div>
-              <p className="text-sm font-semibold text-slate-900">Notes from meeting</p>
+              <p className="text-sm font-semibold text-slate-900">
+                Notes from meeting · {MEETING_NOTES_DATE_LABEL}
+              </p>
               <p className="mt-1 max-w-2xl text-sm text-slate-600">
-                Action items captured from stakeholder meetings. Check items off as they are scoped,
+                Action items from the {MEETING_NOTES_DATE_LABEL} meeting. Check items off as they are scoped,
                 built, or decided — progress saves in this browser.
               </p>
             </div>

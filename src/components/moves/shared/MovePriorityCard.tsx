@@ -11,6 +11,7 @@ import {
   waitingSubstageLabel,
 } from "@/lib/moves/move-pipeline";
 import type { MoveRecord } from "@/lib/moves/types";
+import { salesMovePath } from "@/lib/navigation/routes";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 
@@ -38,7 +39,7 @@ export function MovePriorityCard({ move }: MovePriorityCardProps) {
 
   return (
     <Link
-      href={`/moves/${move.id}`}
+      href={salesMovePath(move.id)}
       className={cn(
         "block rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md",
         !lost && priorityCardBorderClass(move),

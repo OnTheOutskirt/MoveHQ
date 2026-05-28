@@ -9,6 +9,7 @@ import {
   MIN_MOVERS_FOR_APPROVAL,
   type TimeOffRequest,
 } from "@/lib/operations/fleet";
+import { useTerminology } from "@/lib/terminology/use-terminology";
 import { cn } from "@/lib/utils";
 import { AlertTriangle, CheckCircle2, Plus, XCircle } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -21,12 +22,37 @@ const STATUS_STYLES: Record<TimeOffRequest["status"], string> = {
   denied: "bg-slate-200 text-slate-700",
 };
 
+const STATUS_LABELS: Record<TimeOffRequest["status"], string> = {
+  pending: "Pending",
+  approved: "Approved",
+  denied: "Declined",
+};
+
+const STATUS_GROUPS: {
+  id: TimeOffRequest["status"];
+  title: string;
+  empty: string;
+}[] = [
+  { id: "pending", title: "Pending requests", empty: "No pending requests." },
+  { id: "approved", title: "Approved requests", empty: "No approved requests." },
+  { id: "denied", title: "Declined requests", empty: "No declined requests." },
+];
+
 export function CrewTimeOffTab() {
   const { crew, timeOffRequests, schedules, addTimeOffRequest, updateTimeOffRequest } = useFleet();
   const [panel, setPanel] = useState<PanelMode>({ type: "closed" });
 
   const selected =
     panel.type === "review" ? timeOffRequests.find((r) => r.id === panel.id) : undefined;
+
+  const groupedRequests = useMemo(() => {
+    const sorted = [...timeOffRequests].sort((a, b) => b.submittedAt.localeCompare(a.submittedAt));
+    return {
+      pending: sorted.filter((r) => r.status === "pending"),
+      approved: sorted.filter((r) => r.status === "approved"),
+      denied: sorted.filter((r) => r.status === "denied"),
+    };
+  }, [timeOffRequests]);
 
   const columns = useMemo<Column<TimeOffRequest>[]>(
     () => [
@@ -69,7 +95,7 @@ export function CrewTimeOffTab() {
               STATUS_STYLES[row.status],
             )}
           >
-            {row.status}
+            {STATUS_LABELS[row.status]}
           </span>
         ),
       },
@@ -90,15 +116,30 @@ export function CrewTimeOffTab() {
         </Button>
       </div>
 
-      <DataTable
-        columns={columns}
-        data={[...timeOffRequests].sort(
-          (a, b) => b.submittedAt.localeCompare(a.submittedAt),
-        )}
-        getRowKey={(r) => r.id}
-        onRowClick={(r) => setPanel({ type: "review", id: r.id })}
-        emptyMessage="No time-off requests."
-      />
+      <div className="space-y-6">
+        {STATUS_GROUPS.map((group) => {
+          const rows = groupedRequests[group.id];
+          return (
+            <section key={group.id} className="space-y-2">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-slate-900">{group.title}</h3>
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium tabular-nums text-slate-600">
+                  {rows.length}
+                </span>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-white">
+                <DataTable
+                  columns={columns}
+                  data={rows}
+                  getRowKey={(r) => r.id}
+                  onRowClick={(r) => setPanel({ type: "review", id: r.id })}
+                  emptyMessage={group.empty}
+                />
+              </div>
+            </section>
+          );
+        })}
+      </div>
 
       <DetailSidebar
         open={panel.type !== "closed"}
@@ -170,6 +211,7 @@ function ReviewTimeOffPanel({
   onApprove: () => void;
   onDeny: (note: string) => void;
 }) {
+  const { plural } = useTerminology();
   const impact =
     request.status === "pending"
       ? evaluateTimeOffImpact(request, crew, schedules, timeOffRequests)
@@ -184,7 +226,7 @@ function ReviewTimeOffPanel({
         </div>
         <div>
           <dt className="text-[10px] font-semibold uppercase text-slate-500">Status</dt>
-          <dd className="capitalize">{request.status}</dd>
+          <dd className="capitalize">{STATUS_LABELS[request.status]}</dd>
         </div>
         <div className="col-span-2">
           <dt className="text-[10px] font-semibold uppercase text-slate-500">Dates</dt>
@@ -230,7 +272,7 @@ function ReviewTimeOffPanel({
               >
                 <span className="font-medium text-slate-800">{day.label}</span>
                 <span className="text-slate-600">
-                  Movers: {day.moversAvailable} → {day.moversAfterApproval} after
+                  {plural("mover")}: {day.moversAvailable} → {day.moversAfterApproval} after
                 </span>
                 {day.warning ? (
                   <span className="w-full text-amber-800">{day.warning}</span>

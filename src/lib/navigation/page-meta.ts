@@ -6,8 +6,7 @@ export type PageMeta = {
 export const pageMeta: Record<string, PageMeta> = {
   "/dashboard": {
     title: "Dashboard",
-    description:
-      "Role-based home — executive, manager, sales, or ops view with the KPIs and actions each person needs.",
+    description: "",
   },
   "/calendar": {
     title: "Move Calendar",
@@ -17,23 +16,28 @@ export const pageMeta: Record<string, PageMeta> = {
   "/inbox": {
     title: "Inbox",
     description:
-      "Unified inbox for inbound email, SMS, and calls — tied to Moves and People.",
+      "",
   },
-  "/follow-ups": {
+  "/sales/follow-ups": {
     title: "Follow-Ups",
     description:
       "Callbacks and quote follow-ups — overdue first, then due today, sorted by priority.",
   },
-  "/moves": {
+  "/sales/web-quotes": {
+    title: "Web flat-rate quotes",
+    description:
+      "Online flat-rate quotes from your site — incomplete intakes, quoted but not booked, and auto-bookings that need review.",
+  },
+  "/sales/moves": {
     title: "Moves",
     description: "Pipeline and list — filter by follow-up queue and salesperson.",
   },
-  "/people": {
+  "/sales/directory": {
     title: "Directory",
     description:
       "People and organizations — customers, leads, referral partners (realtors, storage, developers, restoration, and more), and vendors.",
   },
-  "/documents": {
+  "/sales/documents": {
     title: "Documents",
     description:
       "Generated and signed documents for moves — proposals, contracts, confirmations, waivers, and PDFs.",
@@ -41,23 +45,38 @@ export const pageMeta: Record<string, PageMeta> = {
   "/operations/jobs": {
     title: "Jobs",
     description:
-      "Operational Job Days for booked moves — dates, crew, trucks, hours, fieldwork.",
+      "Job days by date plus upcoming ops prep — hotels, vendors, materials, and logistics from move scope.",
   },
   "/operations/dispatch": {
     title: "Dispatch",
     description: "Daily board for assigning crews and trucks to Job Days.",
   },
+  "/operations/claims": {
+    title: "Claims",
+    description:
+      "Customer claims and damage resolution — track status, dollar amounts, and ties to moves.",
+  },
   "/operations/crew": {
     title: "Crew",
     description: "Movers, crew leads, availability, and performance.",
   },
-  "/operations/trucks": {
-    title: "Trucks",
-    description: "Fleet capacity, maintenance, and assignments.",
+  "/operations/payroll": {
+    title: "Payroll & Time",
+    description:
+      "Operations approves crew and office hours (tips, mileage, per diem later). Office/HR runs the Rippling CSV export each pay period. Role permissions can split those views later.",
+  },
+  "/admin/integrations": {
+    title: "Integrations",
+    description:
+      "Third-party services — Twilio, Outlook, Stripe, Rippling, maps, website tools, and V2 AI. Planned go-live order (not wired live yet).",
+  },
+  "/operations/fleet": {
+    title: "Fleet",
+    description: "Trucks and vehicles — capacity, maintenance, and dispatch assignments.",
   },
   "/operations/forms": {
-    title: "Forms & Fieldwork",
-    description: "Checklists, signatures, photos, and move-day documentation.",
+    title: "Field Forms",
+    description: "Checklists, signatures, photos, and move-day documentation from the crew app.",
   },
   "/operations/reports": {
     title: "Reports",
@@ -86,7 +105,7 @@ export const pageMeta: Record<string, PageMeta> = {
   "/admin/setup": {
     title: "Setup",
     description:
-      "Operational configuration — pricing, statuses and custom fields, and third-party integrations.",
+      "Operational configuration — pricing and statuses/custom fields. Third-party integrations live under Integrations.",
   },
 };
 

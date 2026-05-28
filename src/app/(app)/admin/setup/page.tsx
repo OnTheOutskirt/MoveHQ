@@ -1,14 +1,17 @@
 "use client";
 
+import { TerminologyTab } from "@/components/admin/setup/TerminologyTab";
 import { ModulePage } from "@/components/shared/ModulePage";
 import { TabBar } from "@/components/shared/TabBar";
+import { SETUP_INTEGRATIONS_PATH } from "@/lib/navigation/admin-redirects";
 import { pageMeta } from "@/lib/navigation/page-meta";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect } from "react";
 
 const TABS = [
   { id: "pricing", label: "Pricing" },
   { id: "fields", label: "Statuses & fields" },
-  { id: "integrations", label: "Integrations" },
+  { id: "terminology", label: "Terminology" },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
@@ -24,10 +27,10 @@ const TAB_COPY: Record<TabId, { title: string; description: string }> = {
     description:
       "Move statuses, tags, referral sources, move types, lost reasons, and custom fields.",
   },
-  integrations: {
-    title: "Integrations",
+  terminology: {
+    title: "Terminology",
     description:
-      "AI quote tool, Twilio, Outlook, payments, e-sign, and website form connections.",
+      "Names for crew roles (lead, driver, mover) used across dispatch, calendar, and roster.",
   },
 };
 
@@ -39,6 +42,12 @@ export default function SetupPage() {
   const meta = pageMeta["/admin/setup"];
   const section = TAB_COPY[activeTab];
 
+  useEffect(() => {
+    if (rawTab === "integrations") {
+      router.replace(SETUP_INTEGRATIONS_PATH);
+    }
+  }, [rawTab, router]);
+
   function setTab(tab: TabId) {
     router.push(`/admin/setup?tab=${tab}`, { scroll: false });
   }
@@ -49,10 +58,14 @@ export default function SetupPage() {
 
       <TabBar tabs={TABS} activeTab={activeTab} onChange={setTab} />
 
-      <div className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-12">
-        <h2 className="text-lg font-semibold text-slate-900">{section.title}</h2>
-        <p className="mt-2 max-w-2xl text-sm text-slate-500">({section.description})</p>
-      </div>
+      {activeTab === "terminology" ? (
+        <TerminologyTab />
+      ) : (
+        <div className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-12">
+          <h2 className="text-lg font-semibold text-slate-900">{section.title}</h2>
+          <p className="mt-2 max-w-2xl text-sm text-slate-500">({section.description})</p>
+        </div>
+      )}
     </div>
   );
 }

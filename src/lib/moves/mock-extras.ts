@@ -1,3 +1,4 @@
+import { applyAcquisitionFields } from "./acquisition";
 import { buildIntakeForMove } from "./intake-mock";
 import {
   createInitialJobDayFromIntake,
@@ -7,9 +8,36 @@ import {
   defaultLocationsForNewDay,
   syncLegacyLocationNotes,
 } from "./job-day-locations";
-import type { MoveJobDay, MoveLinkedPerson, MoveRecord } from "./types";
+import type {
+  IntakeProgress,
+  MoveJobDay,
+  MoveLinkedPerson,
+  MoveRecord,
+  QuoteChannel,
+  WebsiteIntakeMeta,
+} from "./types";
 
-type MoveCore = Omit<MoveRecord, "jobDays" | "linkedPeople" | "intake" | "followUps" | "followUpDue">;
+type MoveCore = Omit<
+  MoveRecord,
+  | "jobDays"
+  | "linkedPeople"
+  | "intake"
+  | "followUps"
+  | "followUpDue"
+  | "quoteChannel"
+  | "intakeProgress"
+  | "websiteIntake"
+  | "lostQualification"
+  | "lostReasonId"
+  | "lostNotes"
+> & {
+  quoteChannel?: QuoteChannel;
+  intakeProgress?: IntakeProgress;
+  websiteIntake?: WebsiteIntakeMeta | null;
+  lostQualification?: MoveRecord["lostQualification"];
+  lostReasonId?: string | null;
+  lostNotes?: string | null;
+};
 
 function customerPerson(move: MoveCore): MoveLinkedPerson {
   return {
@@ -62,6 +90,7 @@ const EXTRAS: Partial<
         label: "Day 1",
         date: "2026-06-13",
         status: "scheduled",
+        departureWindow: "7:15 AM",
         arrivalWindow: "8:00 – 10:00 AM",
         durationLabel: "~6 hrs",
         crewSize: 2,
@@ -138,7 +167,9 @@ const EXTRAS: Partial<
         label: "Day 2",
         date: "2026-05-20",
         status: "in_progress",
+        departureWindow: "6:30 AM",
         arrivalWindow: "7:00 – 9:00 AM",
+        durationLabel: "~8 hrs",
         crewSize: 4,
         crewSummary: "4 movers · Crew A",
         truckCount: 2,
@@ -222,14 +253,20 @@ export function enrichMockMove(move: MoveCore): MoveRecord {
   const extra = EXTRAS[move.id];
   const linkedPeople = [customerPerson(move), ...(extra?.linkedPeople ?? [])];
   const intake = buildIntakeForMove(move);
-  const base: MoveRecord = {
+  const base = applyAcquisitionFields({
     ...move,
     linkedPeople,
     intake,
     jobDays: [],
     followUps: [],
     followUpDue: null,
-  };
+    quoteChannel: move.quoteChannel ?? "unknown",
+    intakeProgress: move.intakeProgress ?? "started",
+    websiteIntake: move.websiteIntake ?? null,
+    lostQualification: move.lostQualification ?? null,
+    lostReasonId: move.lostReasonId ?? null,
+    lostNotes: move.lostNotes ?? null,
+  } as MoveRecord);
 
   const rawDays =
     extra && "jobDays" in extra && (extra.jobDays?.length ?? 0) > 0

@@ -110,6 +110,14 @@ export const TECH_STACK: TechStackEntry[] = [
     builderDetail: "Rippling API — payroll & time sync",
     phase: "v2",
   },
+  {
+    name: "Samsara",
+    role: "Fleet tracking (V2)",
+    detail:
+      "GPS, dash cams, and vehicle telematics — potential LYTX replacement and live truck status in MoveHQ.",
+    builderDetail: "Samsara API — fleet telematics & safety",
+    phase: "v2",
+  },
 ];
 
 /** How phone, SMS, and AI comms roll out across versions. */

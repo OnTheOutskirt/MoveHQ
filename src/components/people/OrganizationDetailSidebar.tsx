@@ -1,13 +1,14 @@
 "use client";
 
+import { DirectoryContactActions } from "@/components/people/DirectoryContactActions";
+import { DirectoryCommunicationHistory } from "@/components/people/DirectoryCommunicationHistory";
+import { DirectoryRelatedMoves } from "@/components/people/DirectoryRelatedMoves";
 import { DetailSidebar } from "@/components/ui/DetailSidebar";
-import { formatMoveDate } from "@/lib/moves/format";
+import { telHref } from "@/lib/people/phone-links";
 import { MOCK_MOVES } from "@/lib/moves/mock-data";
-import { moveStageDisplayLabel } from "@/lib/moves/move-pipeline";
 import { getPeopleForOrganization } from "@/lib/people/mock-data";
 import { organizationTypeConfig } from "@/lib/people/display";
 import type { OrganizationRecord } from "@/lib/people/types";
-import Link from "next/link";
 
 type OrganizationDetailSidebarProps = {
   organization: OrganizationRecord | null;
@@ -39,25 +40,36 @@ export function OrganizationDetailSidebar({
       open={organization != null}
       onClose={onClose}
       title={organization?.name ?? ""}
-      description={
-        organization ? organizationTypeConfig[organization.orgType].label : undefined
-      }
-      widthClassName="max-w-lg"
-    >
-      {organization ? (
-        <div className="space-y-6">
+      headerBelow={
+        organization ? (
           <span
             className={`inline-flex rounded-md px-2 py-0.5 text-xs font-semibold ${organizationTypeConfig[organization.orgType].badge}`}
           >
             {organizationTypeConfig[organization.orgType].label}
           </span>
-
+        ) : null
+      }
+      widthClassName="max-w-lg"
+      headerExtra={
+        organization ? (
+          <DirectoryContactActions
+            name={organization.name}
+            phone={organization.phone}
+            email={organization.email}
+            moveIds={organization.moveIds}
+            size="md"
+          />
+        ) : null
+      }
+    >
+      {organization ? (
+        <div className="space-y-6">
           <div className="grid gap-4">
             {organization.address ? <Field label="Address">{organization.address}</Field> : null}
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Phone">
                 {organization.phone ? (
-                  <a href={`tel:${organization.phone}`} className="text-brand-600 hover:underline">
+                  <a href={telHref(organization.phone)} className="text-brand-600 hover:underline">
                     {organization.phone}
                   </a>
                 ) : (
@@ -81,6 +93,10 @@ export function OrganizationDetailSidebar({
 
           {organization.notes ? <Field label="Notes">{organization.notes}</Field> : null}
 
+          <DirectoryRelatedMoves moves={moves} />
+
+          <DirectoryCommunicationHistory moveIds={organization.moveIds} />
+
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
               Contacts ({people.length})
@@ -88,35 +104,23 @@ export function OrganizationDetailSidebar({
             <ul className="mt-2 space-y-2">
               {people.map((p) => (
                 <li key={p.id}>
-                  <button
-                    type="button"
-                    onClick={() => onSelectPerson(p.id)}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-left text-sm hover:border-brand-300 hover:bg-brand-50/40"
-                  >
-                    <p className="font-medium text-slate-900">{p.name}</p>
-                    {p.title ? <p className="text-xs text-slate-500">{p.title}</p> : null}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-              Related moves ({moves.length})
-            </p>
-            <ul className="mt-2 space-y-2">
-              {moves.map((move) => (
-                <li key={move.id}>
-                  <Link
-                    href={`/moves/${move.id}`}
-                    className="block rounded-lg border border-slate-200 px-3 py-2 text-sm hover:border-brand-300 hover:bg-brand-50/40"
-                  >
-                    <p className="font-medium text-slate-900">{move.reference}</p>
-                    <p className="text-xs text-slate-500">
-                      {moveStageDisplayLabel(move)} · {formatMoveDate(move.preferredDate)}
-                    </p>
-                  </Link>
+                  <div className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 hover:border-brand-300 hover:bg-brand-50/40">
+                    <button
+                      type="button"
+                      onClick={() => onSelectPerson(p.id)}
+                      className="min-w-0 flex-1 text-left text-sm"
+                    >
+                      <p className="font-medium text-slate-900">{p.name}</p>
+                      {p.title ? <p className="text-xs text-slate-500">{p.title}</p> : null}
+                    </button>
+                    <DirectoryContactActions
+                      name={p.name}
+                      phone={p.phone}
+                      email={p.email}
+                      moveIds={p.moveIds}
+                      stopPropagation
+                    />
+                  </div>
                 </li>
               ))}
             </ul>

@@ -7,6 +7,7 @@ import { PlanningScheduleProvider } from "@/components/planning/PlanningSchedule
 import { V1PlanView } from "@/components/planning/V1PlanView";
 import { V2PlanView } from "@/components/planning/V2PlanView";
 import { ModulePage } from "@/components/shared/ModulePage";
+import { MEETING_NOTES_TAB_LABEL } from "@/lib/planning/meeting-notes";
 import { pageMeta } from "@/lib/navigation/page-meta";
 import { cn } from "@/lib/utils";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -15,7 +16,7 @@ const TABS = [
   { id: "overall", label: "Overall Plan" },
   { id: "v1", label: "V1 Roadmap" },
   { id: "v2", label: "V2 Roadmap" },
-  { id: "meeting-notes", label: "Notes From Meeting" },
+  { id: "meeting-notes", label: MEETING_NOTES_TAB_LABEL },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];

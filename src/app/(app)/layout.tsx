@@ -1,8 +1,11 @@
 import { AppShell } from "@/components/layout/AppShell";
+import { InboxProvider } from "@/components/providers/InboxProvider";
 import { MovesProvider } from "@/components/moves/MovesProvider";
 import { CalendarSettingsProvider } from "@/components/providers/CalendarSettingsProvider";
 import { SettingsProvider } from "@/components/providers/SettingsProvider";
 import { FleetProvider } from "@/components/providers/FleetProvider";
+import { ClaimsProvider } from "@/components/providers/ClaimsProvider";
+import { CrewRecordsProvider } from "@/components/providers/CrewRecordsProvider";
 import { TeamMembersProvider } from "@/components/providers/TeamMembersProvider";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -10,11 +13,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <SettingsProvider>
       <TeamMembersProvider>
         <FleetProvider>
-          <CalendarSettingsProvider>
-            <MovesProvider>
-              <AppShell>{children}</AppShell>
-            </MovesProvider>
-          </CalendarSettingsProvider>
+          <CrewRecordsProvider>
+            <ClaimsProvider>
+              <CalendarSettingsProvider>
+                <MovesProvider>
+                  <InboxProvider>
+                    <AppShell>{children}</AppShell>
+                  </InboxProvider>
+                </MovesProvider>
+              </CalendarSettingsProvider>
+            </ClaimsProvider>
+          </CrewRecordsProvider>
         </FleetProvider>
       </TeamMembersProvider>
     </SettingsProvider>

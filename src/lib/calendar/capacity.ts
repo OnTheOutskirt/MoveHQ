@@ -1,3 +1,6 @@
+import { DEFAULT_TERMINOLOGY } from "@/lib/terminology/defaults";
+import { rolePlural, roleSingular } from "@/lib/terminology/labels";
+import type { TerminologySettings } from "@/lib/terminology/types";
 import type { CalendarDayData, DayCapacityStatus } from "./types";
 
 export type CapacityTone = "ok" | "warn" | "full";
@@ -36,25 +39,43 @@ export function totalFtaSlots(ftas: CalendarDayData["ftas"]): number {
 }
 
 /** Brief labels for the day-cell warning icon tooltip (movers/trucks over capacity, depleted crew). */
-export function getDayWarningLabels(day: CalendarDayData): string[] {
+export function getDayWarningLabels(
+  day: CalendarDayData,
+  terms: TerminologySettings = DEFAULT_TERMINOLOGY,
+): string[] {
   const labels: string[] = [];
   const movers = effectiveMoversBooked(day);
   const trucks = effectiveTrucksBooked(day);
-
   if (movers > day.moversCapacity) {
-    labels.push("Movers overbooked");
+    labels.push(`${rolePlural(terms, "mover")} overbooked`);
   }
   if (trucks > day.trucksCapacity) {
     labels.push("Trucks overbooked");
   }
   if (day.skippersLeft === 0) {
-    labels.push("No skippers left");
+    labels.push(`No ${rolePlural(terms, "skipper").toLowerCase()} left`);
   }
   if (day.driversLeft === 0) {
-    labels.push("No drivers left");
+    labels.push(`No ${rolePlural(terms, "driver").toLowerCase()} left`);
   }
 
   return labels;
+}
+
+export function moverHoldLabel(
+  hold: number,
+  terms: TerminologySettings = DEFAULT_TERMINOLOGY,
+): string | null {
+  if (hold === 0) return null;
+  const word =
+    hold === 1
+      ? roleSingular(terms, "mover").toLowerCase()
+      : rolePlural(terms, "mover").toLowerCase();
+  return `${hold} ${word} on hold`;
+}
+
+export function moverCapacityLabel(terms: TerminologySettings = DEFAULT_TERMINOLOGY): string {
+  return rolePlural(terms, "mover");
 }
 
 export const capacityToneText: Record<CapacityTone, string> = {

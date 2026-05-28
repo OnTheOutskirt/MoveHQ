@@ -1,5 +1,10 @@
 import type { PlanningGroup } from "./types";
 
+/** Meeting date shown on the Planning tab and notes header. */
+export const MEETING_NOTES_DATE_LABEL = "5/28";
+
+export const MEETING_NOTES_TAB_LABEL = `Notes From Meeting · ${MEETING_NOTES_DATE_LABEL}`;
+
 /** Checklist groups sourced from stakeholder meeting notes. */
 export const MEETING_NOTES_GROUPS: PlanningGroup[] = [
   {
@@ -10,11 +15,13 @@ export const MEETING_NOTES_GROUPS: PlanningGroup[] = [
       {
         id: "meeting-qualified-vs-unqualified",
         label: "Qualified Moves vs Unqualified Moves",
+        note: "Shipped — Mark lost dialog on move detail: pick Qualified vs Unqualified, then reason.",
       },
       {
         id: "meeting-unqualified-reasons",
         label:
           "Define unqualified lead reasons: couldn’t get ahold, good move but booked, out of service area, duplicate/spam, etc.",
+        note: "Shipped — unqualified reason list in Mark lost flow; qualified reasons are separate.",
       },
       {
         id: "meeting-website-booked-stage",
@@ -23,6 +30,12 @@ export const MEETING_NOTES_GROUPS: PlanningGroup[] = [
       {
         id: "meeting-web-vs-office-source",
         label: "Add Web vs Office source tag",
+        note: "Shipped — quoteChannel on moves (web AI / phone / office); leadChannel stays for marketing.",
+      },
+      {
+        id: "meeting-website-booked-review",
+        label: "Add Website Booked Job Review workflow/tab",
+        note: "Shipped — Sales → Website queues + bookingReviewStatus on auto-booked moves.",
       },
       {
         id: "meeting-followup-quoted-booked",
@@ -48,10 +61,12 @@ export const MEETING_NOTES_GROUPS: PlanningGroup[] = [
         id: "meeting-wardrobes-appliances-extras",
         label:
           "Move Detail View: rename/rework Wardrobes/Appliances section into Extras or place under Inventory",
+        note: "Shipped — Inventory & extras section on Move Plan; appliances + wardrobe nested under Extras.",
       },
       {
         id: "meeting-directory-call-text",
         label: "Directory: add call/text actions directly from directory and link to contact details",
+        note: "Shipped — Call/text on contacts table + detail sidebar; row opens contact; org contacts too.",
       },
     ],
   },
@@ -67,6 +82,7 @@ export const MEETING_NOTES_GROUPS: PlanningGroup[] = [
       {
         id: "meeting-dispatch-crew-truck-changes",
         label: "Dispatch: operations can change crew sizes and trucks",
+        note: "Shipped — per-job crew/truck steppers on dispatch cards and sidebar; overrides persist for the day.",
       },
       {
         id: "meeting-dispatch-change-cost-tracking",
@@ -112,6 +128,7 @@ export const MEETING_NOTES_GROUPS: PlanningGroup[] = [
       {
         id: "meeting-truck-temporary",
         label: "Trucks: allow temporary truck such as U-Haul",
+        note: "Shipped — Fleet → Rentals tab; calendar capacity and dispatch include rentals by date.",
       },
       {
         id: "meeting-samsara-research",
@@ -182,6 +199,7 @@ export const MEETING_NOTES_GROUPS: PlanningGroup[] = [
       {
         id: "meeting-github-org",
         label: "Create GitHub repo/organization structure",
+        note: "Shipped — github.com/OnTheOutskirt/MoveHQ (5/28).",
       },
       {
         id: "meeting-liveswitch-v1-stack",
@@ -212,4 +230,12 @@ export const MEETING_NOTES_DEFAULT_DONE_IDS = [
   "meeting-liveswitch-v1-stack",
   "meeting-rippling-v2-stack",
   "meeting-google-maps-v1-stack",
+  "meeting-github-org",
+  "meeting-web-vs-office-source",
+  "meeting-website-booked-review",
+  "meeting-qualified-vs-unqualified",
+  "meeting-unqualified-reasons",
+  "meeting-wardrobes-appliances-extras",
+  "meeting-directory-call-text",
+  "meeting-dispatch-crew-truck-changes",
 ] as const;

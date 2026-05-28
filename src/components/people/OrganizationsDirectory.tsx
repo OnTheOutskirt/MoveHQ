@@ -1,5 +1,6 @@
 "use client";
 
+import { DirectoryContactActions } from "@/components/people/DirectoryContactActions";
 import { DataTable, type Column } from "@/components/ui/DataTable";
 import { getPeopleForOrganization, MOCK_ORGANIZATIONS } from "@/lib/people/mock-data";
 import { organizationTypeConfig, organizationTypeLabel } from "@/lib/people/display";
@@ -35,7 +36,29 @@ export function OrganizationsDirectory({ onSelectOrganization }: OrganizationsDi
       {
         key: "name",
         header: "Organization",
-        cell: (o) => <p className="font-medium text-slate-900">{o.name}</p>,
+        cell: (o) => (
+          <button
+            type="button"
+            onClick={() => onSelectOrganization(o)}
+            className="text-left font-medium text-slate-900 hover:text-brand-700"
+          >
+            {o.name}
+          </button>
+        ),
+      },
+      {
+        key: "actions",
+        header: "Contact",
+        className: "w-32",
+        cell: (o) => (
+          <DirectoryContactActions
+            name={o.name}
+            phone={o.phone}
+            email={o.email}
+            moveIds={o.moveIds}
+            stopPropagation
+          />
+        ),
       },
       {
         key: "type",

@@ -1,3 +1,4 @@
+import { buildLostReasonDisplay, type MarkLostPayload } from "./lost-reasons";
 import { syncFollowUpDue, createFollowUp, defaultFollowUpForStage } from "./move-follow-ups";
 import type {
   MoveConditionStatus,
@@ -299,7 +300,7 @@ export function applyWaitingSubstage(move: MoveRecord, substage: WaitingSubstage
 
 export function markMoveLost(
   move: MoveRecord,
-  reason?: string,
+  payload: MarkLostPayload,
   at = new Date().toISOString(),
 ): MoveRecord {
   const cleared = move.followUps.map((f) =>
@@ -309,7 +310,10 @@ export function markMoveLost(
     ...move,
     lostAt: at,
     lostFromStage: move.pipelineStage,
-    lostReason: reason ?? null,
+    lostQualification: payload.qualification,
+    lostReasonId: payload.reasonId,
+    lostNotes: payload.notes?.trim() || null,
+    lostReason: buildLostReasonDisplay(payload),
     conditionStatus: "lost",
     status: "lost",
     followUps: cleared,
@@ -323,6 +327,9 @@ export function reopenLostMove(move: MoveRecord): MoveRecord {
     lostAt: null,
     lostFromStage: null,
     lostReason: null,
+    lostQualification: null,
+    lostReasonId: null,
+    lostNotes: null,
     pipelineStage: stage,
     conditionStatus: "active" as const,
   };

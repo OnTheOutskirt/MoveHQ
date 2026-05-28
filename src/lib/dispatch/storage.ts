@@ -21,6 +21,8 @@ function normalizeAssignment(raw: Partial<LegacyAssignment>): DispatchJobAssignm
       truckIds: raw.truckIds ?? [],
       dispatchNotes: raw.dispatchNotes ?? "",
       jobNote: raw.jobNote ?? "",
+      crewSizeOverride: raw.crewSizeOverride ?? null,
+      trucksNeededOverride: raw.trucksNeededOverride ?? null,
     };
   }
   if (raw.crewIds?.length) {
@@ -30,6 +32,8 @@ function normalizeAssignment(raw: Partial<LegacyAssignment>): DispatchJobAssignm
       truckIds: raw.truckIds ?? [],
       dispatchNotes: raw.dispatchNotes ?? "",
       jobNote: raw.jobNote ?? "",
+      crewSizeOverride: raw.crewSizeOverride ?? null,
+      trucksNeededOverride: raw.trucksNeededOverride ?? null,
     };
   }
   return {
@@ -37,6 +41,8 @@ function normalizeAssignment(raw: Partial<LegacyAssignment>): DispatchJobAssignm
     truckIds: raw.truckIds ?? [],
     dispatchNotes: raw.dispatchNotes ?? "",
     jobNote: raw.jobNote ?? "",
+    crewSizeOverride: raw.crewSizeOverride ?? null,
+    trucksNeededOverride: raw.trucksNeededOverride ?? null,
   };
 }
 

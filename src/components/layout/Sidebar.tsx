@@ -1,7 +1,11 @@
 "use client";
 
 import { SidebarFollowUpsNav } from "@/components/layout/SidebarFollowUpsNav";
+import { SidebarInboxNav } from "@/components/layout/SidebarInboxNav";
+import { SidebarOperationsJobsNav } from "@/components/layout/SidebarOperationsJobsNav";
+import { SidebarWebsiteNav } from "@/components/layout/SidebarWebsiteNav";
 import { useSettings } from "@/components/providers/SettingsProvider";
+import { ROUTES } from "@/lib/navigation/routes";
 import {
   findActiveDropdown,
   isDropdownActive,
@@ -73,8 +77,12 @@ function NavDropdownSection({
       {open && (
         <ul className="mt-0.5 ml-4 space-y-0.5 border-l border-white/10 pl-3">
           {dropdown.items.map((item) =>
-            item.href === "/follow-ups" ? (
+            item.href === ROUTES.salesFollowUps ? (
               <SidebarFollowUpsNav key={item.href} item={item} />
+            ) : item.href === ROUTES.salesWebQuotes ? (
+              <SidebarWebsiteNav key={item.href} item={item} />
+            ) : item.href === "/operations/jobs" ? (
+              <SidebarOperationsJobsNav key={item.href} item={item} />
             ) : (
               <NavLinkItem key={item.href} item={item} pathname={pathname} />
             ),
@@ -166,7 +174,11 @@ export function Sidebar() {
         <ul className="space-y-0.5">
           {navigation.map((entry) =>
             entry.type === "link" ? (
-              <NavLinkItem key={entry.href} item={entry} pathname={pathname} />
+              entry.href === "/inbox" ? (
+                <SidebarInboxNav key={entry.href} item={entry} />
+              ) : (
+                <NavLinkItem key={entry.href} item={entry} pathname={pathname} />
+              )
             ) : (
               <li key={entry.label}>
                 <NavDropdownSection

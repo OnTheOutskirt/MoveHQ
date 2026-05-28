@@ -2,6 +2,11 @@
 
 import { MOCK_MOVES } from "@/lib/moves/mock-data";
 import {
+  buildLostReasonDisplay,
+  LOST_QUALIFICATION_LABELS,
+  type MarkLostPayload,
+} from "@/lib/moves/lost-reasons";
+import {
   applyPipelineStage,
   applyWaitingSubstage,
   isMoveLost,
@@ -37,7 +42,7 @@ type MovesContextValue = {
   getMoveById: (id: string) => MoveRecord | undefined;
   updateMovePipelineStage: (moveId: string, stage: PipelineStageId) => void;
   updateWaitingSubstage: (moveId: string, substage: WaitingSubstage) => void;
-  markAsLost: (moveId: string, reason?: string) => void;
+  markAsLost: (moveId: string, payload: MarkLostPayload) => void;
   reopenMove: (moveId: string) => void;
   updateAssignedRep: (moveId: string, rep: string) => void;
   addJobDay: (moveId: string, day: MoveJobDay) => void;
@@ -103,14 +108,15 @@ export function MovesProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
-  const markAsLost = useCallback((moveId: string, reason?: string) => {
+  const markAsLost = useCallback((moveId: string, payload: MarkLostPayload) => {
     setMoves((prev) =>
       prev.map((move) => {
         if (move.id !== moveId || isMoveLost(move)) return move;
-        const next = markMoveLost(move, reason);
+        const next = markMoveLost(move, payload);
+        const summary = buildLostReasonDisplay(payload);
         return appendActivity(
           next,
-          `Marked lost from ${pipelineStageLabel(move.pipelineStage)}${reason ? ` — ${reason}` : ""}`,
+          `Marked lost (${LOST_QUALIFICATION_LABELS[payload.qualification]}) from ${pipelineStageLabel(move.pipelineStage)} — ${summary}`,
         );
       }),
     );

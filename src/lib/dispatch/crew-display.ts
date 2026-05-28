@@ -1,21 +1,24 @@
+import { DEFAULT_TERMINOLOGY } from "@/lib/terminology/defaults";
+import {
+  formatCrewRoles as formatCrewRolesWithTerms,
+  roleInitial as roleInitialWithTerms,
+  roleSingular,
+} from "@/lib/terminology/labels";
+import type { TerminologySettings } from "@/lib/terminology/types";
 import type { CrewRole } from "./types";
 
-const ROLE_LABELS: Record<CrewRole, string> = {
-  skipper: "Skipper",
-  driver: "Driver",
-  mover: "Mover",
-};
-
-const ROLE_ORDER: CrewRole[] = ["skipper", "driver", "mover"];
-
-export function crewRoleLabel(role: CrewRole): string {
-  return ROLE_LABELS[role];
+export function crewRoleLabel(
+  role: CrewRole,
+  terms: TerminologySettings = DEFAULT_TERMINOLOGY,
+): string {
+  return roleSingular(terms, role);
 }
 
-export function formatCrewRoles(roles: CrewRole[]): string {
-  return ROLE_ORDER.filter((r) => roles.includes(r))
-    .map((r) => ROLE_LABELS[r])
-    .join(" · ");
+export function formatCrewRoles(
+  roles: CrewRole[],
+  terms: TerminologySettings = DEFAULT_TERMINOLOGY,
+): string {
+  return formatCrewRolesWithTerms(roles, terms);
 }
 
 export function crewRoleBadgeClass(role: CrewRole): string {
@@ -29,13 +32,9 @@ export function crewRoleBadgeClass(role: CrewRole): string {
   }
 }
 
-export function crewRoleInitial(role: CrewRole): string {
-  switch (role) {
-    case "skipper":
-      return "S";
-    case "driver":
-      return "D";
-    case "mover":
-      return "M";
-  }
+export function crewRoleInitial(
+  role: CrewRole,
+  terms: TerminologySettings = DEFAULT_TERMINOLOGY,
+): string {
+  return roleInitialWithTerms(terms, role);
 }

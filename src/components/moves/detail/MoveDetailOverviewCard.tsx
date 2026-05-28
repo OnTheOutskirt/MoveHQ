@@ -5,8 +5,10 @@ import { MoveLifecycleStepper } from "@/components/moves/detail/MoveLifecycleSte
 import { MoveWaitingSubstagePicker } from "@/components/moves/detail/MoveWaitingSubstagePicker";
 import { MoveSalesRepPicker } from "@/components/moves/detail/MoveSalesRepPicker";
 import { PricingTypeBadge } from "@/components/moves/detail/PricingTypeBadge";
+import { QuoteChannelBadge } from "@/components/moves/shared/QuoteChannelBadge";
 import { QuadrantBadge } from "@/components/moves/shared/QuadrantBadge";
 import { MarkMoveLostAction } from "@/components/moves/detail/MarkMoveLostAction";
+import { formatLostMoveSummary, lostQualificationBadgeClass } from "@/lib/moves/lost-reasons";
 import { formatQuote } from "@/lib/moves/format";
 import {
   bookingReviewConfig,
@@ -48,6 +50,7 @@ export function MoveDetailOverviewCard({
   onOpenMovePlan,
 }: MoveDetailOverviewCardProps) {
   const lost = isMoveLost(move);
+  const lostSummary = formatLostMoveSummary(move);
   const est = getMoveEstimatedValue(move);
   const condCfg = conditionStatusConfig[move.conditionStatus];
   const reviewCfg =
@@ -67,8 +70,18 @@ export function MoveDetailOverviewCard({
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2">
           <p className="text-sm text-red-900">
             <span className="font-semibold">Lost</span>
+            {move.lostQualification ? (
+              <span
+                className={cn(
+                  "ml-2 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase",
+                  lostQualificationBadgeClass(move.lostQualification),
+                )}
+              >
+                {move.lostQualification}
+              </span>
+            ) : null}
             {move.lostFromStage ? ` · was ${moveDetailPipelineStageLabel(move.lostFromStage)}` : ""}
-            {move.lostReason ? ` — ${move.lostReason}` : ""}
+            {lostSummary ? ` — ${lostSummary}` : ""}
           </p>
           <MarkMoveLostAction move={move} />
         </div>
@@ -86,6 +99,7 @@ export function MoveDetailOverviewCard({
           </div>
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
             <QuadrantBadge move={move} />
+            <QuoteChannelBadge move={move} showIntakeProgress />
             <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-semibold", condCfg.badge)}>
               {condCfg.label}
             </span>

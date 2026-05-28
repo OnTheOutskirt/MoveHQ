@@ -1,4 +1,5 @@
 import { defaultDocumentTemplates, defaultSettings } from "./defaults";
+import { normalizeAppSettings } from "./normalize";
 import type { AppSettings, DocumentTemplate } from "./types";
 
 const SETTINGS_KEY = "jm-app-settings";
@@ -9,7 +10,7 @@ export function loadSettings(): AppSettings {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
     if (!raw) return defaultSettings;
-    return { ...defaultSettings, ...JSON.parse(raw) };
+    return normalizeAppSettings(JSON.parse(raw) as Partial<AppSettings>);
   } catch {
     return defaultSettings;
   }

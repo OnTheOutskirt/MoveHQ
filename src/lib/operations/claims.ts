@@ -1,0 +1,94 @@
+import type {
+  ClaimCategory,
+  ClaimPendingReason,
+  ClaimStatus,
+  ClaimStatusTab,
+  MoveClaim,
+} from "./claims-types";
+
+export function formatClaimMoney(amount: number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+export const CLAIM_STATUS_LABELS: Record<ClaimStatus, string> = {
+  new: "New",
+  in_progress: "In progress",
+  pending: "Pending",
+  completed: "Completed",
+  denied: "Denied",
+};
+
+export const CLAIM_STATUS_BADGE: Record<ClaimStatus, string> = {
+  new: "bg-violet-100 text-violet-900",
+  in_progress: "bg-sky-100 text-sky-900",
+  pending: "bg-amber-100 text-amber-900",
+  completed: "bg-emerald-100 text-emerald-900",
+  denied: "bg-slate-200 text-slate-700",
+};
+
+export const CLAIM_CATEGORY_LABELS: Record<ClaimCategory, string> = {
+  damage: "Damage",
+  billing: "Billing",
+  service: "Service",
+  lost_item: "Lost item",
+  liability: "Liability",
+  other: "Other",
+};
+
+export const CLAIM_PENDING_LABELS: Record<ClaimPendingReason, string> = {
+  customer: "Waiting on customer",
+  insurance: "Insurance",
+  vendor: "Vendor / third party",
+  internal: "Internal review",
+  legal: "Legal",
+};
+
+export function claimMatchesStatusTab(claim: MoveClaim, tab: ClaimStatusTab): boolean {
+  if (tab === "completed") return claim.status === "completed" || claim.status === "denied";
+  return claim.status === tab;
+}
+
+export function claimsForTab(claims: MoveClaim[], tab: ClaimStatusTab): MoveClaim[] {
+  return claims
+    .filter((c) => claimMatchesStatusTab(c, tab))
+    .sort((a, b) => b.reportedDate.localeCompare(a.reportedDate));
+}
+
+export function countClaimsByTab(claims: MoveClaim[]): Record<ClaimStatusTab, number> {
+  return {
+    new: claims.filter((c) => c.status === "new").length,
+    in_progress: claims.filter((c) => c.status === "in_progress").length,
+    pending: claims.filter((c) => c.status === "pending").length,
+    completed: claims.filter((c) => c.status === "completed" || c.status === "denied").length,
+  };
+}
+
+export type ClaimsSummary = {
+  openCount: number;
+  totalClaimed: number;
+  totalReserved: number;
+  totalPaid: number;
+  outstandingReserve: number;
+};
+
+export function summarizeClaims(claims: MoveClaim[]): ClaimsSummary {
+  const open = claims.filter((c) => c.status !== "completed" && c.status !== "denied");
+  return {
+    openCount: open.length,
+    totalClaimed: claims.reduce((s, c) => s + c.amountClaimed, 0),
+    totalReserved: claims.reduce((s, c) => s + c.amountReserved, 0),
+    totalPaid: claims.reduce((s, c) => s + c.amountPaid, 0),
+    outstandingReserve: open.reduce(
+      (s, c) => s + Math.max(0, c.amountReserved - c.amountPaid),
+      0,
+    ),
+  };
+}
+
+export function claimsForMove(claims: MoveClaim[], moveId: string): MoveClaim[] {
+  return claims.filter((c) => c.moveId === moveId);
+}

@@ -73,6 +73,7 @@ export function MemberForm({
   submitLabel = "Save member",
 }: MemberFormProps) {
   const [form, setForm] = useState<TeamMemberFormData>(prepareForm(initial));
+  const [ripplingError, setRipplingError] = useState<string | null>(null);
 
   function patch<K extends keyof TeamMemberFormData>(key: K, value: TeamMemberFormData[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -92,7 +93,13 @@ export function MemberForm({
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    onSubmit(prepareForm(form));
+    const ripplingEmpNo = form.ripplingEmpNo.trim();
+    if (!ripplingEmpNo) {
+      setRipplingError("Rippling employee number is required.");
+      return;
+    }
+    setRipplingError(null);
+    onSubmit(prepareForm({ ...form, ripplingEmpNo }));
   }
 
   return (
@@ -127,6 +134,28 @@ export function MemberForm({
           <PhoneInput value={form.phone} onChange={(v) => patch("phone", v)} />
         </SettingsField>
       </FormRow>
+
+      <SettingsField
+        label="Rippling employee #"
+        hint="Required — matches Rippling Emp No on payroll CSV export. Not shown on the directory list."
+      >
+        <SettingsInput
+          required
+          value={form.ripplingEmpNo}
+          onChange={(e) => {
+            patch("ripplingEmpNo", e.target.value);
+            if (ripplingError) setRipplingError(null);
+          }}
+          placeholder="e.g. 1001"
+          inputMode="numeric"
+          aria-invalid={ripplingError != null}
+        />
+        {ripplingError ? (
+          <p className="mt-1 text-xs text-red-600" role="alert">
+            {ripplingError}
+          </p>
+        ) : null}
+      </SettingsField>
 
       <FormRow>
         <SettingsField label="Nickname" hint="Optional — how they're known day to day.">

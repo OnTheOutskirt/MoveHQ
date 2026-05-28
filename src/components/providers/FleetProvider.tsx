@@ -3,12 +3,20 @@
 import { useTeamMembers } from "@/components/providers/TeamMembersProvider";
 import type { CrewRole } from "@/lib/dispatch/types";
 import type { DispatchCrewMember, DispatchTruck } from "@/lib/dispatch/types";
+import { useSettings } from "@/components/providers/SettingsProvider";
 import { applyCrewToTeamMember } from "@/lib/operations/crew-sync";
+import { roleSingular } from "@/lib/terminology/labels";
+import { normalizeTerminology } from "@/lib/terminology/normalize";
+import type { JobTitle } from "@/lib/team/types";
 import { defaultFleetStore } from "@/lib/operations/fleet-defaults";
 import {
   activeCrewFromList,
-  activeTrucksFromList,
+  dispatchTrucksForDate,
+  truckCapacityBreakdownForDate,
+  truckCapacityForDate,
+  type TruckCapacityBreakdown,
 } from "@/lib/operations/fleet";
+import { toDateKey } from "@/lib/calendar/date-utils";
 import { generateFleetId, loadFleetStore, saveFleetStore } from "@/lib/operations/fleet-storage";
 import type {
   CrewWorkSchedule,
@@ -18,9 +26,12 @@ import type {
   TimeOffRequest,
   TruckMaintenanceRecord,
   TruckOutage,
+  TemporaryTruckFormInput,
+  TemporaryTruckRental,
+  TruckFormInput,
   WeekdayId,
 } from "@/lib/operations/fleet-types";
-import { DEFAULT_WORK_DAYS } from "@/lib/operations/fleet-types";
+import { DEFAULT_WORK_DAYS, temporaryRentalFromFormInput, truckFromFormInput } from "@/lib/operations/fleet-types";
 import { createEmptyMember } from "@/lib/team/types";
 import {
   createContext,
@@ -36,12 +47,15 @@ type FleetContextValue = {
   isReady: boolean;
   crew: FleetCrewMember[];
   trucks: FleetTruck[];
+  temporaryRentals: TemporaryTruckRental[];
   schedules: CrewWorkSchedule[];
   timeOffRequests: TimeOffRequest[];
   truckOutages: TruckOutage[];
   maintenance: TruckMaintenanceRecord[];
   activeCrewForDispatch: () => DispatchCrewMember[];
-  activeTrucksForDispatch: () => DispatchTruck[];
+  activeTrucksForDispatch: (dateKey?: string) => DispatchTruck[];
+  getTruckCapacityForDate: (dateKey: string) => number;
+  getTruckCapacityBreakdownForDate: (dateKey: string) => TruckCapacityBreakdown;
   updateCrewMember: (
     id: string,
     patch: Partial<Pick<FleetCrewMember, "name" | "roles" | "active" | "teamMemberId">>,
@@ -58,11 +72,11 @@ type FleetContextValue = {
     input: Omit<TimeOffRequest, "id" | "submittedAt" | "status"> & { status?: TimeOffRequest["status"] },
   ) => TimeOffRequest;
   updateTimeOffRequest: (id: string, patch: Partial<TimeOffRequest>) => void;
-  addTruck: (input: { label: string; type: string; active?: boolean }) => FleetTruck;
-  updateTruck: (
-    id: string,
-    patch: Partial<Pick<FleetTruck, "label" | "type" | "active">>,
-  ) => void;
+  addTruck: (input: TruckFormInput) => FleetTruck;
+  updateTruck: (id: string, patch: Partial<TruckFormInput>) => void;
+  addTemporaryRental: (input: TemporaryTruckFormInput) => TemporaryTruckRental;
+  updateTemporaryRental: (id: string, patch: Partial<TemporaryTruckFormInput>) => void;
+  removeTemporaryRental: (id: string) => void;
   addTruckOutage: (input: Omit<TruckOutage, "id">) => TruckOutage;
   removeTruckOutage: (id: string) => void;
 };
@@ -71,6 +85,8 @@ const FleetContext = createContext<FleetContextValue | null>(null);
 
 export function FleetProvider({ children }: { children: ReactNode }) {
   const { getMember, updateMember, addMember } = useTeamMembers();
+  const { settings } = useSettings();
+  const terminology = normalizeTerminology(settings.terminology);
   const [store, setStore] = useState<FleetStore>(defaultFleetStore);
   const [isReady, setIsReady] = useState(false);
 
@@ -89,9 +105,12 @@ export function FleetProvider({ children }: { children: ReactNode }) {
       if (!crew.teamMemberId) return;
       const member = getMember(crew.teamMemberId);
       if (!member) return;
-      updateMember(crew.teamMemberId, applyCrewToTeamMember(member, crew.roles, crew.active));
+      updateMember(
+        crew.teamMemberId,
+        applyCrewToTeamMember(member, crew.roles, crew.active, terminology),
+      );
     },
-    [getMember, updateMember],
+    [getMember, updateMember, terminology],
   );
 
   const updateCrewMember = useCallback(
@@ -125,10 +144,16 @@ export function FleetProvider({ children }: { children: ReactNode }) {
           firstName,
           lastName,
           jobTitles: input.roles.includes("skipper")
-            ? ["Mover", "Skipper"]
+            ? ([
+                roleSingular(terminology, "mover"),
+                roleSingular(terminology, "skipper"),
+              ] as JobTitle[])
             : input.roles.includes("driver")
-              ? ["Mover", "Driver"]
-              : ["Mover"],
+              ? ([
+                  roleSingular(terminology, "mover"),
+                  roleSingular(terminology, "driver"),
+                ] as JobTitle[])
+              : ([roleSingular(terminology, "mover")] as JobTitle[]),
           permissionLevel: "crew",
           hasCrewAppAccess: true,
           hasSoftwareAccess: false,
@@ -158,7 +183,7 @@ export function FleetProvider({ children }: { children: ReactNode }) {
       if (teamMemberId) syncCrewToTeam(record);
       return record;
     },
-    [addMember, syncCrewToTeam],
+    [addMember, syncCrewToTeam, terminology],
   );
 
   const setWorkSchedule = useCallback((crewId: string, workDays: WeekdayId[]) => {
@@ -213,37 +238,37 @@ export function FleetProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const addTruck = useCallback(
-    (input: { label: string; type: string; active?: boolean }) => {
-      const record: FleetTruck = {
-        id: generateFleetId("truck"),
-        label: input.label.trim(),
-        type: input.type,
-        active: input.active !== false,
-      };
-      setStore((prev) => {
-        const next = { ...prev, trucks: [...prev.trucks, record] };
-        saveFleetStore(next);
-        return next;
-      });
-      return record;
-    },
-    [],
-  );
+  const addTruck = useCallback((input: TruckFormInput) => {
+    const record = truckFromFormInput(generateFleetId("truck"), input);
+    setStore((prev) => {
+      const next = { ...prev, trucks: [...prev.trucks, record] };
+      saveFleetStore(next);
+      return next;
+    });
+    return record;
+  }, []);
 
-  const updateTruck = useCallback(
-    (id: string, patch: Partial<Pick<FleetTruck, "label" | "type" | "active">>) => {
-      setStore((prev) => {
-        const next = {
-          ...prev,
-          trucks: prev.trucks.map((t) => (t.id === id ? { ...t, ...patch } : t)),
-        };
-        saveFleetStore(next);
-        return next;
-      });
-    },
-    [],
-  );
+  const updateTruck = useCallback((id: string, patch: Partial<TruckFormInput>) => {
+    setStore((prev) => {
+      const next = {
+        ...prev,
+        trucks: prev.trucks.map((t) => {
+          if (t.id !== id) return t;
+          const merged = {
+            label: patch.label ?? t.label,
+            vehicleType: patch.vehicleType ?? t.vehicleType,
+            lengthFt: patch.lengthFt !== undefined ? patch.lengthFt : t.lengthFt,
+            cabSize: patch.cabSize !== undefined ? patch.cabSize : t.cabSize,
+            hasLiftgate: patch.hasLiftgate !== undefined ? patch.hasLiftgate : t.hasLiftgate,
+            active: patch.active !== undefined ? patch.active : t.active,
+          };
+          return truckFromFormInput(id, merged);
+        }),
+      };
+      saveFleetStore(next);
+      return next;
+    });
+  }, []);
 
   const addTruckOutage = useCallback((input: Omit<TruckOutage, "id">) => {
     const record: TruckOutage = { ...input, id: generateFleetId("out") };
@@ -266,17 +291,98 @@ export function FleetProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const addTemporaryRental = useCallback((input: TemporaryTruckFormInput) => {
+    const record = temporaryRentalFromFormInput(generateFleetId("rental"), input);
+    setStore((prev) => {
+      const next = { ...prev, temporaryRentals: [...prev.temporaryRentals, record] };
+      saveFleetStore(next);
+      return next;
+    });
+    return record;
+  }, []);
+
+  const updateTemporaryRental = useCallback(
+    (id: string, patch: Partial<TemporaryTruckFormInput>) => {
+      setStore((prev) => {
+        const next = {
+          ...prev,
+          temporaryRentals: prev.temporaryRentals.map((r) => {
+            if (r.id !== id) return r;
+            return temporaryRentalFromFormInput(id, {
+              label: patch.label ?? r.label,
+              vendor: patch.vendor ?? r.vendor,
+              vehicleType: patch.vehicleType ?? r.vehicleType,
+              lengthFt: patch.lengthFt !== undefined ? patch.lengthFt : r.lengthFt,
+              cabSize: patch.cabSize !== undefined ? patch.cabSize : r.cabSize,
+              hasLiftgate: patch.hasLiftgate !== undefined ? patch.hasLiftgate : r.hasLiftgate,
+              startDate: patch.startDate ?? r.startDate,
+              endDate: patch.endDate ?? r.endDate,
+              notes: patch.notes !== undefined ? patch.notes : r.notes,
+            });
+          }),
+        };
+        saveFleetStore(next);
+        return next;
+      });
+    },
+    [],
+  );
+
+  const removeTemporaryRental = useCallback((id: string) => {
+    setStore((prev) => {
+      const next = {
+        ...prev,
+        temporaryRentals: prev.temporaryRentals.filter((r) => r.id !== id),
+      };
+      saveFleetStore(next);
+      return next;
+    });
+  }, []);
+
+  const getTruckCapacityForDate = useCallback(
+    (dateKey: string) =>
+      truckCapacityForDate(store.trucks, store.truckOutages, store.temporaryRentals, dateKey),
+    [store.trucks, store.truckOutages, store.temporaryRentals],
+  );
+
+  const getTruckCapacityBreakdownForDate = useCallback(
+    (dateKey: string) =>
+      truckCapacityBreakdownForDate(
+        store.trucks,
+        store.truckOutages,
+        store.temporaryRentals,
+        dateKey,
+      ),
+    [store.trucks, store.truckOutages, store.temporaryRentals],
+  );
+
+  const activeTrucksForDispatchOnDate = useCallback(
+    (dateKey?: string) => {
+      const key = dateKey ?? toDateKey(new Date());
+      return dispatchTrucksForDate(
+        store.trucks,
+        store.truckOutages,
+        store.temporaryRentals,
+        key,
+      );
+    },
+    [store.trucks, store.truckOutages, store.temporaryRentals],
+  );
+
   const value = useMemo(
     () => ({
       isReady,
       crew: store.crew,
       trucks: store.trucks,
+      temporaryRentals: store.temporaryRentals,
       schedules: store.schedules,
       timeOffRequests: store.timeOffRequests,
       truckOutages: store.truckOutages,
       maintenance: store.maintenance,
       activeCrewForDispatch: () => activeCrewFromList(store.crew),
-      activeTrucksForDispatch: () => activeTrucksFromList(store.trucks),
+      activeTrucksForDispatch: activeTrucksForDispatchOnDate,
+      getTruckCapacityForDate,
+      getTruckCapacityBreakdownForDate,
       updateCrewMember,
       addCrewMember,
       setWorkSchedule,
@@ -285,12 +391,18 @@ export function FleetProvider({ children }: { children: ReactNode }) {
       updateTimeOffRequest,
       addTruck,
       updateTruck,
+      addTemporaryRental,
+      updateTemporaryRental,
+      removeTemporaryRental,
       addTruckOutage,
       removeTruckOutage,
     }),
     [
       isReady,
       store,
+      activeTrucksForDispatchOnDate,
+      getTruckCapacityForDate,
+      getTruckCapacityBreakdownForDate,
       updateCrewMember,
       addCrewMember,
       setWorkSchedule,
@@ -299,6 +411,9 @@ export function FleetProvider({ children }: { children: ReactNode }) {
       updateTimeOffRequest,
       addTruck,
       updateTruck,
+      addTemporaryRental,
+      updateTemporaryRental,
+      removeTemporaryRental,
       addTruckOutage,
       removeTruckOutage,
     ],

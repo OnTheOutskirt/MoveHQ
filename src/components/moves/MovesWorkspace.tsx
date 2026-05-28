@@ -12,7 +12,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 
-const meta = pageMeta["/moves"];
+const meta = pageMeta["/sales/moves"];
 
 export function MovesWorkspace() {
   const { updateMovePipelineStage } = useMoves();

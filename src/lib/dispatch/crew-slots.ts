@@ -1,4 +1,12 @@
-import type { DispatchJob, DispatchJobAssignment } from "./types";
+import { DEFAULT_TERMINOLOGY } from "@/lib/terminology/defaults";
+import { roleSlotLabel } from "@/lib/terminology/labels";
+import type { TerminologySettings } from "@/lib/terminology/types";
+import type {
+  CrewRole,
+  DispatchCrewMember,
+  DispatchJob,
+  DispatchJobAssignment,
+} from "./types";
 
 export type CrewSlotKind = "skipper" | "driver" | "mover";
 
@@ -18,18 +26,24 @@ export function emptyCrewAssignment(): Pick<
   return { skipperId: null, driverIds: [], moverIds: [] };
 }
 
-export function jobCrewSlots(job: DispatchJob): CrewSlotDefinition[] {
+export function jobCrewSlots(
+  job: DispatchJob,
+  terms: TerminologySettings = DEFAULT_TERMINOLOGY,
+): CrewSlotDefinition[] {
   const slots: CrewSlotDefinition[] = [];
   if (job.crewSizeNeeded < 1) return slots;
 
-  slots.push({ kind: "skipper", label: "Skipper" });
+  slots.push({
+    kind: "skipper",
+    label: roleSlotLabel(terms, "skipper", 0, 1),
+  });
 
   const driverCount = Math.min(job.trucksNeeded, Math.max(0, job.crewSizeNeeded - 1));
   for (let i = 0; i < driverCount; i++) {
     slots.push({
       kind: "driver",
       index: i,
-      label: driverCount === 1 ? "Driver" : `Driver ${i + 1}`,
+      label: roleSlotLabel(terms, "driver", i, driverCount),
     });
   }
 
@@ -38,7 +52,7 @@ export function jobCrewSlots(job: DispatchJob): CrewSlotDefinition[] {
     slots.push({
       kind: "mover",
       index: i,
-      label: moverCount === 1 ? "Mover" : `Mover ${i + 1}`,
+      label: roleSlotLabel(terms, "mover", i, moverCount),
     });
   }
 
@@ -140,4 +154,40 @@ export function countFilledCrewSlots(
 export function isJobCrewComplete(job: DispatchJob, assignment: DispatchJobAssignment): boolean {
   const { filled, required } = countFilledCrewSlots(job, assignment);
   return required > 0 && filled >= required;
+}
+
+export function requiredRoleForSlot(slot: CrewSlotRef): CrewRole | null {
+  if (slot.kind === "skipper") return "skipper";
+  if (slot.kind === "driver") return "driver";
+  return null;
+}
+
+export function crewMemberHasRole(member: DispatchCrewMember, role: CrewRole): boolean {
+  return member.roles.includes(role);
+}
+
+export function crewFitsSlot(member: DispatchCrewMember, slot: CrewSlotRef): boolean {
+  const role = requiredRoleForSlot(slot);
+  if (!role) return true;
+  return crewMemberHasRole(member, role);
+}
+
+export function skippersNeededForJob(job: DispatchJob): number {
+  return job.crewSizeNeeded >= 1 ? 1 : 0;
+}
+
+export function driversNeededForJob(job: DispatchJob): number {
+  return Math.min(job.trucksNeeded, Math.max(0, job.crewSizeNeeded - 1));
+}
+
+export function countFilledRoleSlots(
+  job: DispatchJob,
+  assignment: DispatchJobAssignment,
+): { skippers: number; drivers: number } {
+  const normalized = ensureDriverMoverLengths(job, assignment);
+  const drivers = normalized.driverIds.filter((id): id is string => Boolean(id)).length;
+  return {
+    skippers: normalized.skipperId ? 1 : 0,
+    drivers,
+  };
 }

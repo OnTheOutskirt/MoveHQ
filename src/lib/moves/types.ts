@@ -95,6 +95,23 @@ export const MOVE_SOURCES = [
 
 export type MoveSource = (typeof MOVE_SOURCES)[number];
 
+/** How the quote was built — distinct from `leadChannel` (marketing attribution). */
+export const QUOTE_CHANNELS = ["web_ai", "phone", "office", "unknown"] as const;
+
+export type QuoteChannel = (typeof QUOTE_CHANNELS)[number];
+
+/** Website flat-rate intake completion state. */
+export const INTAKE_PROGRESS_IDS = ["started", "quoted", "booked"] as const;
+
+export type IntakeProgress = (typeof INTAKE_PROGRESS_IDS)[number];
+
+export type WebsiteIntakeMeta = {
+  sessionId?: string;
+  lastStepCompleted?: string;
+  quotedAt?: string | null;
+  bookedAt?: string | null;
+};
+
 export type MoveType = "Local" | "Long distance" | "Commercial" | "Labor only";
 
 export const FOLLOW_UP_TYPES = [
@@ -194,6 +211,8 @@ export type MoveJobDay = {
   date: string;
   status: JobDayStatus;
   arrivalWindow?: string;
+  /** When crew leaves the shop / yard */
+  departureWindow?: string;
   durationLabel?: string;
   crewSize?: number;
   crewSummary?: string;
@@ -239,6 +258,7 @@ export type MoveLinkedPerson = {
 };
 
 import type { FlatRateIntake, IntakeLocationType } from "./flat-rate-intake";
+import type { LostQualification } from "./lost-reasons";
 
 export type MoveRecord = {
   id: string;
@@ -256,8 +276,18 @@ export type MoveRecord = {
   bookingReviewStatus: BookingReviewStatus;
   lostAt: string | null;
   lostFromStage: PipelineStageId | null;
+  /** Display string — built from qualification + reason (+ notes). */
   lostReason: string | null;
+  lostQualification: LostQualification | null;
+  lostReasonId: string | null;
+  lostNotes: string | null;
   leadChannel: LeadChannel;
+  /** How the quote was produced (web AI vs phone vs office). */
+  quoteChannel: QuoteChannel;
+  /** Website intake completion — used for web work queues. */
+  intakeProgress: IntakeProgress;
+  /** Optional metadata from the website quoting session. */
+  websiteIntake: WebsiteIntakeMeta | null;
   /** @deprecated Prefer `followUps` — kept for migration */
   followUpDue: string | null;
   followUps: MoveFollowUp[];

@@ -27,9 +27,9 @@ type DispatchTrucksPanelProps = {
 };
 
 export function DispatchTrucksPanel({ embedded }: DispatchTrucksPanelProps = {}) {
-  const { assignedTruckIds } = useDispatch();
+  const { dateKey, assignedTruckIds } = useDispatch();
   const { activeTrucksForDispatch } = useFleet();
-  const fleet = activeTrucksForDispatch();
+  const fleet = activeTrucksForDispatch(dateKey);
 
   const available = fleet.filter((truck) => !assignedTruckIds.has(truck.id));
 

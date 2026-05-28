@@ -6,6 +6,7 @@ import { formatMoveDate, formatQuote, moveRouteLabel } from "@/lib/moves/format"
 import type { FollowUpBucket } from "@/lib/moves/follow-ups";
 import { moveStageDisplayLabel } from "@/lib/moves/move-pipeline";
 import type { MoveRecord } from "@/lib/moves/types";
+import { salesMovePath } from "@/lib/navigation/routes";
 import { cn } from "@/lib/utils";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
@@ -18,7 +19,7 @@ type FollowUpRowProps = {
 export function FollowUpRow({ move, bucket }: FollowUpRowProps) {
   return (
     <Link
-      href={`/moves/${move.id}`}
+      href={salesMovePath(move.id)}
       className={cn(
         "group flex items-center gap-4 rounded-lg border bg-white px-4 py-3 shadow-sm transition-colors",
         "hover:border-brand-300 hover:bg-brand-50/30",

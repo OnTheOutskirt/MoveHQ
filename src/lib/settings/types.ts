@@ -17,6 +17,8 @@ export type CompanySettings = {
   timezone: string;
 };
 
+import type { TerminologySettings } from "@/lib/terminology/types";
+
 export type DefaultsSettings = {
   depositPercent: number;
   quoteValidityDays: number;
@@ -29,6 +31,7 @@ export type AppSettings = {
   branding: BrandingSettings;
   company: CompanySettings;
   defaults: DefaultsSettings;
+  terminology: TerminologySettings;
 };
 
 export type DocumentTemplateType =
