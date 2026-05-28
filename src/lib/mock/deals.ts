@@ -1,0 +1,47 @@
+import type { Deal } from "@/types";
+
+export const mockDeals: Deal[] = [
+  {
+    id: "deal_1",
+    title: "3BR Home — Lakewood to Arvada",
+    customerName: "Rivera Family",
+    contactName: "Maria Rivera",
+    salesRepName: "Jonah M.",
+    status: "quoted",
+    value: 2850,
+    moveDate: "2026-06-14",
+    priority: "high",
+  },
+  {
+    id: "deal_2",
+    title: "Suite 400 Office Relocation",
+    customerName: "Northline Office Park",
+    contactName: "Dana Brooks",
+    salesRepName: "Sarah K.",
+    status: "qualified",
+    value: 12400,
+    moveDate: "2026-07-02",
+    priority: "medium",
+  },
+  {
+    id: "deal_3",
+    title: "Apartment Move — Downtown",
+    customerName: "Chen Household",
+    contactName: "James Chen",
+    salesRepName: "Jonah M.",
+    status: "booked",
+    value: 1650,
+    moveDate: "2026-05-28",
+    priority: "medium",
+  },
+  {
+    id: "deal_4",
+    title: "Storefront Inventory Transfer",
+    customerName: "Brightpath Retail",
+    contactName: "Alex Morgan",
+    salesRepName: "Mike T.",
+    status: "lead",
+    value: 4200,
+    priority: "low",
+  },
+];

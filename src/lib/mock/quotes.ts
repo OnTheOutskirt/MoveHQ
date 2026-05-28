@@ -1,0 +1,48 @@
+import type { Quote } from "@/types";
+
+export const mockQuotes: Quote[] = [
+  {
+    id: "quote_1",
+    reference: "QT-2026-0142",
+    customerName: "Rivera Family",
+    contactName: "Maria Rivera",
+    salesRepName: "Jonah M.",
+    quoteType: "flat_rate",
+    status: "quoted",
+    total: 2850,
+    createdAt: "2026-05-12",
+  },
+  {
+    id: "quote_2",
+    reference: "QT-2026-0143",
+    customerName: "Northline Office Park",
+    contactName: "Dana Brooks",
+    salesRepName: "Sarah K.",
+    quoteType: "hourly",
+    status: "qualified",
+    total: 12400,
+    createdAt: "2026-05-15",
+  },
+  {
+    id: "quote_3",
+    reference: "QT-2026-0138",
+    customerName: "Chen Household",
+    contactName: "James Chen",
+    salesRepName: "Jonah M.",
+    quoteType: "flat_rate",
+    status: "booked",
+    total: 1650,
+    createdAt: "2026-05-08",
+  },
+  {
+    id: "quote_4",
+    reference: "QT-2026-0144",
+    customerName: "Walsh & Co.",
+    contactName: "Pat Walsh",
+    salesRepName: "Mike T.",
+    quoteType: "hourly",
+    status: "lead",
+    total: 980,
+    createdAt: "2026-05-17",
+  },
+];
