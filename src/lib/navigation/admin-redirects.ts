@@ -18,8 +18,17 @@ export const companyTabRedirect: Record<string, string> = {
 
 export const setupTabRedirect: Record<string, string> = {
   pricing: "pricing",
-  fields: "fields",
-  statuses: "fields",
+  pipeline: "pipeline",
+  fields: "pipeline",
+  statuses: "pipeline",
+  "pipeline-copy": "pipeline",
+  terminology: "crew-app",
+  documents: "documents",
+  templates: "documents",
+  automations: "automations",
+  "follow-ups": "automations",
+  followups: "automations",
+  "crew-app": "crew-app",
 };
 
 /** Legacy setup ?tab=integrations → dedicated integrations route. */

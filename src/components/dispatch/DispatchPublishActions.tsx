@@ -11,7 +11,7 @@ export function DispatchPublishActions() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [justPublished, setJustPublished] = useState(false);
 
-  const { complete, jobCount, gaps } = scheduleStatus;
+  const { complete, jobCount } = scheduleStatus;
   const published = Boolean(publishRecord);
 
   async function handlePublish() {
@@ -32,14 +32,6 @@ export function DispatchPublishActions() {
 
   return (
     <div className="flex flex-col items-stretch gap-2 sm:items-end">
-      {!complete && jobCount > 0 ? (
-        <p className="max-w-xs text-right text-[11px] text-slate-500">
-          Assign all crew & trucks ({gaps.length} job{gaps.length === 1 ? "" : "s"} still short)
-        </p>
-      ) : jobCount === 0 ? (
-        <p className="text-right text-[11px] text-slate-500">No jobs to publish</p>
-      ) : null}
-
       <div className="flex flex-wrap items-center justify-end gap-2">
         {published && !justPublished ? (
           <span className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-800">

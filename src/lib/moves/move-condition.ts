@@ -1,4 +1,5 @@
 import type { BookingReviewStatus, MoveConditionStatus, MoveRecord } from "./types";
+import { catalogConditionBadge, catalogConditionLabel } from "@/lib/settings/field-catalog-runtime";
 
 export const conditionStatusConfig: Record<
   MoveConditionStatus,
@@ -52,7 +53,11 @@ export const bookingReviewConfig: Record<
 };
 
 export function conditionStatusLabel(status: MoveConditionStatus): string {
-  return conditionStatusConfig[status].label;
+  return catalogConditionLabel(status);
+}
+
+export function conditionStatusBadge(status: MoveConditionStatus): string {
+  return catalogConditionBadge(status);
 }
 
 export function bookingReviewLabel(status: BookingReviewStatus): string {

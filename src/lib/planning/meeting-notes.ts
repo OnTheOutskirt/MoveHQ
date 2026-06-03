@@ -87,6 +87,7 @@ export const MEETING_NOTES_GROUPS: PlanningGroup[] = [
       {
         id: "meeting-dispatch-change-cost-tracking",
         label: "Reporting: track when crew/truck changes save or cost money",
+        note: "Shipped — Operations → Dispatch changes report with AI baseline vs override and $ impact.",
       },
       {
         id: "meeting-extras-third-party",
@@ -140,23 +141,36 @@ export const MEETING_NOTES_GROUPS: PlanningGroup[] = [
     id: "meeting-reports",
     title: "Reports",
     items: [
-      { id: "meeting-report-speed-to-lead", label: "Reports: Speed to Lead, AI vs person" },
+      {
+        id: "meeting-report-speed-to-lead",
+        label: "Reports: Speed to Lead, AI vs person",
+        note: "Shipped — Reports → Sales → Speed to lead.",
+      },
       {
         id: "meeting-report-sales-revenue",
         label: "Reports: Sales revenue booked overall and per salesperson",
+        note: "Shipped — Reports → Sales → Revenue booked.",
       },
       {
         id: "meeting-report-commission",
         label: "Reports: salesperson commission tracking",
+        note: "Shipped — Reports → Sales → Commission.",
       },
       {
         id: "meeting-report-labor-hours",
         label: "Reports: movers labor hours per job",
+        note: "Shipped — Reports → Operations → Labor hours.",
       },
       {
         id: "meeting-report-budget-actuals",
         label:
           "Reports: budget vs actuals for miles, labor, materials, flat rate, estimated margin, actual margin",
+        note: "Shipped — Reports → Operations → Budget vs actuals.",
+      },
+      {
+        id: "meeting-report-ai-quotes",
+        label: "Reports: AI quote accuracy and variance vs booked",
+        note: "Shipped — Reports → AI quotes tab.",
       },
     ],
   },
@@ -167,20 +181,24 @@ export const MEETING_NOTES_GROUPS: PlanningGroup[] = [
       {
         id: "meeting-ai-charge-order",
         label: "AI quote system: add Charge Order workflow",
+        note: "Shipped — Move detail → Quote & contract → Change orders → Charge order (AI).",
       },
       {
         id: "meeting-small-co-minor",
         label: "Small Change Orders: minor quote changes without full requote",
+        note: "Shipped — Change orders → Small change order workflow.",
       },
       {
         id: "meeting-small-co-inventory",
         label:
           "Small Change Orders: handle small inventory/labor changes with no new truck/day",
+        note: "Shipped — Change orders → Small CO inventory/labor (same trucks & days).",
       },
       {
         id: "meeting-full-requote",
         label:
           "Full Requote Workflow: regenerate quote entirely for packing, storage, large additions, or major scope changes",
+        note: "Shipped — Change orders → Full requote workflow.",
       },
       {
         id: "meeting-crew-app-change-order",
@@ -238,4 +256,15 @@ export const MEETING_NOTES_DEFAULT_DONE_IDS = [
   "meeting-wardrobes-appliances-extras",
   "meeting-directory-call-text",
   "meeting-dispatch-crew-truck-changes",
+  "meeting-dispatch-change-cost-tracking",
+  "meeting-report-speed-to-lead",
+  "meeting-report-sales-revenue",
+  "meeting-report-commission",
+  "meeting-report-labor-hours",
+  "meeting-report-budget-actuals",
+  "meeting-report-ai-quotes",
+  "meeting-ai-charge-order",
+  "meeting-small-co-minor",
+  "meeting-small-co-inventory",
+  "meeting-full-requote",
 ] as const;

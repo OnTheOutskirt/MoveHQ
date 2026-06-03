@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import type { InputHTMLAttributes, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
+import { forwardRef, type InputHTMLAttributes, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
 
 type FieldProps = {
   label: string;
@@ -25,14 +25,19 @@ export function SettingsField({
 const inputClass =
   "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20";
 
-export function SettingsInput(props: InputHTMLAttributes<HTMLInputElement>) {
-  return <input className={inputClass} {...props} />;
-}
+export const SettingsInput = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(
+  function SettingsInput(props, ref) {
+    return <input ref={ref} className={inputClass} {...props} />;
+  },
+);
 
 export function SettingsSelect(props: SelectHTMLAttributes<HTMLSelectElement>) {
   return <select className={inputClass} {...props} />;
 }
 
-export function SettingsTextarea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <textarea className={cn(inputClass, "min-h-[120px] resize-y")} {...props} />;
-}
+export const SettingsTextarea = forwardRef<
+  HTMLTextAreaElement,
+  TextareaHTMLAttributes<HTMLTextAreaElement>
+>(function SettingsTextarea(props, ref) {
+  return <textarea ref={ref} className={cn(inputClass, "min-h-[120px] resize-y")} {...props} />;
+});

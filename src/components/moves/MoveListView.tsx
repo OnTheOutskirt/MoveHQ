@@ -17,7 +17,7 @@ import { quoteChannelLabel } from "@/lib/moves/acquisition";
 import {
   compareSalesPriority,
   getMoveEstimatedValue,
-  leadChannelLabels,
+  leadChannelLabel,
   priorityTierSortOrder,
   getMovePriorityTier,
 } from "@/lib/moves/move-priority-tier";
@@ -174,7 +174,7 @@ export function MoveListView({ moves }: MoveListViewProps) {
             <p className="text-xs text-slate-500">
               {quoteChannelLabel(move.quoteChannel)}
               <span className="text-slate-300"> · </span>
-              {leadChannelLabels[move.leadChannel]}
+              {leadChannelLabel(move.leadChannel)}
             </p>
           </div>
         ),

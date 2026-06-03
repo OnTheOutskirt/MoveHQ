@@ -1,13 +1,18 @@
 "use client";
 
+import { useState } from "react";
 import { ManualReviewBanner } from "@/components/moves/detail/DetailSection";
 import { MoveDetailSectionAnchor } from "@/components/moves/detail/MoveDetailSectionAnchor";
 import { MoveDetailTabSections } from "@/components/moves/detail/MoveDetailTabSections";
-import { MoveJobDaysHorizontalTimeline } from "@/components/moves/detail/MoveJobDaysHorizontalTimeline";
 import {
+  MoveJobDaysHorizontalTimeline,
+  type MoveJobDayEditorState,
+} from "@/components/moves/detail/MoveJobDaysHorizontalTimeline";
+import { ScopeLocationsSummary } from "@/components/moves/detail/scope/ScopeLocationsSummary";
+import {
+  ScopeEquipmentSection,
   ScopeInventorySection,
-  ScopeLocationsSection,
-  ScopeMoveDetailsSection,
+  ScopeServicesSection,
   ScopeSpecialtySection,
 } from "@/components/moves/detail/scope/ScopeSections";
 import {
@@ -21,18 +26,29 @@ type MoveDetailMovePlanTabProps = {
 };
 
 export function MoveDetailMovePlanTab({ move }: MoveDetailMovePlanTabProps) {
+  const [jobDayEditor, setJobDayEditor] = useState<MoveJobDayEditorState>({ open: false });
+
+  function openJobDay(dayId: string) {
+    setJobDayEditor({ open: true, dayId, duplicateFromDayId: null });
+  }
+
   return (
     <MoveDetailTabSections sections={MOVE_PLAN_SECTIONS} ariaLabel="Move scope sections">
       <MoveDetailSectionAnchor id={MOVE_PLAN_SECTION_IDS.jobDays}>
-        <MoveJobDaysHorizontalTimeline move={move} />
+        <MoveJobDaysHorizontalTimeline
+          move={move}
+          editor={jobDayEditor}
+          onEditorChange={setJobDayEditor}
+        />
       </MoveDetailSectionAnchor>
 
       <ManualReviewBanner reasons={move.intake.manualReviewReasons} />
 
-      <ScopeMoveDetailsSection move={move} />
-      <ScopeLocationsSection move={move} />
-      <ScopeInventorySection move={move} />
+      <ScopeServicesSection move={move} />
       <ScopeSpecialtySection move={move} />
+      <ScopeInventorySection move={move} />
+      <ScopeEquipmentSection move={move} />
+      <ScopeLocationsSummary move={move} onEditJobDay={openJobDay} />
     </MoveDetailTabSections>
   );
 }

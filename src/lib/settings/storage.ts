@@ -1,4 +1,5 @@
-import { defaultDocumentTemplates, defaultSettings } from "./defaults";
+import { defaultDocumentTemplates, normalizeDocumentTemplates } from "./document-template-normalize";
+import { defaultSettings } from "./defaults";
 import { normalizeAppSettings } from "./normalize";
 import type { AppSettings, DocumentTemplate } from "./types";
 
@@ -25,7 +26,7 @@ export function loadDocumentTemplates(): DocumentTemplate[] {
   try {
     const raw = localStorage.getItem(TEMPLATES_KEY);
     if (!raw) return defaultDocumentTemplates();
-    return JSON.parse(raw) as DocumentTemplate[];
+    return normalizeDocumentTemplates(JSON.parse(raw));
   } catch {
     return defaultDocumentTemplates();
   }

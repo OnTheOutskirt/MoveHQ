@@ -24,7 +24,7 @@ export const pageMeta: Record<string, PageMeta> = {
       "Callbacks and quote follow-ups — overdue first, then due today, sorted by priority.",
   },
   "/sales/web-quotes": {
-    title: "Web flat-rate quotes",
+    title: "AI Web Quotes",
     description:
       "Online flat-rate quotes from your site — incomplete intakes, quoted but not booked, and auto-bookings that need review.",
   },
@@ -45,7 +45,7 @@ export const pageMeta: Record<string, PageMeta> = {
   "/operations/jobs": {
     title: "Jobs",
     description:
-      "Job days by date plus upcoming ops prep — hotels, vendors, materials, and logistics from move scope.",
+      "Job days by date plus upcoming ops prep. On Past (and past dates), open field packets for crew forms, signatures, and payment.",
   },
   "/operations/dispatch": {
     title: "Dispatch",
@@ -74,13 +74,10 @@ export const pageMeta: Record<string, PageMeta> = {
     title: "Fleet",
     description: "Trucks and vehicles — capacity, maintenance, and dispatch assignments.",
   },
-  "/operations/forms": {
-    title: "Field Forms",
-    description: "Checklists, signatures, photos, and move-day documentation from the crew app.",
-  },
   "/operations/reports": {
     title: "Reports",
-    description: "Sales pipeline, revenue, and operations reporting — day, week, and summary views.",
+    description:
+      "Day pipeline, sales scorecards (speed to lead, revenue, commission), operations actuals, AI quote accuracy, and dispatch change impact.",
   },
   "/planning": {
     title: "Planning",
@@ -89,23 +86,17 @@ export const pageMeta: Record<string, PageMeta> = {
   },
   "/admin/staff": {
     title: "Staff",
-    description:
-      "Employees and contractors — roster, permission roles, software and crew app access, and pay.",
+    description: "",
   },
   "/admin/company": {
     title: "Company",
     description:
       "How the business appears in the product — branding, legal profile, defaults, and notifications.",
   },
-  "/admin/templates": {
-    title: "Templates",
-    description:
-      "Customer-facing document templates for quotes, contracts, proposals, confirmations, and waivers.",
-  },
   "/admin/setup": {
     title: "Setup",
     description:
-      "Operational configuration — pricing and statuses/custom fields. Third-party integrations live under Integrations.",
+      "Operational configuration — pricing, statuses, terminology, document templates, automations, and follow-up rules.",
   },
 };
 

@@ -1,0 +1,19 @@
+{
+  "name": "Jonah's Movers — Crew",
+  "short_name": "JM Crew",
+  "description": "Schedule, job details, and field tools for Jonah's Movers crew.",
+  "start_url": "/crew/today",
+  "scope": "/crew",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f172a",
+  "theme_color": "#0f4c5c",
+  "icons": [
+    {
+      "src": "/crew-app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -120,6 +120,7 @@ export function buildDefaultIntake(move: MoveCore): FlatRateIntake {
     ],
     applianceDisconnectHandling: "client",
     wardrobe: { jonahCount: 0, jonahType: "rental", clientOwnedCount: 0 },
+    extras: { tvBoxCount: 0, safeDolly: false, other: [] },
     hasJunk: false,
     hasSpecialtyItems: false,
     hasHighValueItems: false,
@@ -280,6 +281,11 @@ const INTAKE_BY_ID: Partial<Record<string, Partial<FlatRateIntake>>> = {
       { id: "a3", label: "Dryer", quantity: 1 },
     ],
     wardrobe: { jonahCount: 2, jonahType: "rental", clientOwnedCount: 0 },
+    extras: {
+      tvBoxCount: 2,
+      safeDolly: true,
+      other: [{ id: "ex-piano", label: "Piano board", quantity: 1 }],
+    },
     liabilityCoverage: "released",
     submittedAt: "2026-05-18T16:45:00Z",
   },
@@ -440,6 +446,11 @@ export function buildIntakeForMove(move: MoveCore): FlatRateIntake {
     rooms: patch.rooms ?? base.rooms,
     appliances: patch.appliances ?? base.appliances,
     wardrobe: { ...base.wardrobe, ...patch.wardrobe },
+    extras: {
+      ...base.extras,
+      ...patch.extras,
+      other: patch.extras?.other ?? base.extras.other,
+    },
     manualReviewReasons: patch.manualReviewReasons ?? base.manualReviewReasons,
     manualReviewRequired:
       patch.manualReviewRequired ?? (patch.manualReviewReasons?.length ?? 0) > 0,

@@ -20,7 +20,7 @@ import {
   moveDetailStageDisplayLabel,
 } from "@/lib/moves/move-pipeline";
 import { moveDisplayTitle } from "@/lib/moves/get-move-contact";
-import { getMoveEstimatedValue, leadChannelLabels } from "@/lib/moves/move-priority-tier";
+import { getMoveEstimatedValue } from "@/lib/moves/move-priority-tier";
 import type { MoveRecord } from "@/lib/moves/types";
 import { cn } from "@/lib/utils";
 import { formatMoveDate } from "@/lib/moves/format";
@@ -102,9 +102,6 @@ export function MoveDetailSummaryHeader({ move, className }: MoveDetailSummaryHe
           </p>
 
           <p className="text-sm text-slate-600">{moveDetailStageDisplayLabel(move)}</p>
-          <p className="text-sm text-slate-600">
-            Marketing: {leadChannelLabels[move.leadChannel]}
-          </p>
           <p className="text-sm text-slate-600">{move.assignedRep}</p>
 
           {nextFu && !lost ? (

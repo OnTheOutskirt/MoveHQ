@@ -6,8 +6,9 @@ function normalizeRoleTerm(
   role: CrewRoleKind,
 ): RoleTerm {
   const fallback = DEFAULT_ROLE_TERMS[role];
-  const singular = String(raw?.singular ?? "").trim() || fallback.singular;
-  const plural = String(raw?.plural ?? "").trim() || fallback.plural;
+  const singular =
+    raw?.singular !== undefined ? String(raw.singular) : fallback.singular;
+  const plural = raw?.plural !== undefined ? String(raw.plural) : fallback.plural;
   return { singular, plural };
 }
 

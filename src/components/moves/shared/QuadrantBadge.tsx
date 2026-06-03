@@ -2,7 +2,7 @@
 
 import {
   getMovePriorityTier,
-  priorityTierConfig,
+  priorityTierStyle,
   quadrantInputsLabel,
 } from "@/lib/moves/move-priority-tier";
 import type { MoveRecord } from "@/lib/moves/types";
@@ -25,7 +25,7 @@ export function QuadrantBadge({ move, className }: QuadrantBadgeProps) {
       </span>
     );
   }
-  const cfg = priorityTierConfig[tier];
+  const cfg = priorityTierStyle(tier);
   return (
     <span
       className={`inline-flex rounded px-1.5 py-0.5 text-[10px] font-bold tabular-nums ${cfg.badge} ${className ?? ""}`}

@@ -30,13 +30,6 @@ function ReqStat({ label, filled, needed, short }: ReqStatProps) {
       >
         {filled}/{needed}
       </p>
-      {shortfall ? (
-        <p className="mt-0.5 text-[10px] font-medium text-amber-800">
-          Short {short}
-        </p>
-      ) : (
-        <p className="mt-0.5 text-[10px] text-slate-500">Filled</p>
-      )}
     </div>
   );
 }

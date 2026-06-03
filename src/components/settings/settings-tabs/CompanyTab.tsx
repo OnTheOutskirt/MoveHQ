@@ -1,6 +1,6 @@
 "use client";
 
-import { useSettings } from "@/components/providers/SettingsProvider";
+import { useSettingsEditor } from "@/lib/settings/use-settings-editor";
 import { SettingsField, SettingsInput, SettingsSelect } from "@/components/settings/SettingsField";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 
@@ -13,10 +13,11 @@ const TIMEZONES = [
 ];
 
 export function CompanyTab() {
-  const { settings, updateCompany } = useSettings();
+  const { settings, updateCompany } = useSettingsEditor();
   const { company } = settings;
 
   return (
+    <div className="space-y-6">
     <Card>
       <CardHeader>
         <CardTitle>Company contact</CardTitle>
@@ -74,5 +75,28 @@ export function CompanyTab() {
         </SettingsField>
       </CardContent>
     </Card>
+
+    <Card>
+      <CardHeader>
+        <CardTitle>Business hours</CardTitle>
+      </CardHeader>
+      <CardContent className="grid gap-5 sm:grid-cols-2">
+        <SettingsField label="Office opens" hint="Used for scheduling and customer-facing hours.">
+          <SettingsInput
+            type="time"
+            value={company.businessHoursStart}
+            onChange={(e) => updateCompany({ businessHoursStart: e.target.value })}
+          />
+        </SettingsField>
+        <SettingsField label="Office closes">
+          <SettingsInput
+            type="time"
+            value={company.businessHoursEnd}
+            onChange={(e) => updateCompany({ businessHoursEnd: e.target.value })}
+          />
+        </SettingsField>
+      </CardContent>
+    </Card>
+    </div>
   );
 }

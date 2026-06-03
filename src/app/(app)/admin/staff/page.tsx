@@ -34,7 +34,7 @@ function TabPanel({ tab }: { tab: TabId }) {
 export default function StaffPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { resetMembers, isReady, members } = useTeamMembers();
+  const { resetMembers, isReady } = useTeamMembers();
   const rawTab = searchParams.get("tab");
   const activeTab: TabId = TABS.some((t) => t.id === rawTab) ? (rawTab as TabId) : "people";
   const meta = pageMeta["/admin/staff"];
@@ -50,13 +50,7 @@ export default function StaffPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <ModulePage title={meta.title} description={meta.description} />
-          <p className="mt-1 text-xs text-slate-400">
-            {members.filter((m) => m.status === "active").length} active · {members.length} total
-            (saved locally)
-          </p>
-        </div>
+        <ModulePage title={meta.title} description={meta.description} />
         <Button type="button" variant="secondary" size="sm" onClick={resetMembers}>
           Reset sample data
         </Button>

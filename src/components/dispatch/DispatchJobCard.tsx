@@ -11,13 +11,7 @@ import {
 } from "@/components/dispatch/DispatchTrucksPanel";
 import { useDispatch } from "@/components/dispatch/DispatchProvider";
 import { useMoves } from "@/components/moves/MovesProvider";
-import {
-  countFilledCrewSlots,
-  countFilledRoleSlots,
-  driversNeededForJob,
-  getSlotCrewId,
-  skippersNeededForJob,
-} from "@/lib/dispatch/crew-slots";
+import { countFilledCrewSlots, getSlotCrewId } from "@/lib/dispatch/crew-slots";
 import { useTerminology } from "@/lib/terminology/use-terminology";
 import {
   formatDispatchScheduleLine,
@@ -62,7 +56,7 @@ export function DispatchJobCard({ job, selected, onSelect }: DispatchJobCardProp
     [job, rawAssignment],
   );
   const [truckDragOver, setTruckDragOver] = useState(false);
-  const { initial, slotsForJob } = useTerminology();
+  const { slotsForJob } = useTerminology();
 
   const slots = useMemo(() => slotsForJob(effectiveJob), [slotsForJob, effectiveJob]);
   const { filled, required } = countFilledCrewSlots(effectiveJob, assignment);
@@ -75,15 +69,6 @@ export function DispatchJobCard({ job, selected, onSelect }: DispatchJobCardProp
     .filter(Boolean);
 
   const hasNote = jobHasVisibleNote(job, assignment);
-  const roleFilled = countFilledRoleSlots(effectiveJob, assignment);
-  const skippersNeeded = skippersNeededForJob(effectiveJob);
-  const driversNeeded = driversNeededForJob(effectiveJob);
-  const trucksNeeded = effectiveJob.trucksNeeded;
-  const jobShort =
-    filled < required ||
-    roleFilled.skippers < skippersNeeded ||
-    roleFilled.drivers < driversNeeded ||
-    assignedTrucks.length < trucksNeeded;
 
   function handleTruckDrop(e: React.DragEvent) {
     e.preventDefault();
@@ -162,34 +147,6 @@ export function DispatchJobCard({ job, selected, onSelect }: DispatchJobCardProp
       </div>
 
       <div className="space-y-2.5 px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
-        {jobShort ? (
-          <p className="flex flex-wrap gap-x-2 gap-y-0.5 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-[10px] font-medium text-amber-900">
-            <span className={filled < required ? "text-amber-900" : "text-amber-800/70"}>
-              Crew {filled}/{required}
-            </span>
-            <span
-              className={
-                roleFilled.skippers < skippersNeeded ? "text-amber-900" : "text-amber-800/70"
-              }
-            >
-              {initial("skipper")} {roleFilled.skippers}/{skippersNeeded}
-            </span>
-            <span
-              className={
-                roleFilled.drivers < driversNeeded ? "text-amber-900" : "text-amber-800/70"
-              }
-            >
-              {initial("driver")} {roleFilled.drivers}/{driversNeeded}
-            </span>
-            <span
-              className={
-                assignedTrucks.length < trucksNeeded ? "text-amber-900" : "text-amber-800/70"
-              }
-            >
-              T {assignedTrucks.length}/{trucksNeeded}
-            </span>
-          </p>
-        ) : null}
         <div>
           <p className="mb-1.5 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
             <Users className="h-3 w-3" />

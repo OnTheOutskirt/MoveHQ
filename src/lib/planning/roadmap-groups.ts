@@ -518,7 +518,8 @@ export const V1_GROUPS: PlanningGroup[] = [
       {
         id: "v1-ops-forms",
         label: "Office can see forms submitted from crew phones",
-        builderNote: "Fieldwork submission pipeline",
+        builderNote:
+          "Past jobs → Field packet sidebar (demo); crew app fieldwork submission pipeline later",
       },
     ],
   },

@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
-export default function DocumentTemplatesRedirect() {
-  redirect("/admin/templates");
+export default function DocumentTemplatesRedirectPage() {
+  redirect("/admin/setup?tab=documents");
 }

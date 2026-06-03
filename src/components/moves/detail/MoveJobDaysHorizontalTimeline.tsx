@@ -9,16 +9,24 @@ import { getSortedJobDays } from "@/lib/moves/job-day-form";
 import type { MoveRecord } from "@/lib/moves/types";
 import { Plus } from "lucide-react";
 
-type MoveJobDaysHorizontalTimelineProps = {
-  move: MoveRecord;
-};
-
-type EditorState =
+export type MoveJobDayEditorState =
   | { open: false }
   | { open: true; dayId: string | null; duplicateFromDayId: string | null };
 
-export function MoveJobDaysHorizontalTimeline({ move }: MoveJobDaysHorizontalTimelineProps) {
-  const [editor, setEditor] = useState<EditorState>({ open: false });
+type MoveJobDaysHorizontalTimelineProps = {
+  move: MoveRecord;
+  editor?: MoveJobDayEditorState;
+  onEditorChange?: (state: MoveJobDayEditorState) => void;
+};
+
+export function MoveJobDaysHorizontalTimeline({
+  move,
+  editor: controlledEditor,
+  onEditorChange,
+}: MoveJobDaysHorizontalTimelineProps) {
+  const [internalEditor, setInternalEditor] = useState<MoveJobDayEditorState>({ open: false });
+  const editor = controlledEditor ?? internalEditor;
+  const setEditor = onEditorChange ?? setInternalEditor;
   const days = getSortedJobDays(move);
   const moveDate = move.intake.moveDate || move.preferredDate;
 
@@ -42,12 +50,7 @@ export function MoveJobDaysHorizontalTimeline({ move }: MoveJobDaysHorizontalTim
     <>
       <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
-          <div>
-            <h2 className="text-sm font-semibold text-slate-900">Job days</h2>
-            <p className="mt-0.5 text-xs text-slate-500">
-              Click a card to edit date, services, crew, trucks, and locations.
-            </p>
-          </div>
+          <h2 className="text-sm font-semibold text-slate-900">Job days</h2>
           <Button type="button" size="sm" onClick={openCreate}>
             <Plus className="h-3.5 w-3.5" />
             Add day

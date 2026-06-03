@@ -17,9 +17,9 @@ import {
 } from "@dnd-kit/core";
 import { MoveCompactTile } from "@/components/moves/shared/MoveCompactTile";
 import {
+  getMovesPipelineBoardStages,
   isPipelineStage,
-  MOVES_PIPELINE_BOARD_STAGES,
-  pipelineStageConfig,
+  pipelineStageConfigFor,
   pipelineStageLabel,
 } from "@/lib/moves/move-pipeline";
 import type { MoveRecord, PipelineStageId } from "@/lib/moves/types";
@@ -73,7 +73,7 @@ function PipelineColumn({
   activeMoveId: string | null;
   isDropTarget: boolean;
 }) {
-  const config = pipelineStageConfig[stage];
+  const config = pipelineStageConfigFor(stage);
   const { setNodeRef, isOver } = useDroppable({
     id: stage,
     data: { type: "column", pipelineStage: stage },
@@ -164,9 +164,11 @@ export function MovePipelineBoard({
     [moves],
   );
 
+  const boardStages = getMovesPipelineBoardStages();
+
   const movesByStage = useMemo(() => {
-    const map = new Map<PipelineStageId, MoveRecord[]>();
-    for (const stage of MOVES_PIPELINE_BOARD_STAGES) {
+    const map = new Map<string, MoveRecord[]>();
+    for (const stage of boardStages) {
       map.set(stage, []);
     }
     for (const move of boardMoves) {
@@ -174,7 +176,7 @@ export function MovePipelineBoard({
       if (list) list.push(move);
     }
     return map;
-  }, [boardMoves]);
+  }, [boardMoves, boardStages]);
 
   const activeMove = activeMoveId ? boardMoves.find((m) => m.id === activeMoveId) : null;
 
@@ -203,13 +205,13 @@ export function MovePipelineBoard({
         <div
           className="grid min-w-[52rem] items-stretch gap-2"
           style={{
-            gridTemplateColumns: `repeat(${MOVES_PIPELINE_BOARD_STAGES.length}, minmax(7.5rem, 1fr))`,
+            gridTemplateColumns: `repeat(${boardStages.length}, minmax(7.5rem, 1fr))`,
           }}
         >
-          {MOVES_PIPELINE_BOARD_STAGES.map((stage) => (
+          {boardStages.map((stage) => (
             <PipelineColumn
               key={stage}
-              stage={stage}
+              stage={stage as PipelineStageId}
               moves={movesByStage.get(stage) ?? []}
               activeMoveId={activeMoveId}
               isDropTarget={overStage === stage}

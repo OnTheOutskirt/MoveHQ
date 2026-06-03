@@ -9,6 +9,10 @@ import { MoveDetailMain } from "@/components/moves/detail/MoveDetailMain";
 import { MoveDetailOverviewCard } from "@/components/moves/detail/MoveDetailOverviewCard";
 import { MoveContactSidebar } from "@/components/moves/detail/MoveContactSidebar";
 import { MoveDetailRightRail } from "@/components/moves/detail/MoveDetailRightRail";
+import {
+  MoveSendDocumentProvider,
+  useMoveSendDocument,
+} from "@/components/moves/detail/MoveSendDocumentProvider";
 import { MoveQuickActionSidebar } from "@/components/moves/detail/MoveQuickActionSidebar";
 import type { MoveDetailMainTabId, MoveQuickActionId } from "@/lib/moves/detail-layout";
 import type { MoveRecord } from "@/lib/moves/types";
@@ -19,6 +23,15 @@ type MoveDetailViewProps = {
 };
 
 export function MoveDetailView({ move }: MoveDetailViewProps) {
+  return (
+    <MoveSendDocumentProvider move={move}>
+      <MoveDetailViewBody move={move} />
+    </MoveSendDocumentProvider>
+  );
+}
+
+function MoveDetailViewBody({ move }: { move: MoveRecord }) {
+  const { openSendContract } = useMoveSendDocument();
   const [contactOpen, setContactOpen] = useState(false);
   const [quickAction, setQuickAction] = useState<MoveQuickActionId | null>(null);
   const [mainTab, setMainTab] = useState<MoveDetailMainTabId>("move-plan");
@@ -34,13 +47,16 @@ export function MoveDetailView({ move }: MoveDetailViewProps) {
   }
 
   function handleQuickAction(action: MoveQuickActionId) {
+    if (action === "send-contract") {
+      openSendContract();
+      return;
+    }
     setQuickAction(action);
   }
 
   return (
     <>
       <div className="-m-4 flex min-h-0 flex-col lg:-m-6 lg:h-[calc(100vh-4rem)] lg:flex-row">
-        {/* Left: only scroll container on desktop — sticky tabs pin to its top edge */}
         <MoveDetailScrollProvider className="min-h-0 min-w-0 flex-1 overflow-x-hidden lg:overflow-y-auto">
           <MoveDetailBackLink />
 

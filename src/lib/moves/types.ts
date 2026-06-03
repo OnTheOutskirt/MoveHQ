@@ -200,8 +200,12 @@ export type JobDayLocation = {
   formattedAddress: string;
   street: string;
   cityStateZip: string;
+  city?: string;
+  state?: string;
+  zip?: string;
   locationType: IntakeLocationType | "";
   placeId?: string;
+  access?: Record<string, string>;
   accessNotes?: string;
 };
 

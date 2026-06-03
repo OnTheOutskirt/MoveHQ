@@ -1,6 +1,8 @@
 "use client";
 
+import { useSettings } from "@/components/providers/SettingsProvider";
 import { getNextAction } from "@/lib/moves/move-workspace";
+import { resolveUpNextCopy } from "@/lib/settings/pipeline-copy";
 import type { MoveRecord } from "@/lib/moves/types";
 import { cn } from "@/lib/utils";
 import { ArrowRight, CircleAlert } from "lucide-react";
@@ -12,8 +14,9 @@ type NextActionBannerProps = {
 };
 
 export function NextActionBanner({ move, compact }: NextActionBannerProps) {
-  const next = getNextAction(move);
-  const urgent = Boolean(next.urgent);
+  const { settings } = useSettings();
+  const copy = resolveUpNextCopy(move, settings.pipelineCopy);
+  const urgent = Boolean(getNextAction(move).urgent);
 
   return (
     <div
@@ -59,9 +62,9 @@ export function NextActionBanner({ move, compact }: NextActionBannerProps) {
               compact ? "text-sm" : "text-base",
             )}
           >
-            {next.label}
+            {copy.label}
           </p>
-          {next.detail ? (
+          {copy.detail ? (
             <p
               className={cn(
                 "mt-1 leading-snug",
@@ -69,7 +72,7 @@ export function NextActionBanner({ move, compact }: NextActionBannerProps) {
                 urgent ? "font-medium text-amber-900/90" : "text-slate-600",
               )}
             >
-              {next.detail}
+              {copy.detail}
             </p>
           ) : null}
         </div>

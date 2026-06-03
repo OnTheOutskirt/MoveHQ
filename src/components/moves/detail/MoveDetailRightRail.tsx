@@ -2,6 +2,7 @@
 
 import { NextActionBanner } from "@/components/moves/detail/workspace/NextActionBanner";
 import { MoveDetailLeadSourcePanel } from "@/components/moves/detail/MoveDetailLeadSourcePanel";
+import { MoveDetailMediaPanel } from "@/components/moves/detail/MoveDetailMediaPanel";
 import { MoveDetailPeopleRailSection } from "@/components/moves/detail/MoveDetailPeopleRailSection";
 import {
   getMoveQuickActions,
@@ -91,6 +92,8 @@ export function MoveDetailRightRail({
       <MoveDetailPeopleRailSection move={move} onOpenContact={onOpenContact} />
 
       <MoveDetailLeadSourcePanel move={move} />
+
+      <MoveDetailMediaPanel move={move} />
     </aside>
   );
 }

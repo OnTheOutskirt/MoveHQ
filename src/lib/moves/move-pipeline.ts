@@ -8,6 +8,19 @@ import type {
   WaitingSubstage,
 } from "./types";
 import { WAITING_SUBSTAGES } from "./types";
+import {
+  catalogMoveDetailPipelineStageLabel,
+  catalogPipelineBoardStageIds,
+  catalogPipelineStageLabel,
+  catalogPipelineStageStyle,
+  catalogWaitingSubstageBadge,
+  catalogWaitingSubstageLabel,
+  catalogWaitingSubstageIds,
+  catalogAllPipelineStageIds,
+} from "@/lib/settings/field-catalog-runtime";
+import type { PipelineStageStyle } from "@/lib/settings/field-catalog-types";
+
+export type { PipelineStageStyle };
 
 export { WAITING_SUBSTAGES };
 
@@ -23,6 +36,18 @@ export const PIPELINE_STAGES: { id: PipelineStageId; label: string; description:
   { id: "booked", label: "Booked", description: "Booked — schedule, crew, and move execution" },
   { id: "completed", label: "Completed", description: "Move finished — close-out & billing" },
 ];
+
+const PRE_BOOK_PIPELINE_STAGES: PipelineStageId[] = [
+  "new_lead",
+  "waiting",
+  "quote_sent",
+  "needs_contract",
+];
+
+/** True until the move is booked (or completed). */
+export function isPreBookPipelineStage(stage: PipelineStageId): boolean {
+  return PRE_BOOK_PIPELINE_STAGES.includes(stage);
+}
 
 export const WAITING_SUBSTAGE_CONFIG: Record<
   WaitingSubstage,
@@ -43,14 +68,6 @@ export const WAITING_SUBSTAGE_CONFIG: Record<
     description: "Visit on calendar — complete then quote",
     badge: "bg-violet-50 text-violet-800",
   },
-};
-
-export type PipelineStageStyle = {
-  label: string;
-  description: string;
-  badge: string;
-  column: string;
-  dot: string;
 };
 
 export const pipelineStageConfig: Record<PipelineStageId, PipelineStageStyle> = {
@@ -98,19 +115,34 @@ export const pipelineStageConfig: Record<PipelineStageId, PipelineStageStyle> = 
   },
 };
 
+/** @deprecated Use allPipelineStageIds() — kept for legacy imports. */
 export const MOVES_PIPELINE_STAGES: PipelineStageId[] = [...PIPELINE_STAGES.map((s) => s.id)];
 
-/** Columns on /moves pipeline board — completed stays a stage but is not shown here. */
-export const MOVES_PIPELINE_BOARD_STAGES: PipelineStageId[] = MOVES_PIPELINE_STAGES.filter(
-  (id) => id !== "completed",
-);
+/** All pipeline stage ids from field catalog (order preserved). */
+export function allPipelineStageIds(): PipelineStageId[] {
+  return catalogAllPipelineStageIds() as PipelineStageId[];
+}
+
+/** Columns on /moves pipeline board — from field catalog (excludes hideFromBoard). */
+export function getMovesPipelineBoardStages(): PipelineStageId[] {
+  return catalogPipelineBoardStageIds() as PipelineStageId[];
+}
 
 export type PipelinePhase = "sales" | "operations" | "post";
 
 export type PrimaryWorkspaceMode = "quote" | "schedule" | "dispatch" | "post";
 
-export function pipelineStageLabel(stage: PipelineStageId): string {
-  return pipelineStageConfig[stage].label;
+export function pipelineStageLabel(stage: PipelineStageId | string): string {
+  return catalogPipelineStageLabel(stage);
+}
+
+export function pipelineStageConfigFor(stage: PipelineStageId | string): PipelineStageStyle {
+  return catalogPipelineStageStyle(stage);
+}
+
+/** @deprecated Use pipelineStageConfigFor — kept for legacy imports. */
+export function getPipelineStageConfig(stage: PipelineStageId): PipelineStageStyle {
+  return catalogPipelineStageStyle(stage);
 }
 
 /** Move detail stepper & overview — e.g. New Lead, Move Complete (not Lead / Done / Completed). */
@@ -123,12 +155,16 @@ export const MOVE_DETAIL_PIPELINE_LABELS: Record<PipelineStageId, string> = {
   completed: "Move Complete",
 };
 
-export function moveDetailPipelineStageLabel(stage: PipelineStageId): string {
-  return MOVE_DETAIL_PIPELINE_LABELS[stage];
+export function moveDetailPipelineStageLabel(stage: PipelineStageId | string): string {
+  return catalogMoveDetailPipelineStageLabel(stage);
 }
 
-export function waitingSubstageLabel(sub: WaitingSubstage): string {
-  return WAITING_SUBSTAGE_CONFIG[sub].label;
+export function waitingSubstageLabel(sub: WaitingSubstage | string): string {
+  return catalogWaitingSubstageLabel(sub);
+}
+
+export function waitingSubstageBadge(sub: WaitingSubstage | string): string {
+  return catalogWaitingSubstageBadge(sub);
 }
 
 function stageDisplayLabel(
@@ -167,15 +203,15 @@ export function moveDetailStageDisplayLabel(move: MoveRecord): string {
 }
 
 export function isPipelineStage(value: string): value is PipelineStageId {
-  return MOVES_PIPELINE_STAGES.includes(value as PipelineStageId);
+  return catalogAllPipelineStageIds().includes(value);
 }
 
 export function isWaitingSubstage(value: string): value is WaitingSubstage {
-  return value in WAITING_SUBSTAGE_CONFIG;
+  return catalogWaitingSubstageIds().includes(value);
 }
 
 export function pipelineStageIndex(stage: PipelineStageId): number {
-  return MOVES_PIPELINE_STAGES.indexOf(stage);
+  return catalogAllPipelineStageIds().indexOf(stage);
 }
 
 export function getPipelineStage(move: MoveRecord): PipelineStageId {

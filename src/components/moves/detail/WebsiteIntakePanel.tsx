@@ -9,7 +9,7 @@ import {
   quoteChannelLabel,
   resolveIntakeProgress,
 } from "@/lib/moves/acquisition";
-import { leadChannelLabels } from "@/lib/moves/move-priority-tier";
+import { leadChannelLabel } from "@/lib/moves/move-priority-tier";
 import type { MoveRecord } from "@/lib/moves/types";
 import { Globe } from "lucide-react";
 
@@ -61,7 +61,7 @@ export function WebsiteIntakePanel({ move }: { move: MoveRecord }) {
             <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
               Lead source (marketing)
             </p>
-            <p className="mt-0.5 text-sm text-slate-900">{leadChannelLabels[move.leadChannel]}</p>
+            <p className="mt-0.5 text-sm text-slate-900">{leadChannelLabel(move.leadChannel)}</p>
           </div>
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">

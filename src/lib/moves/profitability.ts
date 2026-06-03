@@ -124,14 +124,14 @@ function resolveActualRevenue(move: MoveRecord, estimatedRevenue: number): numbe
   return Math.round(estimatedRevenue * 1.02);
 }
 
-function estimateDriveHours(move: MoveRecord): number {
+export function estimateDriveHours(move: MoveRecord): number {
   const dayCount = Math.max(1, move.jobDays.length || 1);
   const isLong = move.moveType === "Long distance";
   if (isLong) return 4 + (dayCount - 1) * 2.5;
   return 1.25 + (dayCount - 1) * 0.75;
 }
 
-function estimateActualDriveHours(move: MoveRecord, estimated: number): number {
+export function estimateActualDriveHours(move: MoveRecord, estimated: number): number {
   return Math.round(estimated * (move.moveType === "Long distance" ? 1.08 : 1.05) * 10) / 10;
 }
 

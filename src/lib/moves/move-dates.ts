@@ -1,4 +1,5 @@
 import { formatMoveDate } from "./format";
+import { isPreBookPipelineStage } from "./move-pipeline";
 import type { MoveRecord } from "./types";
 
 /** Primary move date(s) for headers — job days when planned, else intake/preferred. */
@@ -22,9 +23,17 @@ export function moveDatesCount(move: MoveRecord): number {
   return fromDays > 0 ? fromDays : move.intake.moveDate || move.preferredDate ? 1 : 0;
 }
 
-/** Overview meta label — plural when multiple job days on Move Plan. */
+/** Label for dates in overview — target before book, job dates after. */
+export function moveDateFieldLabel(move: MoveRecord): string {
+  const n = moveDatesCount(move);
+  const booked = !isPreBookPipelineStage(move.pipelineStage);
+  if (booked) {
+    return n > 1 ? "Job dates" : "Job date";
+  }
+  return n > 1 ? "Target job dates" : "Target job date";
+}
+
+/** @deprecated Use moveDateFieldLabel */
 export function jobDateMetaLabel(move: MoveRecord): string {
-  const n = move.jobDays.length;
-  if (n > 1) return "Job dates";
-  return "Job date";
+  return moveDateFieldLabel(move);
 }

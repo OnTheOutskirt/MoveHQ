@@ -1,8 +1,6 @@
-import { ModulePage } from "@/components/shared/ModulePage";
-import { pageMeta } from "@/lib/navigation/page-meta";
+import { redirect } from "next/navigation";
 
-const meta = pageMeta["/operations/forms"];
-
-export default function FormsPage() {
-  return <ModulePage title={meta.title} description={meta.description} />;
+/** Field forms live on completed jobs — Past tab on Operations → Jobs. */
+export default function FormsRedirectPage() {
+  redirect("/operations/jobs");
 }

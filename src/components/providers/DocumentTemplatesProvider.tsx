@@ -1,6 +1,6 @@
 "use client";
 
-import { defaultDocumentTemplates } from "@/lib/settings/defaults";
+import { defaultDocumentTemplates } from "@/lib/settings/document-template-normalize";
 import { loadDocumentTemplates, saveDocumentTemplates } from "@/lib/settings/storage";
 import type { DocumentTemplate, DocumentTemplateType } from "@/lib/settings/types";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
@@ -8,7 +8,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 type DocumentTemplatesContextValue = {
   templates: DocumentTemplate[];
   getTemplate: (id: DocumentTemplateType) => DocumentTemplate;
-  updateTemplate: (id: DocumentTemplateType, body: string) => void;
+  updateTemplate: (id: DocumentTemplateType, patch: Partial<DocumentTemplate>) => void;
   resetTemplate: (id: DocumentTemplateType) => void;
   resetAllTemplates: () => void;
   isReady: boolean;
@@ -38,10 +38,10 @@ export function DocumentTemplatesProvider({ children }: { children: React.ReactN
     [templates],
   );
 
-  const updateTemplate = useCallback((id: DocumentTemplateType, body: string) => {
+  const updateTemplate = useCallback((id: DocumentTemplateType, patch: Partial<DocumentTemplate>) => {
     setTemplates((prev) => {
       const next = prev.map((t) =>
-        t.id === id ? { ...t, body, updatedAt: new Date().toISOString() } : t,
+        t.id === id ? { ...t, ...patch, updatedAt: new Date().toISOString() } : t,
       );
       saveDocumentTemplates(next);
       return next;

@@ -1,7 +1,7 @@
 "use client";
 
 import { MOCK_PEOPLE } from "@/lib/people/mock-data";
-import { leadChannelLabels } from "@/lib/moves/move-priority-tier";
+import { leadChannelLabel } from "@/lib/moves/move-priority-tier";
 import type { MoveRecord } from "@/lib/moves/types";
 import { salesDirectoryPersonPath } from "@/lib/navigation/routes";
 import { cn } from "@/lib/utils";
@@ -55,7 +55,7 @@ export function MoveContactPanel({ move, className }: MoveContactPanelProps) {
           </p>
         ) : null}
         <p className="text-xs text-slate-600">
-          Source: {leadChannelLabels[move.leadChannel]}
+          Source: {leadChannelLabel(move.leadChannel)}
         </p>
         {pastMoves > 0 ? (
           <p className="text-xs text-slate-600">{pastMoves} previous move(s) on file</p>

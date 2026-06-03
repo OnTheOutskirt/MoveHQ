@@ -18,7 +18,8 @@ import {
   isMoveLost,
   moveDetailPipelineStageLabel,
 } from "@/lib/moves/move-pipeline";
-import { formatMoveDatesDisplay, jobDateMetaLabel } from "@/lib/moves/move-dates";
+import { formatMoveDatesDisplay, moveDateFieldLabel } from "@/lib/moves/move-dates";
+import { intakeJobTypeLabel } from "@/lib/moves/intake-display";
 import { getMoveEstimatedValue } from "@/lib/moves/move-priority-tier";
 import { moveDisplayTitle } from "@/lib/moves/get-move-contact";
 import type { MoveRecord } from "@/lib/moves/types";
@@ -58,7 +59,7 @@ export function MoveDetailOverviewCard({
       ? bookingReviewConfig[move.bookingReviewStatus]
       : null;
   const datesLabel = formatMoveDatesDisplay(move);
-  const jobDateLabel = jobDateMetaLabel(move);
+  const jobDateLabel = moveDateFieldLabel(move);
   return (
     <section
       className={cn(
@@ -126,7 +127,10 @@ export function MoveDetailOverviewCard({
         </div>
       </div>
 
-      <div className="mt-3 grid gap-x-4 gap-y-2 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-3 grid gap-x-4 gap-y-2 sm:grid-cols-2 lg:grid-cols-5">
+        <Meta label="Job type">
+          <span className="font-medium">{intakeJobTypeLabel(move.intake.jobType)}</span>
+        </Meta>
         <Meta label="Type">
           <span className="font-medium">{moveTypeLabel(move.moveType)}</span>
         </Meta>

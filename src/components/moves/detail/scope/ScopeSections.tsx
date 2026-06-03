@@ -1,24 +1,13 @@
 "use client";
 
-import {
-  DetailField,
-  DetailFieldGrid,
-  DetailSection,
-} from "@/components/moves/detail/DetailSection";
+import { DetailFieldGrid, DetailSection } from "@/components/moves/detail/DetailSection";
 import { InlineField } from "@/components/moves/detail/inline/InlineField";
 import { InlineMultiSelect } from "@/components/moves/detail/inline/InlineMultiSelect";
-import { MoveDetailLocationsTab } from "@/components/moves/detail/MoveDetailLocationsTab";
 import { MoveDetailSectionAnchor } from "@/components/moves/detail/MoveDetailSectionAnchor";
 import { useMoveIntakeEdit } from "@/components/moves/detail/use-move-intake-edit";
 import { Button } from "@/components/ui/Button";
-import { formatMoveDate } from "@/lib/moves/format";
-import type { IntakeJobType, PackingDensity, PackingService } from "@/lib/moves/flat-rate-intake";
-import {
-  intakeHearAboutLabel,
-  intakeJobTypeLabel,
-  packingDensityLabel,
-  packingServiceLabel,
-} from "@/lib/moves/intake-display";
+import type { PackingDensity, PackingService } from "@/lib/moves/flat-rate-intake";
+import { packingDensityLabel, packingServiceLabel } from "@/lib/moves/intake-display";
 import {
   applySelectedServices,
   deriveSelectedServices,
@@ -26,8 +15,6 @@ import {
   type IntakeServiceId,
 } from "@/lib/moves/intake-services";
 import {
-  hearAboutOptions,
-  jobTypeOptions,
   loadUnloadDirectionOptions,
   packingDensityOptions,
   packingServiceOptions,
@@ -54,11 +41,18 @@ const PARTIAL_ROOM_LABELS: Record<string, string> = {
   garage: "Garage",
 };
 
-const FLOOR_LABELS: Record<number, string> = {
-  1: "First floor",
-  2: "Second floor",
-  3: "Third floor",
-};
+const ROOM_PRESETS = [
+  "Living room",
+  "Kitchen",
+  "Primary bedroom",
+  "Bedroom 2",
+  "Bedroom 3",
+  "Dining room",
+  "Office",
+  "Garage",
+  "Basement",
+  "Other",
+] as const;
 
 const APPLIANCE_HANDLING_OPTIONS = [
   { value: "", label: "—" },
@@ -70,11 +64,16 @@ function newId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
-export function ScopeMoveDetailsSection({ move }: { move: MoveRecord }) {
+function packingSelected(services: IntakeServiceId[]): boolean {
+  return services.includes("full-pack") || services.includes("partial-pack");
+}
+
+export function ScopeServicesSection({ move }: { move: MoveRecord }) {
   const { intake, disabled, patch } = useMoveIntakeEdit(move.id);
   if (!intake) return null;
 
   const selectedServices = deriveSelectedServices(intake);
+  const showPacking = packingSelected(selectedServices);
 
   const boxCountValue =
     intake.customBoxCount != null
@@ -91,175 +90,118 @@ export function ScopeMoveDetailsSection({ move }: { move: MoveRecord }) {
         : "—";
 
   return (
-    <MoveDetailSectionAnchor id={SCOPE_SECTION_IDS.moveDetails}>
-      <DetailSection title="Move Details">
-        <DetailFieldGrid cols={3}>
-          <InlineField
-            label="Target move date"
-            type="date"
-            value={intake.moveDate}
-            displayValue={formatMoveDate(intake.moveDate)}
-            onSave={(v) => patch({ moveDate: v })}
-            disabled={disabled}
-          />
-          <InlineField
-            label="How did you hear about us?"
-            type="select"
-            options={hearAboutOptions}
-            value={intake.hearAboutUs}
-            displayValue={intakeHearAboutLabel(intake.hearAboutUs)}
-            onSave={(v) => patch({ hearAboutUs: v as typeof intake.hearAboutUs })}
-            disabled={disabled}
-          />
-          <DetailField
-            label="Intake submitted"
-            value={
-              intake.submittedAt
-                ? formatMoveDate(intake.submittedAt.slice(0, 10))
-                : "—"
-            }
-          />
-          <InlineField
-            label="Job type"
-            type="select"
-            options={jobTypeOptions}
-            value={intake.jobType}
-            displayValue={intakeJobTypeLabel(intake.jobType)}
-            onSave={(v) => patch({ jobType: v as IntakeJobType })}
-            disabled={disabled}
-          />
-          <InlineMultiSelect
-            label="Services needed"
-            values={selectedServices}
-            options={INTAKE_SERVICE_OPTIONS}
-            onSave={(ids) => patch(applySelectedServices(ids as IntakeServiceId[]))}
-            disabled={disabled}
-            fullWidth
-            placeholder="Click to select services…"
-            bubbles
-          />
-          <InlineField
-            label="Junk removal"
-            type="select"
-            options={yesNoOptions}
-            value={yesNoValue(intake.hasJunk)}
-            onSave={(v) => patch({ hasJunk: parseYesNo(v) })}
-            disabled={disabled}
-          />
-          <InlineField
-            label="Packing service"
-            type="select"
-            options={packingServiceOptions}
-            value={intake.packingService}
-            displayValue={packingServiceLabel(intake.packingService)}
-            onSave={(v) => patch({ packingService: v as PackingService })}
-            disabled={disabled}
-          />
-          <InlineField
-            label="Belongings density"
-            type="select"
-            options={packingDensityOptions}
-            value={intake.packingDensity}
-            displayValue={packingDensityLabel(intake.packingDensity)}
-            onSave={(v) => patch({ packingDensity: v as PackingDensity | "" })}
-            disabled={disabled}
-          />
-          <InlineField
-            label="Boxes / totes on truck"
-            type="number"
-            value={boxCountValue}
-            displayValue={boxCountLabel}
-            onSave={(v) => {
-              const n = v ? Number(v) : null;
-              if (intake.customBoxCount != null) {
-                patch({ customBoxCount: n });
-              } else {
-                patch({ estimatedBoxCount: n });
-              }
-            }}
-            disabled={disabled}
-          />
-          {intake.jobType === "load-unload-only" ? (
-            <>
-              <InlineField
-                label="Direction"
-                type="select"
-                options={loadUnloadDirectionOptions}
-                value={intake.loadUnloadDirection ?? ""}
-                displayValue={
-                  intake.loadUnloadDirection === "loading"
-                    ? "Loading"
-                    : intake.loadUnloadDirection === "unloading"
-                      ? "Unloading"
-                      : "—"
-                }
-                onSave={(v) =>
-                  patch({
-                    loadUnloadDirection: v as "loading" | "unloading" | "",
-                  })
-                }
-                disabled={disabled}
-              />
-              <InlineField
-                label="Container"
-                value={intake.containerType ?? ""}
-                onSave={(v) => patch({ containerType: v })}
-                disabled={disabled}
-              />
-            </>
-          ) : null}
-          {intake.packingService === "partial" && intake.partialPackRooms.length > 0 ? (
-            <DetailField
-              label="Areas to pack"
-              value={intake.partialPackRooms
-                .map((r) => PARTIAL_ROOM_LABELS[r] ?? r)
-                .join(", ")}
-              fullWidth
-            />
-          ) : null}
-          {intake.packingService === "partial" ? (
-            <InlineField
-              label="Other areas"
-              value={intake.partialPackOther ?? ""}
-              onSave={(v) => patch({ partialPackOther: v })}
+    <MoveDetailSectionAnchor id={SCOPE_SECTION_IDS.services}>
+      <DetailSection title="Services">
+        <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
+          <div className="min-w-[10rem] flex-1">
+            <InlineMultiSelect
+              label="Services needed"
+              values={selectedServices}
+              options={INTAKE_SERVICE_OPTIONS}
+              onSave={(ids) => patch(applySelectedServices(ids as IntakeServiceId[]))}
               disabled={disabled}
-              fullWidth
+              placeholder="Select…"
+              bubbles
             />
-          ) : null}
-          {intake.packingService === "full" || intake.packingService === "partial" ? (
+          </div>
+          <div className="min-w-[5.5rem]">
             <InlineField
-              label="Box estimate acknowledged"
+              label="Junk removal"
               type="select"
               options={yesNoOptions}
-              value={yesNoValue(intake.boxApprovalAcknowledged)}
-              onSave={(v) => patch({ boxApprovalAcknowledged: parseYesNo(v) })}
+              value={yesNoValue(intake.hasJunk)}
+              onSave={(v) => patch({ hasJunk: parseYesNo(v) })}
               disabled={disabled}
             />
+          </div>
+          {showPacking ? (
+            <div className="min-w-[7rem]">
+              <InlineField
+                label="Packing service"
+                type="select"
+                options={packingServiceOptions}
+                value={intake.packingService}
+                displayValue={packingServiceLabel(intake.packingService)}
+                onSave={(v) => patch({ packingService: v as PackingService })}
+                disabled={disabled}
+              />
+            </div>
           ) : null}
-        </DetailFieldGrid>
+          <div className="min-w-[7rem]">
+            <InlineField
+              label="Belongings density"
+              type="select"
+              options={packingDensityOptions}
+              value={intake.packingDensity}
+              displayValue={packingDensityLabel(intake.packingDensity)}
+              onSave={(v) => patch({ packingDensity: v as PackingDensity | "" })}
+              disabled={disabled}
+            />
+          </div>
+          <div className="min-w-[6.5rem]">
+            <InlineField
+              label="Boxes / totes on truck"
+              type="number"
+              value={boxCountValue}
+              displayValue={boxCountLabel}
+              onSave={(v) => {
+                const n = v ? Number(v) : null;
+                if (intake.customBoxCount != null) {
+                  patch({ customBoxCount: n });
+                } else {
+                  patch({ estimatedBoxCount: n });
+                }
+              }}
+              disabled={disabled}
+            />
+          </div>
+        </div>
 
-        {intake.jobType === "in-facility" ? (
-          <p className="mt-3 text-xs text-amber-800">
-            In-facility move — single address; destination hidden on intake.
-          </p>
+        {intake.jobType === "load-unload-only" ? (
+          <div className="mt-3">
+          <DetailFieldGrid cols={2}>
+            <InlineField
+              label="Direction"
+              type="select"
+              options={loadUnloadDirectionOptions}
+              value={intake.loadUnloadDirection ?? ""}
+              displayValue={
+                intake.loadUnloadDirection === "loading"
+                  ? "Loading"
+                  : intake.loadUnloadDirection === "unloading"
+                    ? "Unloading"
+                    : "—"
+              }
+              onSave={(v) =>
+                patch({
+                  loadUnloadDirection: v as "loading" | "unloading" | "",
+                })
+              }
+              disabled={disabled}
+            />
+            <InlineField
+              label="Container"
+              value={intake.containerType ?? ""}
+              onSave={(v) => patch({ containerType: v })}
+              disabled={disabled}
+            />
+          </DetailFieldGrid>
+          </div>
         ) : null}
-        {intake.jobType === "in-home-rearrange" ? (
-          <p className="mt-3 text-xs text-amber-800">
-            In-home rearrange — origin and destination are the same home.
-          </p>
-        ) : null}
-        {intake.packingService === "self-move" ? (
-          <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-            Furniture-only job — client moves own boxes.
+
+        {intake.packingService === "partial" && intake.partialPackRooms.length > 0 ? (
+          <p className="mt-2 text-xs text-slate-600">
+            Areas to pack:{" "}
+            {intake.partialPackRooms.map((r) => PARTIAL_ROOM_LABELS[r] ?? r).join(", ")}
           </p>
         ) : null}
 
         {intake.hasJunk ? (
-          <div className="mt-4 border-t border-slate-100 pt-4">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Haul-off details
+          <div className="mt-3 rounded-md border border-slate-100 bg-slate-50/80 px-3 py-2">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+              Haul-off
             </p>
-            <DetailFieldGrid cols={3}>
+            <div className="mt-1 flex flex-wrap gap-3">
               <InlineField
                 label="Volume"
                 value={intake.junkVolume ?? ""}
@@ -268,25 +210,13 @@ export function ScopeMoveDetailsSection({ move }: { move: MoveRecord }) {
               />
               <InlineField
                 label="Items"
-                type="textarea"
                 value={intake.junkItems ?? ""}
                 onSave={(v) => patch({ junkItems: v })}
                 disabled={disabled}
-                fullWidth
               />
-            </DetailFieldGrid>
+            </div>
           </div>
         ) : null}
-      </DetailSection>
-    </MoveDetailSectionAnchor>
-  );
-}
-
-export function ScopeLocationsSection({ move }: { move: MoveRecord }) {
-  return (
-    <MoveDetailSectionAnchor id={SCOPE_SECTION_IDS.locations}>
-      <DetailSection title="Locations & Access">
-        <MoveDetailLocationsTab move={move} />
       </DetailSection>
     </MoveDetailSectionAnchor>
   );
@@ -296,18 +226,18 @@ export function ScopeInventorySection({ move }: { move: MoveRecord }) {
   const { intake, disabled, patchFn, patchRoom } = useMoveIntakeEdit(move.id);
   if (!intake) return null;
 
-  const floors = [1, 2, 3] as const;
+  const floors = [1, 2] as const;
   const roomsByFloor = floors.map((f) => ({
     floor: f,
     rooms: intake.rooms.filter((r) => r.floor === f),
   }));
 
-  function addRoom() {
+  function addRoom(floor: 1 | 2) {
     patchFn((prev) => ({
       ...prev,
       rooms: [
         ...prev.rooms,
-        { id: newId("room"), floor: 1, name: "New room", items: "" },
+        { id: newId("room"), floor, name: "Living room", items: "" },
       ],
     }));
   }
@@ -319,103 +249,17 @@ export function ScopeInventorySection({ move }: { move: MoveRecord }) {
     }));
   }
 
-  return (
-    <MoveDetailSectionAnchor id={SCOPE_SECTION_IDS.inventory}>
-      <DetailSection
-        title="Inventory & extras"
-        description="Room-by-room inventory plus appliances, wardrobe boxes, and disconnect handling."
-      >
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-sm text-slate-600">
-            {intake.rooms.length} room{intake.rooms.length === 1 ? "" : "s"}
-          </p>
-          {!disabled ? (
-            <Button type="button" size="sm" variant="secondary" onClick={addRoom}>
-              <Plus className="h-3.5 w-3.5" />
-              Add room
-            </Button>
-          ) : null}
-        </div>
-
-        {intake.rooms.length === 0 ? (
-          <p className="mt-3 text-sm text-slate-500">No rooms yet.</p>
-        ) : (
-          <div className="mt-4 space-y-5">
-            {roomsByFloor.map(
-              ({ floor, rooms }) =>
-                rooms.length > 0 && (
-                  <div key={floor}>
-                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                      {FLOOR_LABELS[floor]}
-                    </p>
-                    <div className="divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white">
-                      {rooms.map((room) => (
-                        <div key={room.id} className="group p-3">
-                          <div className="flex items-start gap-2">
-                            <div className="min-w-0 flex-1 space-y-2">
-                              <InlineField
-                                label="Room"
-                                value={room.name}
-                                onSave={(v) => patchRoom(room.id, { name: v })}
-                                disabled={disabled}
-                                fullWidth
-                              />
-                              <InlineField
-                                label="Items"
-                                type="textarea"
-                                value={room.items}
-                                displayValue={room.items || "Add items…"}
-                                onSave={(v) => patchRoom(room.id, { items: v })}
-                                disabled={disabled}
-                                fullWidth
-                                placeholder="List furniture and items…"
-                              />
-                            </div>
-                            {!disabled ? (
-                              <button
-                                type="button"
-                                onClick={() => removeRoom(room.id)}
-                                className="mt-5 rounded p-1 text-slate-400 opacity-0 transition-opacity hover:bg-red-50 hover:text-red-600 group-hover:opacity-100"
-                                aria-label="Remove room"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            ) : null}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ),
-            )}
-          </div>
-        )}
-
-        <ScopeExtrasBlock move={move} />
-      </DetailSection>
-    </MoveDetailSectionAnchor>
-  );
-}
-
-/** Appliances + wardrobe boxes — nested under Inventory & extras. */
-function ScopeExtrasBlock({ move }: { move: MoveRecord }) {
-  const { intake, disabled, patch, patchFn } = useMoveIntakeEdit(move.id);
-  if (!intake) return null;
-
   function addAppliance() {
     patchFn((prev) => ({
       ...prev,
       appliances: [
         ...prev.appliances,
-        { id: newId("appliance"), label: "New appliance", quantity: 1 },
+        { id: newId("appliance"), label: "Refrigerator", quantity: 1 },
       ],
     }));
   }
 
-  function updateAppliance(
-    id: string,
-    partial: { label?: string; quantity?: number },
-  ) {
+  function updateAppliance(id: string, partial: { label?: string; quantity?: number }) {
     patchFn((prev) => ({
       ...prev,
       appliances: prev.appliances.map((a) => (a.id === id ? { ...a, ...partial } : a)),
@@ -430,96 +274,174 @@ function ScopeExtrasBlock({ move }: { move: MoveRecord }) {
   }
 
   return (
-    <div className="mt-8 border-t border-slate-200 pt-6">
-      <h3 className="text-sm font-semibold text-slate-900">Extras</h3>
-      <p className="mt-0.5 text-sm text-slate-600">
-        Appliances to move, disconnect handling, and wardrobe box counts.
-      </p>
-
-      <div className="mt-4">
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Appliances
-          </p>
-          {!disabled ? (
-            <Button type="button" size="sm" variant="secondary" onClick={addAppliance}>
-              <Plus className="h-3.5 w-3.5" />
-              Add appliance
-            </Button>
-          ) : null}
-        </div>
-
-        {intake.appliances.length === 0 ? (
-          <p className="mt-2 text-sm text-slate-500">None listed</p>
-        ) : (
-          <ul className="mt-3 divide-y divide-slate-100 rounded-lg border border-slate-200 bg-slate-50/40">
-            {intake.appliances.map((a) => (
-              <li key={a.id} className="group flex items-start gap-2 bg-white p-3">
-                <div className="grid min-w-0 flex-1 gap-2 sm:grid-cols-[1fr_5rem]">
-                  <InlineField
-                    label="Appliance"
-                    value={a.label}
-                    onSave={(v) => updateAppliance(a.id, { label: v })}
-                    disabled={disabled}
-                    fullWidth
-                  />
-                  <InlineField
-                    label="Qty"
-                    type="number"
-                    value={String(a.quantity)}
-                    onSave={(v) =>
-                      updateAppliance(a.id, { quantity: v ? Math.max(1, Number(v)) : 1 })
-                    }
-                    disabled={disabled}
-                  />
-                </div>
+    <MoveDetailSectionAnchor id={SCOPE_SECTION_IDS.inventory}>
+      <DetailSection
+        title="Inventory"
+        description="Rooms by floor plus appliances to move."
+      >
+        <div className="space-y-4">
+          {roomsByFloor.map(({ floor, rooms }) => (
+            <div key={floor}>
+              <div className="mb-1.5 flex items-center justify-between gap-2">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                  {floor === 1 ? "First floor" : "Second floor"}
+                </p>
                 {!disabled ? (
-                  <button
-                    type="button"
-                    onClick={() => removeAppliance(a.id)}
-                    className="mt-5 rounded p-1 text-slate-400 opacity-0 hover:bg-red-50 hover:text-red-600 group-hover:opacity-100"
-                    aria-label="Remove appliance"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                  <Button type="button" size="sm" variant="secondary" onClick={() => addRoom(floor)}>
+                    <Plus className="h-3 w-3" />
+                    Room
+                  </Button>
                 ) : null}
-              </li>
-            ))}
-          </ul>
-        )}
-
-        <div className="mt-4">
-          <InlineField
-            label="Disconnect / reconnect"
-            type="select"
-            options={APPLIANCE_HANDLING_OPTIONS}
-            value={intake.applianceDisconnectHandling ?? ""}
-            displayValue={
-              intake.applianceDisconnectHandling === "client"
-                ? "Client will handle"
-                : intake.applianceDisconnectHandling === "referral"
-                  ? "Needs third-party referral"
-                  : "—"
-            }
-            onSave={(v) =>
-              patch({
-                applianceDisconnectHandling: v as "client" | "referral" | "",
-              })
-            }
-            disabled={disabled}
-            fullWidth
-          />
+              </div>
+              {rooms.length === 0 ? (
+                <p className="text-xs text-slate-400">No rooms</p>
+              ) : (
+                <ul className="space-y-1 rounded-md border border-slate-200 bg-white">
+                  {rooms.map((room) => {
+                    const presetMatch = ROOM_PRESETS.find((p) => p === room.name);
+                    const selectValue = presetMatch ?? "Other";
+                    return (
+                      <li
+                        key={room.id}
+                        className="group flex flex-wrap items-center gap-2 border-b border-slate-50 px-2 py-1.5 last:border-0"
+                      >
+                        <select
+                          value={selectValue}
+                          disabled={disabled}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            patchRoom(room.id, { name: v === "Other" ? "" : v });
+                          }}
+                          className="max-w-[9rem] rounded border border-slate-200 px-1.5 py-1 text-xs"
+                        >
+                          {ROOM_PRESETS.map((p) => (
+                            <option key={p} value={p}>
+                              {p}
+                            </option>
+                          ))}
+                        </select>
+                        {selectValue === "Other" ? (
+                          <input
+                            value={room.name}
+                            disabled={disabled}
+                            onChange={(e) => patchRoom(room.id, { name: e.target.value })}
+                            placeholder="Room name"
+                            className="min-w-[5rem] flex-1 rounded border border-slate-200 px-1.5 py-1 text-xs"
+                          />
+                        ) : null}
+                        <input
+                          value={room.items}
+                          disabled={disabled}
+                          onChange={(e) => patchRoom(room.id, { items: e.target.value })}
+                          placeholder="Items in room…"
+                          className="min-w-[8rem] flex-[2] rounded border border-slate-200 px-1.5 py-1 text-xs"
+                        />
+                        {!disabled ? (
+                          <button
+                            type="button"
+                            onClick={() => removeRoom(room.id)}
+                            className="rounded p-0.5 text-slate-400 opacity-0 hover:text-red-600 group-hover:opacity-100"
+                            aria-label="Remove room"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        ) : null}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          ))}
         </div>
-      </div>
 
-      <div className="mt-6">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-          Wardrobe boxes
-        </p>
-        <div className="mt-3">
-        <DetailFieldGrid cols={2}>
+        <div className="mt-4 border-t border-slate-100 pt-3">
+          <div className="mb-1.5 flex items-center justify-between gap-2">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+              Appliances
+            </p>
+            {!disabled ? (
+              <Button type="button" size="sm" variant="secondary" onClick={addAppliance}>
+                <Plus className="h-3 w-3" />
+                Add
+              </Button>
+            ) : null}
+          </div>
+          {intake.appliances.length === 0 ? (
+            <p className="text-xs text-slate-400">None</p>
+          ) : (
+            <ul className="space-y-1">
+              {intake.appliances.map((a) => (
+                <li key={a.id} className="group flex items-center gap-2 text-xs">
+                  <input
+                    value={a.label}
+                    disabled={disabled}
+                    onChange={(e) => updateAppliance(a.id, { label: e.target.value })}
+                    className="min-w-[6rem] flex-1 rounded border border-slate-200 px-1.5 py-1"
+                  />
+                  <input
+                    type="number"
+                    value={a.quantity}
+                    disabled={disabled}
+                    onChange={(e) =>
+                      updateAppliance(a.id, {
+                        quantity: e.target.value ? Math.max(1, Number(e.target.value)) : 1,
+                      })
+                    }
+                    className="w-12 rounded border border-slate-200 px-1 py-1 tabular-nums"
+                    aria-label="Quantity"
+                  />
+                  {!disabled ? (
+                    <button
+                      type="button"
+                      onClick={() => removeAppliance(a.id)}
+                      className="text-slate-400 opacity-0 hover:text-red-600 group-hover:opacity-100"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="mt-2 max-w-xs">
+            <InlineField
+              label="Disconnect / reconnect"
+              type="select"
+              options={APPLIANCE_HANDLING_OPTIONS}
+              value={intake.applianceDisconnectHandling ?? ""}
+              displayValue={
+                intake.applianceDisconnectHandling === "client"
+                  ? "Client will handle"
+                  : intake.applianceDisconnectHandling === "referral"
+                    ? "Needs third-party referral"
+                    : "—"
+              }
+              onSave={(v) =>
+                patchFn((prev) => ({
+                  ...prev,
+                  applianceDisconnectHandling: v as "client" | "referral" | "",
+                }))
+              }
+              disabled={disabled}
+            />
+          </div>
+        </div>
+      </DetailSection>
+    </MoveDetailSectionAnchor>
+  );
+}
+
+export function ScopeEquipmentSection({ move }: { move: MoveRecord }) {
+  const { intake, disabled, patch } = useMoveIntakeEdit(move.id);
+  if (!intake) return null;
+
+  return (
+    <MoveDetailSectionAnchor id={SCOPE_SECTION_IDS.equipment}>
+      <DetailSection title="Equipment & supplies">
+        <div className="flex flex-wrap items-end gap-x-4 gap-y-2">
           <InlineField
-            label="Jonah's wardrobe boxes"
+            label="Wardrobe boxes (Jonah's)"
             type="number"
             value={String(intake.wardrobe.jonahCount || "")}
             displayValue={
@@ -531,37 +453,60 @@ function ScopeExtrasBlock({ move }: { move: MoveRecord }) {
             }
             onSave={(v) =>
               patch({
-                wardrobe: {
-                  ...intake.wardrobe,
-                  jonahCount: v ? Number(v) : 0,
+                wardrobe: { ...intake.wardrobe, jonahCount: v ? Number(v) : 0 },
+              })
+            }
+            disabled={disabled}
+          />
+          <InlineField
+            label="Client wardrobes"
+            type="number"
+            value={String(intake.wardrobe.clientOwnedCount || "")}
+            displayValue={
+              intake.wardrobe.clientOwnedCount > 0
+                ? `${intake.wardrobe.clientOwnedCount}`
+                : "None"
+            }
+            onSave={(v) =>
+              patch({
+                wardrobe: { ...intake.wardrobe, clientOwnedCount: v ? Number(v) : 0 },
+              })
+            }
+            disabled={disabled}
+          />
+          <InlineField
+            label="TV boxes"
+            type="number"
+            value={String(intake.extras.tvBoxCount || "")}
+            displayValue={
+              intake.extras.tvBoxCount > 0 ? `${intake.extras.tvBoxCount}` : "None"
+            }
+            onSave={(v) =>
+              patch({
+                extras: {
+                  ...intake.extras,
+                  tvBoxCount: v ? Math.max(0, Number(v)) : 0,
                 },
               })
             }
             disabled={disabled}
           />
           <InlineField
-            label="Client-owned wardrobes"
-            type="number"
-            value={String(intake.wardrobe.clientOwnedCount || "")}
-            displayValue={
-              intake.wardrobe.clientOwnedCount > 0
-                ? `${intake.wardrobe.clientOwnedCount} (16 cu ft each)`
-                : "None"
-            }
+            label="Safe dolly"
+            type="select"
+            options={yesNoOptions}
+            value={intake.extras.safeDolly ? "yes" : "no"}
+            displayValue={intake.extras.safeDolly ? "Yes" : "No"}
             onSave={(v) =>
               patch({
-                wardrobe: {
-                  ...intake.wardrobe,
-                  clientOwnedCount: v ? Number(v) : 0,
-                },
+                extras: { ...intake.extras, safeDolly: parseYesNo(v) },
               })
             }
             disabled={disabled}
           />
-        </DetailFieldGrid>
         </div>
-      </div>
-    </div>
+      </DetailSection>
+    </MoveDetailSectionAnchor>
   );
 }
 

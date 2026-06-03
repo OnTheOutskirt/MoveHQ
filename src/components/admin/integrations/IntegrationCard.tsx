@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  INTEGRATION_STATUS_LABELS,
-  type IntegrationCatalogEntry,
-} from "@/lib/integrations/catalog";
-import { cn } from "@/lib/utils";
+import type { IntegrationCatalogEntry } from "@/lib/integrations/catalog";
 import { ExternalLink } from "lucide-react";
 import Link from "next/link";
 
@@ -13,8 +9,6 @@ type IntegrationCardProps = {
 };
 
 export function IntegrationCard({ entry }: IntegrationCardProps) {
-  const statusCfg = INTEGRATION_STATUS_LABELS[entry.status];
-
   return (
     <div className="flex h-full items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2.5 hover:border-slate-300">
       <div className="min-w-0 flex-1">
@@ -35,13 +29,8 @@ export function IntegrationCard({ entry }: IntegrationCardProps) {
             <ExternalLink className="h-3 w-3" />
           </Link>
         ) : null}
-        <span
-          className={cn(
-            "rounded px-1.5 py-0.5 text-[10px] font-semibold whitespace-nowrap",
-            statusCfg.badge,
-          )}
-        >
-          {statusCfg.label}
+        <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold whitespace-nowrap text-slate-600">
+          Not connected
         </span>
       </div>
     </div>

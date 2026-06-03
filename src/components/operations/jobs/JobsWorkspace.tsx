@@ -1,8 +1,13 @@
 "use client";
 
+import { JobFieldPacketSidebar } from "@/components/operations/jobs/JobFieldPacketSidebar";
+import { OpsJobDaySidebar } from "@/components/operations/jobs/OpsJobDaySidebar";
 import { JobsDayToolbar } from "@/components/operations/jobs/JobsDayToolbar";
 import { JobsList } from "@/components/operations/jobs/JobsList";
 import { OpsPrepPanel } from "@/components/operations/jobs/OpsPrepPanel";
+import { toDateKey } from "@/lib/calendar/date-utils";
+import { getJobFieldPacket } from "@/lib/operations/job-field-packet";
+import type { OpsJobDayRow } from "@/lib/operations/ops-jobs";
 import { useMoves } from "@/components/moves/MovesProvider";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { usePersistedState } from "@/lib/hooks/use-persisted-state";
@@ -38,6 +43,8 @@ export function JobsWorkspace() {
     "jm-ops-jobs-date",
     defaultSelectedDateForBrowse(today),
   );
+  const [packetRow, setPacketRow] = useState<OpsJobDayRow | null>(null);
+  const [selectedJobRow, setSelectedJobRow] = useState<OpsJobDayRow | null>(null);
 
   const allRows = useMemo(() => collectOpsJobDays(moves), [moves]);
   const filteredRows = useMemo(
@@ -50,19 +57,47 @@ export function JobsWorkspace() {
     setView(normalizeView(storedView));
   }, [storedView]);
 
+  useEffect(() => {
+    setSelectedJobRow(null);
+  }, [selectedDateKey, view]);
+
+  useEffect(() => {
+    if (selectedJobRow && !filteredRows.some((r) => r.id === selectedJobRow.id)) {
+      setSelectedJobRow(null);
+    }
+  }, [filteredRows, selectedJobRow]);
+
   function changeView(next: OpsJobsView) {
     setView(next);
     setStoredView(next);
+    setSelectedJobRow(null);
   }
+
+  const todayKey = toDateKey(today);
+  const showFieldPackets =
+    view === "past" || (view === "date" && !!selectedDateKey && selectedDateKey < todayKey);
+
+  const useJobDaySidebar =
+    view === "today" ||
+    view === "tomorrow" ||
+    (view === "date" && !!selectedDateKey && selectedDateKey >= todayKey);
+
+  const openPacket = useMemo(() => {
+    if (!packetRow) return null;
+    const move = moves.find((m) => m.id === packetRow.moveId);
+    return getJobFieldPacket(packetRow, move);
+  }, [packetRow, moves]);
 
   const emptyMessage =
     view === "past"
-      ? "No job days in the past few weeks."
+      ? "No completed job days in the past few weeks."
       : view === "today"
-        ? "Nothing scheduled for today."
+        ? "No booked jobs for today."
         : view === "tomorrow"
-          ? "Nothing scheduled for tomorrow."
-          : `No job days on ${opsJobsViewLabel("date", today, selectedDateKey)}.`;
+          ? "No booked jobs for tomorrow."
+          : selectedDateKey && selectedDateKey < toDateKey(today)
+            ? `No completed jobs on ${opsJobsViewLabel("date", today, selectedDateKey)}.`
+            : `No booked jobs on ${opsJobsViewLabel("date", today, selectedDateKey)}.`;
 
   return (
     <div className="space-y-4">
@@ -79,13 +114,36 @@ export function JobsWorkspace() {
           />
           <JobsList
             rows={filteredRows}
+            moves={moves}
             emptyMessage={emptyMessage}
             showDateColumn={view === "past" || view === "date"}
+            showFieldPackets={showFieldPackets}
+            onOpenFieldPacket={showFieldPackets ? setPacketRow : undefined}
+            onSelectJob={useJobDaySidebar ? setSelectedJobRow : undefined}
+            selectedJobId={selectedJobRow?.id ?? null}
           />
+          {showFieldPackets ? (
+            <p className="text-xs text-slate-500">
+              Completed jobs include forms, signatures, and payment from the crew app — open{" "}
+              <span className="font-medium">Field packet</span> to review.
+            </p>
+          ) : null}
         </div>
 
         <OpsPrepPanel tasks={prepTasks} />
       </div>
+
+      <JobFieldPacketSidebar packet={openPacket} onClose={() => setPacketRow(null)} />
+
+      <OpsJobDaySidebar
+        row={selectedJobRow}
+        move={
+          selectedJobRow
+            ? moves.find((m) => m.id === selectedJobRow.moveId)
+            : undefined
+        }
+        onClose={() => setSelectedJobRow(null)}
+      />
     </div>
   );
 }

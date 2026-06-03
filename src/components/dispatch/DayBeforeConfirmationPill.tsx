@@ -8,6 +8,7 @@ import {
 } from "@/lib/dispatch/day-before-confirmation";
 import { readConfirmationOverride, writeConfirmationOverride, subscribeConfirmationStore } from "@/lib/dispatch/confirmation-storage";
 import type { DispatchJob } from "@/lib/dispatch/types";
+import type { OpsJobDayRow } from "@/lib/operations/ops-jobs";
 import type { MoveRecord } from "@/lib/moves/types";
 import { cn } from "@/lib/utils";
 import { ChevronDown } from "lucide-react";
@@ -62,6 +63,31 @@ export function useDayBeforeConfirmationForJob(
   function setOverride(status: DayBeforeConfirmationStatus | null) {
     if (!job) return;
     writeConfirmationOverride(job.id, status);
+  }
+
+  return { confirmation, setOverride };
+}
+
+/** Day-before confirmation for Operations → Jobs (uses job-day row id for overrides). */
+export function useOpsJobDayConfirmation(
+  row: OpsJobDayRow | undefined,
+  move: MoveRecord | undefined,
+) {
+  const override = useConfirmationOverride(row?.id);
+
+  const confirmation = useMemo(() => {
+    if (!row) return null;
+    return resolveDayBeforeConfirmation(row.date, {
+      move,
+      jobDayId: row.jobDayId,
+      jobId: row.id,
+      override,
+    });
+  }, [row, move, override]);
+
+  function setOverride(status: DayBeforeConfirmationStatus | null) {
+    if (!row) return;
+    writeConfirmationOverride(row.id, status);
   }
 
   return { confirmation, setOverride };

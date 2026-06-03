@@ -1,15 +1,26 @@
 "use client";
 
 import { useMoves } from "@/components/moves/MovesProvider";
+import { useSettings } from "@/components/providers/SettingsProvider";
 import {
-  MOVES_PIPELINE_STAGES,
   isMoveLost,
   pipelineStageIndex,
-  MOVE_DETAIL_PIPELINE_LABELS,
   moveDetailPipelineStageLabel,
 } from "@/lib/moves/move-pipeline";
 import type { MoveRecord, PipelineStageId } from "@/lib/moves/types";
 import { cn } from "@/lib/utils";
+
+function formatIntakeSubmitted(at: string | undefined): string | null {
+  if (!at) return null;
+  const d = new Date(at);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
 
 /**
  * Progress width aligned to step dots (each centered in an equal flex column).
@@ -33,10 +44,13 @@ type MoveLifecycleStepperProps = {
 
 export function MoveLifecycleStepper({ move, className }: MoveLifecycleStepperProps) {
   const { updateMovePipelineStage } = useMoves();
+  const { settings } = useSettings();
+  const pipelineStages = settings.fieldCatalog.pipelineStages;
+  const stageIds = pipelineStages.map((s) => s.id);
   const lost = isMoveLost(move);
   const current = move.pipelineStage;
   const currentIdx = pipelineStageIndex(current);
-  const stageCount = MOVES_PIPELINE_STAGES.length;
+  const stageCount = stageIds.length;
   const progressPct = pipelineProgressPercent(currentIdx, stageCount, current, lost);
   return (
     <nav className={cn("min-w-0", className)} aria-label="Pipeline">
@@ -54,15 +68,19 @@ export function MoveLifecycleStepper({ move, className }: MoveLifecycleStepperPr
         ) : null}
 
         <ol className="relative flex justify-between gap-0.5">
-          {MOVES_PIPELINE_STAGES.map((stageId, i) => {
+          {pipelineStages.map((stage, i) => {
+            const stageId = stage.id;
             const isCurrent = !lost && stageId === current;
             const isPast = !lost && i < currentIdx;
+            const intakeSubmitted =
+              stageId === "new_lead" ? formatIntakeSubmitted(move.intake.submittedAt) : null;
+            const stepLabel = stage.detailLabel ?? stage.label;
             return (
               <li key={stageId} className="flex min-w-0 flex-1 flex-col items-center">
                 <button
                   type="button"
                   disabled={lost}
-                  onClick={() => updateMovePipelineStage(move.id, stageId)}
+                  onClick={() => updateMovePipelineStage(move.id, stageId as PipelineStageId)}
                   title={moveDetailPipelineStageLabel(stageId)}
                   aria-label={`${moveDetailPipelineStageLabel(stageId)}${isCurrent ? " (current)" : ""}`}
                   aria-current={isCurrent ? "step" : undefined}
@@ -94,8 +112,13 @@ export function MoveLifecycleStepper({ move, className }: MoveLifecycleStepperPr
                       !lost && !isCurrent && "text-slate-400",
                     )}
                   >
-                    {MOVE_DETAIL_PIPELINE_LABELS[stageId]}
+                    {stepLabel}
                   </span>
+                  {intakeSubmitted ? (
+                    <span className="max-w-[5.5rem] text-center text-[8px] leading-tight text-slate-500">
+                      {intakeSubmitted}
+                    </span>
+                  ) : null}
                 </button>
               </li>
             );

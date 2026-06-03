@@ -4,7 +4,6 @@ import {
   Building2,
   Calendar,
   ClipboardList,
-  FileSignature,
   FileText,
   Inbox,
   LayoutDashboard,
@@ -65,7 +64,7 @@ export const navigation: NavEntry[] = [
     icon: MapPin,
     items: [
       { type: "link", label: "Moves", href: ROUTES.salesMoves, icon: Package },
-      { type: "link", label: "Web quotes", href: ROUTES.salesWebQuotes, icon: Globe },
+      { type: "link", label: "AI Web Quotes", href: ROUTES.salesWebQuotes, icon: Globe },
       { type: "link", label: "Follow-Ups", href: ROUTES.salesFollowUps, icon: ListChecks },
       { type: "link", label: "Documents", href: ROUTES.salesDocuments, icon: FileText },
       { type: "link", label: "Directory", href: ROUTES.salesDirectory, icon: Users },
@@ -81,12 +80,6 @@ export const navigation: NavEntry[] = [
       { type: "link", label: "Claims", href: "/operations/claims", icon: Scale },
       { type: "link", label: "Crew", href: "/operations/crew", icon: Users },
       { type: "link", label: "Fleet", href: "/operations/fleet", icon: Truck },
-      {
-        type: "link",
-        label: "Field Forms",
-        href: "/operations/forms",
-        icon: FileSignature,
-      },
       {
         type: "link",
         label: "Payroll & Time",
@@ -115,7 +108,6 @@ export const navigation: NavEntry[] = [
       { type: "link", label: "Staff", href: "/admin/staff", icon: UserCog },
       { type: "link", label: "Company", href: "/admin/company", icon: Building2 },
       { type: "link", label: "Integrations", href: "/admin/integrations", icon: Plug },
-      { type: "link", label: "Templates", href: "/admin/templates", icon: FileText },
       { type: "link", label: "Setup", href: "/admin/setup", icon: Sliders },
     ],
   },

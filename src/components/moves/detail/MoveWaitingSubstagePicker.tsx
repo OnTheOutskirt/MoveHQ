@@ -1,23 +1,15 @@
 "use client";
 
 import { useMoves } from "@/components/moves/MovesProvider";
-import { WAITING_SUBSTAGE_CONFIG } from "@/lib/moves/move-pipeline";
-import { WAITING_SUBSTAGES, type MoveRecord, type WaitingSubstage } from "@/lib/moves/types";
+import { useSettings } from "@/components/providers/SettingsProvider";
+import type { MoveRecord, WaitingSubstage } from "@/lib/moves/types";
 import { cn } from "@/lib/utils";
 import { ChevronDown } from "lucide-react";
 
 type MoveWaitingSubstagePickerProps = {
   move: MoveRecord;
   className?: string;
-  /** Under pipeline stepper — compact but readable */
   variant?: "stepper" | "inline";
-};
-
-const STEPPER_TINT: Record<WaitingSubstage | "unset", string> = {
-  unset: "border-blue-200 bg-blue-50/70",
-  needs_info: "border-blue-200 bg-blue-50/70",
-  needs_walkthrough: "border-indigo-200 bg-indigo-50/60",
-  walkthrough_scheduled: "border-violet-200 bg-violet-50/60",
 };
 
 export function MoveWaitingSubstagePicker({
@@ -25,13 +17,15 @@ export function MoveWaitingSubstagePicker({
   className,
   variant = "inline",
 }: MoveWaitingSubstagePickerProps) {
+  const { settings } = useSettings();
   const { updateWaitingSubstage } = useMoves();
+  const substageOptions = settings.fieldCatalog.waitingSubstages;
 
   if (move.conditionStatus === "lost" || move.pipelineStage !== "waiting") return null;
 
   const substage = move.waitingSubstage;
-  const config = substage ? WAITING_SUBSTAGE_CONFIG[substage] : null;
-  const tintKey = substage ?? "unset";
+  const description =
+    settings.fieldCatalog.waitingSubstages.find((s) => s.id === substage)?.description ?? null;
 
   const select = (
     <div className="relative min-w-0">
@@ -47,18 +41,15 @@ export function MoveWaitingSubstagePicker({
           variant === "stepper"
             ? "py-1.5 pl-2.5 pr-8 text-xs sm:text-sm"
             : "py-2 pl-3 pr-9 text-sm",
-          substage === "needs_info" && variant === "stepper" && "border-blue-200",
-          substage === "needs_walkthrough" && variant === "stepper" && "border-indigo-200",
-          substage === "walkthrough_scheduled" && variant === "stepper" && "border-violet-200",
           variant === "inline" && "border-slate-200 shadow-sm",
         )}
       >
         <option value="" disabled>
           Select reason…
         </option>
-        {WAITING_SUBSTAGES.map((sub) => (
-          <option key={sub} value={sub}>
-            {WAITING_SUBSTAGE_CONFIG[sub].label}
+        {substageOptions.map((sub) => (
+          <option key={sub.id} value={sub.id}>
+            {sub.label}
           </option>
         ))}
       </select>
@@ -76,8 +67,7 @@ export function MoveWaitingSubstagePicker({
     return (
       <div
         className={cn(
-          "w-full min-w-[11rem] max-w-full rounded-lg border px-2.5 py-2 sm:w-1/3",
-          STEPPER_TINT[tintKey],
+          "w-full min-w-[11rem] max-w-full rounded-lg border border-blue-200 bg-blue-50/70 px-2.5 py-2 sm:w-1/3",
           className,
         )}
         role="group"
@@ -91,9 +81,9 @@ export function MoveWaitingSubstagePicker({
           Waiting reason
         </label>
         {select}
-        {config ? (
-          <p className="mt-1 line-clamp-2 text-[10px] leading-snug text-slate-500" title={config.description}>
-            {config.description}
+        {description ? (
+          <p className="mt-1 line-clamp-2 text-[10px] leading-snug text-slate-500" title={description}>
+            {description}
           </p>
         ) : (
           <p className="mt-1 text-[10px] text-slate-500">Required while in Waiting</p>
@@ -108,9 +98,7 @@ export function MoveWaitingSubstagePicker({
         Waiting reason
       </label>
       <div className="mt-1.5">{select}</div>
-      {config ? (
-        <p className="mt-1.5 text-xs text-slate-500">{config.description}</p>
-      ) : null}
+      {description ? <p className="mt-1.5 text-xs text-slate-500">{description}</p> : null}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { getOrganizationById, MOCK_PEOPLE } from "@/lib/people/mock-data";
 import type { PersonRecord } from "@/lib/people/types";
-import { leadChannelLabels } from "./move-priority-tier";
+import { leadChannelLabel } from "./move-priority-tier";
 import type { LeadChannel, LinkedPersonRole, MoveLinkedPerson, MoveRecord } from "./types";
 
 const REFERRAL_CHANNELS: LeadChannel[] = [
@@ -22,7 +22,7 @@ export function isReferralLeadChannel(channel: LeadChannel): boolean {
 }
 
 export function leadSourceLabel(channel: LeadChannel): string {
-  return leadChannelLabels[channel];
+  return leadChannelLabel(channel);
 }
 
 /** Single referral / lead-source contact for this move's channel (at most one). */

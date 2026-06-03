@@ -1,9 +1,10 @@
 /** In-tab section anchors for move detail workspace tabs. */
 
 export const SCOPE_SECTION_IDS = {
-  moveDetails: "scope-move-details",
+  services: "scope-services",
   locations: "scope-locations",
   inventory: "scope-inventory",
+  equipment: "scope-equipment",
   specialty: "scope-specialty",
 } as const;
 
@@ -15,14 +16,16 @@ export const MOVE_PLAN_SECTION_IDS = {
 /** Move Scope tab: job days first, then scope sections. */
 export const MOVE_PLAN_SECTIONS = [
   { id: MOVE_PLAN_SECTION_IDS.jobDays, label: "Job days" },
-  { id: MOVE_PLAN_SECTION_IDS.moveDetails, label: "Move Details" },
-  { id: MOVE_PLAN_SECTION_IDS.locations, label: "Locations & Access" },
-  { id: MOVE_PLAN_SECTION_IDS.inventory, label: "Inventory & extras" },
+  { id: MOVE_PLAN_SECTION_IDS.services, label: "Services" },
   { id: MOVE_PLAN_SECTION_IDS.specialty, label: "Specialty & high-value" },
+  { id: MOVE_PLAN_SECTION_IDS.inventory, label: "Inventory" },
+  { id: MOVE_PLAN_SECTION_IDS.equipment, label: "Equipment & supplies" },
+  { id: MOVE_PLAN_SECTION_IDS.locations, label: "Locations" },
 ] as const;
 
 export const QUOTE_CONTRACT_SECTION_IDS = {
   pricing: "qc-pricing",
+  changeOrders: "qc-change-orders",
   liability: "qc-liability",
   contracts: "qc-contracts",
   payment: "qc-payment",
@@ -30,6 +33,7 @@ export const QUOTE_CONTRACT_SECTION_IDS = {
 
 export const QUOTE_CONTRACT_SECTIONS = [
   { id: QUOTE_CONTRACT_SECTION_IDS.pricing, label: "Quote" },
+  { id: QUOTE_CONTRACT_SECTION_IDS.changeOrders, label: "Change orders" },
   { id: QUOTE_CONTRACT_SECTION_IDS.liability, label: "Liability" },
   { id: QUOTE_CONTRACT_SECTION_IDS.contracts, label: "Contracts" },
   { id: QUOTE_CONTRACT_SECTION_IDS.payment, label: "Payment" },

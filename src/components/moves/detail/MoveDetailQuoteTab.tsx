@@ -5,6 +5,7 @@ import {
   DetailFieldGrid,
   DetailSection,
 } from "@/components/moves/detail/DetailSection";
+import { SendDocumentButtons } from "@/components/moves/detail/SendDocumentButtons";
 import { WebsiteIntakePanel } from "@/components/moves/detail/WebsiteIntakePanel";
 import { quoteChannelLabel } from "@/lib/moves/acquisition";
 import { formatMoveDate, formatQuote } from "@/lib/moves/format";
@@ -54,6 +55,16 @@ export function MoveDetailQuoteTab({ move }: MoveDetailQuoteTabProps) {
   return (
     <div className="space-y-4">
       <WebsiteIntakePanel move={move} />
+
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand-100 bg-gradient-to-r from-brand-50/80 to-white px-4 py-3">
+        <div>
+          <p className="text-sm font-semibold text-slate-900">Ready to send?</p>
+          <p className="text-xs text-slate-500">
+            Preview the quote, add CC recipients, and include deposit terms.
+          </p>
+        </div>
+        <SendDocumentButtons showContract={false} />
+      </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <DetailSection title="Flat rate total">

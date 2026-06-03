@@ -1,3 +1,8 @@
+import {
+  formatCityStateZip,
+  formatStreetCityStateZip,
+  parseCityStateZip,
+} from "./location-address";
 import { formatIntakeAddress } from "./intake-display";
 import type { IntakeAddress, IntakeLocationType } from "./flat-rate-intake";
 import { INTAKE_LOCATION_TYPES } from "./flat-rate-intake";
@@ -61,12 +66,29 @@ export function resolveLocationSelectKey(
   return CUSTOM_LOCATION_KEY;
 }
 
-export function formatJobDayLocationAddress(loc: Pick<
-  JobDayLocation,
-  "street" | "cityStateZip" | "formattedAddress"
->): string {
+export function jobDayLocationCityStateZip(
+  loc: Pick<JobDayLocation, "city" | "state" | "zip" | "cityStateZip">,
+): { city: string; state: string; zip: string } {
+  if (loc.city?.trim() || loc.state?.trim() || loc.zip?.trim()) {
+    return {
+      city: loc.city?.trim() ?? "",
+      state: loc.state?.trim() ?? "",
+      zip: loc.zip?.trim() ?? "",
+    };
+  }
+  return parseCityStateZip(loc.cityStateZip);
+}
+
+export function formatJobDayLocationAddress(
+  loc: Pick<
+    JobDayLocation,
+    "street" | "city" | "state" | "zip" | "cityStateZip" | "formattedAddress"
+  >,
+): string {
   if (loc.formattedAddress.trim()) return loc.formattedAddress.trim();
-  return [loc.street, loc.cityStateZip].filter(Boolean).join(", ") || "";
+  const { city, state, zip } = jobDayLocationCityStateZip(loc);
+  const line2 = formatCityStateZip(city, state, zip) || loc.cityStateZip.trim();
+  return formatStreetCityStateZip(loc.street, city, state, zip) || [loc.street, line2].filter(Boolean).join(", ") || "";
 }
 
 export function googleMapsSearchUrl(address: string): string {
@@ -118,18 +140,23 @@ export function locationFromIntake(
   id?: string,
 ): JobDayLocation {
   const formatted = formatIntakeAddress(addr);
-  return {
+  const { city, state, zip } = parseCityStateZip(addr.cityStateZip);
+  return syncLocationFormattedAddress({
     id: id ?? `loc-${role}-${Date.now()}`,
     role,
     formattedAddress: formatted,
     street: addr.street,
     cityStateZip: addr.cityStateZip,
+    city,
+    state,
+    zip,
     locationType: addr.locationType,
+    access: { ...addr.access },
     accessNotes: Object.entries(addr.access)
       .filter(([, v]) => v)
       .map(([, v]) => v)
       .join(" · ") || undefined,
-  };
+  });
 }
 
 export function emptyJobDayLocation(role: JobDayLocationRole, label?: string): JobDayLocation {
@@ -234,8 +261,32 @@ export function applyKnownLocation(
 }
 
 export function syncLocationFormattedAddress(loc: JobDayLocation): JobDayLocation {
-  const formatted = [loc.street, loc.cityStateZip].filter(Boolean).join(", ");
-  return { ...loc, formattedAddress: formatted || loc.formattedAddress };
+  const { city, state, zip } = jobDayLocationCityStateZip(loc);
+  const cityStateZip = formatCityStateZip(city, state, zip) || loc.cityStateZip;
+  const formatted =
+    formatStreetCityStateZip(loc.street, city, state, zip) ||
+    [loc.street, cityStateZip].filter(Boolean).join(", ");
+  return {
+    ...loc,
+    city,
+    state,
+    zip,
+    cityStateZip,
+    formattedAddress: formatted || loc.formattedAddress,
+  };
+}
+
+export function patchJobDayLocationCityStateZip(
+  loc: JobDayLocation,
+  partial: Partial<{ city: string; state: string; zip: string }>,
+): JobDayLocation {
+  const current = jobDayLocationCityStateZip(loc);
+  return syncLocationFormattedAddress({
+    ...loc,
+    city: partial.city ?? current.city,
+    state: partial.state ?? current.state,
+    zip: partial.zip ?? current.zip,
+  });
 }
 
 export function locationsFromLegacyNotes(day: MoveJobDay): JobDayLocation[] {

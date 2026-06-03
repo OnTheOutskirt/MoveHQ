@@ -1,6 +1,6 @@
 "use client";
 
-import { useSettings } from "@/components/providers/SettingsProvider";
+import { useSettingsEditor } from "@/lib/settings/use-settings-editor";
 import { SettingsField, SettingsInput } from "@/components/settings/SettingsField";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
@@ -10,7 +10,7 @@ import Image from "next/image";
 const MAX_LOGO_BYTES = 512 * 1024;
 
 export function BrandingTab() {
-  const { settings, updateBranding } = useSettings();
+  const { settings, updateBranding } = useSettingsEditor();
   const { branding } = settings;
 
   function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {

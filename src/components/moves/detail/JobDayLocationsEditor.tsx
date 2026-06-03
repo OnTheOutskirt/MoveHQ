@@ -1,5 +1,6 @@
 "use client";
 
+import { PropertyListingLink } from "@/components/moves/detail/PropertyListingLink";
 import {
   applyKnownLocation,
   collectKnownLocations,
@@ -9,10 +10,11 @@ import {
   googleMapsDirectionsUrl,
   googleMapsRouteEmbedUrl,
   googleMapsSearchUrl,
-  harPropertySearchUrl,
   INTAKE_LOCATION_TYPES,
   isHouseLocationType,
+  jobDayLocationCityStateZip,
   locationsMatch,
+  patchJobDayLocationCityStateZip,
   resolveLocationSelectKey,
   scopeDestinationForMove,
   scopeOriginForMove,
@@ -21,6 +23,7 @@ import {
   syncLocationFormattedAddress,
   type KnownJobDayLocation,
 } from "@/lib/moves/job-day-locations";
+import { INTAKE_ACCESS_FIELDS } from "@/lib/moves/location-address";
 import { intakeLocationLabel } from "@/lib/moves/intake-display";
 import type { IntakeLocationType } from "@/lib/moves/flat-rate-intake";
 import type { JobDayLocation, MoveRecord } from "@/lib/moves/types";
@@ -192,16 +195,8 @@ function LocationSlotEditor({
                     Map
                     <ExternalLink className="h-2.5 w-2.5 opacity-50" />
                   </a>
-                  {isHouseLocationType(location.locationType) ? (
-                    <a
-                      href={harPropertySearchUrl(address)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:underline"
-                    >
-                      Property (HAR)
-                      <ExternalLink className="h-2.5 w-2.5 opacity-50" />
-                    </a>
+                  {location.role === "origin" && isHouseLocationType(location.locationType) ? (
+                    <PropertyListingLink provider="zillow" address={address} />
                   ) : null}
                 </div>
               </>
@@ -248,42 +243,80 @@ function LocationSlotEditor({
                   className="mt-1 w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm"
                 />
               </label>
-              <label className="block">
-                <span className="text-xs font-medium text-slate-600">City, state, ZIP</span>
-                <input
-                  value={location.cityStateZip}
-                  onChange={(e) => patch("cityStateZip", e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm"
-                />
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                <label className="block">
-                  <span className="text-xs font-medium text-slate-600">Type</span>
-                  <select
-                    value={location.locationType}
-                    onChange={(e) =>
-                      patch("locationType", e.target.value as IntakeLocationType | "")
-                    }
-                    className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
-                  >
-                    <option value="">—</option>
-                    {INTAKE_LOCATION_TYPES.map((t) => (
-                      <option key={t} value={t}>
-                        {intakeLocationLabel(t)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="block">
-                  <span className="text-xs font-medium text-slate-600">Access</span>
-                  <input
-                    value={location.accessNotes ?? ""}
-                    onChange={(e) => patch("accessNotes", e.target.value)}
-                    placeholder="Stairs, elevator…"
-                    className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
-                  />
-                </label>
+              <div className="grid grid-cols-3 gap-2">
+                {(["city", "state", "zip"] as const).map((field) => {
+                  const csz = jobDayLocationCityStateZip(location);
+                  return (
+                    <label key={field} className="block">
+                      <span className="text-xs font-medium text-slate-600">
+                        {field === "city" ? "City" : field === "state" ? "State" : "ZIP"}
+                      </span>
+                      <input
+                        value={csz[field]}
+                        onChange={(e) =>
+                          onChange(
+                            patchJobDayLocationCityStateZip(location, {
+                              [field]: e.target.value,
+                            }),
+                          )
+                        }
+                        className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
+                      />
+                    </label>
+                  );
+                })}
               </div>
+              <label className="block">
+                <span className="text-xs font-medium text-slate-600">Location type</span>
+                <select
+                  value={location.locationType}
+                  onChange={(e) =>
+                    patch("locationType", e.target.value as IntakeLocationType | "")
+                  }
+                  className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
+                >
+                  <option value="">—</option>
+                  {INTAKE_LOCATION_TYPES.map((t) => (
+                    <option key={t} value={t}>
+                      {intakeLocationLabel(t)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {INTAKE_ACCESS_FIELDS.map(({ key, label }) => (
+                  <label key={key} className="block">
+                    <span className="text-xs font-medium text-slate-600">{label}</span>
+                    <input
+                      value={location.access?.[key] ?? ""}
+                      onChange={(e) => {
+                        const access = { ...location.access, [key]: e.target.value };
+                        const accessNotes = INTAKE_ACCESS_FIELDS.map(
+                          (f) => access[f.key],
+                        )
+                          .filter(Boolean)
+                          .join(" · ");
+                        onChange(
+                          syncLocationFormattedAddress({
+                            ...location,
+                            access,
+                            accessNotes: accessNotes || undefined,
+                          }),
+                        );
+                      }}
+                      className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
+                    />
+                  </label>
+                ))}
+              </div>
+              {location.role === "origin" &&
+              isHouseLocationType(location.locationType) &&
+              formatJobDayLocationAddress(location) ? (
+                <PropertyListingLink
+                  provider="zillow"
+                  address={formatJobDayLocationAddress(location)}
+                />
+              ) : null}
               <div className="flex flex-wrap items-center gap-2 pt-1">
                 <button
                   type="button"

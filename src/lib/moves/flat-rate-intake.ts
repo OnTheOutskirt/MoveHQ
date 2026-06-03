@@ -104,6 +104,19 @@ export type IntakeWardrobe = {
   clientOwnedCount: number;
 };
 
+export type IntakeExtraItem = {
+  id: string;
+  label: string;
+  quantity: number;
+};
+
+/** TV boxes, safe dolly, and other add-on equipment/supplies. */
+export type IntakeMoveExtras = {
+  tvBoxCount: number;
+  safeDolly: boolean;
+  other: IntakeExtraItem[];
+};
+
 export type FlatRateIntake = {
   /** Stage 1 — Quick intake */
   clientName: string;
@@ -141,6 +154,7 @@ export type FlatRateIntake = {
   appliances: IntakeAppliance[];
   applianceDisconnectHandling?: "client" | "referral" | "";
   wardrobe: IntakeWardrobe;
+  extras: IntakeMoveExtras;
   hasJunk: boolean;
   junkVolume?: string;
   junkItems?: string;

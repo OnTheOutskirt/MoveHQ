@@ -10,6 +10,7 @@ import type {
   QuadrantId,
   ValueTier,
 } from "./types";
+import { catalogLeadSourceIsHot, catalogLeadSourceLabel, catalogPriorityTierConfig } from "@/lib/settings/field-catalog-runtime";
 
 export const VALUE_THRESHOLD = 2000;
 
@@ -103,8 +104,12 @@ export const leadChannelLabels: Record<LeadChannel, string> = {
   other: "Other",
 };
 
-export function isHotLeadChannel(channel: LeadChannel): boolean {
-  return HOT_CHANNELS.includes(channel);
+export function leadChannelLabel(channel: LeadChannel | string): string {
+  return catalogLeadSourceLabel(channel);
+}
+
+export function isHotLeadChannel(channel: LeadChannel | string): boolean {
+  return catalogLeadSourceIsHot(channel);
 }
 
 export function leadHeatFromChannel(channel: LeadChannel): LeadHeat {
@@ -149,7 +154,20 @@ export function getMovePriorityTier(move: MoveRecord): PriorityTierId | null {
 }
 
 export function priorityTierLabel(tier: PriorityTierId): string {
-  return priorityTierConfig[tier].tierLabel;
+  return catalogPriorityTierConfig(tier)?.tierLabel ?? priorityTierConfig[tier].tierLabel;
+}
+
+export function priorityTierStyle(tier: PriorityTierId): PriorityTierStyle {
+  const catalog = catalogPriorityTierConfig(tier);
+  const fallback = priorityTierConfig[tier];
+  if (!catalog) return fallback;
+  return {
+    ...fallback,
+    tierLabel: catalog.tierLabel,
+    shortCode: catalog.shortCode,
+    meaning: catalog.meaning,
+    badge: catalog.badge,
+  };
 }
 
 export function priorityTierSortOrder(tier: PriorityTierId | null): number {

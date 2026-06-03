@@ -22,6 +22,7 @@ import { applyIntakeToMove } from "@/lib/moves/sync-move-intake";
 import type { FlatRateIntake } from "@/lib/moves/flat-rate-intake";
 import type { PersonRecord } from "@/lib/people/types";
 import type {
+  LeadChannel,
   MoveJobDay,
   MoveLinkedPerson,
   MoveRecord,
@@ -57,6 +58,7 @@ type MovesContextValue = {
     moveId: string,
     patch: Partial<FlatRateIntake> | ((prev: FlatRateIntake) => FlatRateIntake),
   ) => void;
+  updateLeadChannel: (moveId: string, channel: LeadChannel) => void;
 };
 
 const MovesContext = createContext<MovesContextValue | null>(null);
@@ -288,6 +290,18 @@ export function MovesProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const updateLeadChannel = useCallback((moveId: string, channel: LeadChannel) => {
+    setMoves((prev) =>
+      prev.map((move) => {
+        if (move.id !== moveId || move.leadChannel === channel) return move;
+        return appendActivity(
+          { ...move, leadChannel: channel },
+          `Lead source updated`,
+        );
+      }),
+    );
+  }, []);
+
   const setReferralContact = useCallback((moveId: string, person: MoveLinkedPerson) => {
     setMoves((prev) =>
       prev.map((move) => {
@@ -329,6 +343,7 @@ export function MovesProvider({ children }: { children: ReactNode }) {
       clearShipper,
       setShipper,
       updateMoveIntake,
+      updateLeadChannel,
     }),
     [
       moves,
@@ -347,6 +362,7 @@ export function MovesProvider({ children }: { children: ReactNode }) {
       clearShipper,
       setShipper,
       updateMoveIntake,
+      updateLeadChannel,
     ],
   );
 

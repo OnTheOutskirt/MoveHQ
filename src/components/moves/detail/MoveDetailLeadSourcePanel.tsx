@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useMoves } from "@/components/moves/MovesProvider";
+import { useSettings } from "@/components/providers/SettingsProvider";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { linkedPersonRoleConfig, linkedPersonRoleLabel } from "@/lib/moves/linked-people";
 import {
@@ -13,7 +14,8 @@ import {
   referralContactForLeadSource,
   referralPartnerLabel,
 } from "@/lib/moves/lead-referral";
-import type { MoveLinkedPerson, MoveRecord } from "@/lib/moves/types";
+import { leadChannelLabel } from "@/lib/moves/move-priority-tier";
+import { type LeadChannel, type MoveLinkedPerson, type MoveRecord } from "@/lib/moves/types";
 import { salesDirectoryPersonPath } from "@/lib/navigation/routes";
 import { cn } from "@/lib/utils";
 import { Mail, Phone, User, X } from "lucide-react";
@@ -97,7 +99,9 @@ function ReferralContactCard({
 }
 
 export function MoveDetailLeadSourcePanel({ move }: MoveDetailLeadSourcePanelProps) {
-  const { setReferralContact, clearReferralContact } = useMoves();
+  const { settings } = useSettings();
+  const leadSources = settings.fieldCatalog.leadSources;
+  const { setReferralContact, clearReferralContact, updateLeadChannel } = useMoves();
   const isReferral = isReferralLeadChannel(move.leadChannel);
   const referralContact = isReferral ? referralContactForLeadSource(move) : undefined;
   const roles = CHANNEL_TO_ROLES[move.leadChannel] ?? [];
@@ -157,12 +161,18 @@ export function MoveDetailLeadSourcePanel({ move }: MoveDetailLeadSourcePanelPro
     <div className="min-w-0 shrink-0 border-b border-slate-200 p-3">
       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Lead source</p>
 
-      <div
-        className="mt-2 inline-flex min-w-0 max-w-full items-center rounded-lg border border-slate-200 bg-slate-50 px-2 py-2 text-[11px] font-medium leading-tight text-slate-800"
-        title={leadSourceLabel(move.leadChannel)}
+      <select
+        value={move.leadChannel}
+        onChange={(e) => updateLeadChannel(move.id, e.target.value as LeadChannel)}
+        className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-medium text-slate-800 hover:border-brand-300 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+        title="Change lead source"
       >
-        {leadSourceLabel(move.leadChannel)}
-      </div>
+        {leadSources.map((source) => (
+          <option key={source.id} value={source.id}>
+            {source.label}
+          </option>
+        ))}
+      </select>
 
       {isReferral ? (
         <div className="mt-2">

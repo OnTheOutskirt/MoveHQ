@@ -136,7 +136,7 @@ export function collectOpsPrepTasks(
         category: "vendor",
         title: "Schedule appliance service",
         detail: "Disconnect/reconnect referral — book licensed vendor before pack day.",
-        source: "Inventory & extras",
+        source: "Extras",
       });
     }
 
