@@ -135,14 +135,22 @@ export function StaffScheduleWorkspace() {
   const selectedMember = staffMembers.find((member) => member.staffId === staffFilter);
 
   const scheduleDefaultStaff = useMemo(() => {
-    const self =
-      staffMembers.find((member) => member.staffId === user.id) ?? {
+    if (selectedMember) return selectedMember;
+    if (scope === "mine") {
+      return {
         staffId: user.id,
         staffName: user.name,
         department: "sales" as const,
       };
-    return self;
-  }, [staffMembers, user.id, user.name]);
+    }
+    return (
+      staffMembers[0] ?? {
+        staffId: user.id,
+        staffName: user.name,
+        department: "sales" as const,
+      }
+    );
+  }, [selectedMember, scope, staffMembers, user.id, user.name]);
 
   const defaultScheduleDate = useMemo(() => {
     const open = openDatesInWeek(weekStart, officeOpenDays);

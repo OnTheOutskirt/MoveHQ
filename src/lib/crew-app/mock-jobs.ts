@@ -1,5 +1,4 @@
 import { addDays, parseDateKey, toDateKey } from "@/lib/calendar/date-utils";
-import { DEMO_CREW_MEMBERS } from "./session";
 import type { CrewAppJob, CrewAppRole } from "./types";
 
 /** Fixed “today” for demo jobs so SSR and client render the same schedule. */
@@ -209,24 +208,16 @@ export function mockCrewAppJobs(): CrewAppJob[] {
   ];
 }
 
-/** Jobs where the logged-in crew member is on the published roster. */
+/** Demo build — show all jobs with the preview role from session. */
 export function jobsForCrewMember(
   jobs: CrewAppJob[],
-  crewId: string,
+  _crewId: string,
   sessionRole: CrewAppRole,
 ): CrewAppJob[] {
-  const member = DEMO_CREW_MEMBERS.find((m) => m.id === crewId);
-  if (!member) return [];
-
-  return jobs
-    .filter((job) => job.crew.some((slot) => slot.name === member.name))
-    .map((job) => {
-      const rosterRole = job.crew.find((slot) => slot.name === member.name)?.role;
-      return {
-        ...job,
-        myRole: rosterRole ?? sessionRole,
-      };
-    });
+  return jobs.map((j) => ({
+    ...j,
+    myRole: sessionRole,
+  }));
 }
 
 export function jobsForDate(jobs: CrewAppJob[], dateKey: string): CrewAppJob[] {

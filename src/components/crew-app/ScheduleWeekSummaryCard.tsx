@@ -14,7 +14,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 
 export function ScheduleWeekSummaryCard() {
-  const { myJobs, crewPath, isClientReady, session } = useCrewApp();
+  const { myJobs, crewPath, isClientReady } = useCrewApp();
   const { settings } = useSettings();
   const weekStartsOn = settings.company.weekStartsOn ?? "monday";
   const [weekPickerOpen, setWeekPickerOpen] = useState(false);
@@ -87,9 +87,7 @@ export function ScheduleWeekSummaryCard() {
       >
         <div className="bg-gradient-to-br from-slate-50 to-white px-4 py-3.5">
           <p className="text-sm font-semibold text-slate-900">Time & tips overview</p>
-          <p className="mt-0.5 text-xs text-slate-500">
-            {session.name} · {summary.label}
-          </p>
+          <p className="mt-0.5 text-xs text-slate-500">{summary.label}</p>
           <div className="mt-3 flex flex-wrap gap-4">
             <div className="flex items-center gap-2">
               <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-100 text-brand-700">
