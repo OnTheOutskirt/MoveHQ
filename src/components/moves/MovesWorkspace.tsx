@@ -3,6 +3,7 @@
 import { MoveListView } from "@/components/moves/MoveListView";
 import { MovePipelineBoard } from "@/components/moves/MovePipelineBoard";
 import { useMoves } from "@/components/moves/MovesProvider";
+import { useWorkspace } from "@/components/providers/WorkspaceProvider";
 import { useMovesFilters } from "@/components/moves/hooks/use-moves-filters";
 import { MovesToolbar } from "@/components/moves/shared/MovesToolbar";
 import type { MovesViewMode } from "@/lib/moves/view-mode";
@@ -15,20 +16,27 @@ import { useState } from "react";
 const meta = pageMeta["/sales/moves"];
 
 export function MovesWorkspace() {
-  const { updateMovePipelineStage } = useMoves();
+  const { updateMovePipelineStage, openNewMoveDialog } = useMoves();
+  const { isAllLocationsView, hasMultipleLocations, activeLocation, config } = useWorkspace();
   const filters = useMovesFilters();
   const { filteredMoves, repFilter, quoteChannelFilter } = filters;
   const [view, setView] = useState<MovesViewMode>("pipeline");
 
   const isEmpty = filteredMoves.length === 0;
 
+  const locationHint = hasMultipleLocations
+    ? isAllLocationsView
+      ? "All locations"
+      : activeLocation?.name ?? config.company.name
+    : activeLocation?.name ?? config.locations[0]?.name ?? config.company.name;
+
   return (
     <div className="space-y-4">
       <PageHeader
         title={meta.title}
-        description="Pipeline board and list — filter by salesperson and quote source."
+        description={`${locationHint} · Pipeline board and list — filter by salesperson and quote source.`}
         actions={
-          <Button type="button" size="sm" disabled title="Coming soon">
+          <Button type="button" size="sm" onClick={openNewMoveDialog}>
             <Plus className="h-4 w-4" />
             New move
           </Button>

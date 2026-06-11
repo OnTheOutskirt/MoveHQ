@@ -1,4 +1,8 @@
 import { buildLostReasonDisplay, type MarkLostPayload } from "./lost-reasons";
+import {
+  hasEnabledStageAutomations,
+  mergeAutomationFollowUps,
+} from "@/lib/settings/pipeline-automation-runtime";
 import { syncFollowUpDue, createFollowUp, defaultFollowUpForStage } from "./move-follow-ups";
 import type {
   MoveConditionStatus,
@@ -308,6 +312,10 @@ export function applyPipelineStage(
     status: statusForPipelineStage(stage, patched),
     conditionStatus: conditionForPipelineStage(stage, patched),
   };
+  const withAutomations = mergeAutomationFollowUps(next, stage);
+  if (withAutomations.followUps.length > next.followUps.length || hasEnabledStageAutomations(stage)) {
+    return syncFollowUpDue(withAutomations);
+  }
   const template = defaultFollowUpForStage(next, stage);
   if (template && !getOpenFollowUpsFromMove(next)) {
     const withFu = {
@@ -316,7 +324,7 @@ export function applyPipelineStage(
     };
     return syncFollowUpDue(withFu);
   }
-  return syncFollowUpDue(next);
+  return syncFollowUpDue(withAutomations);
 }
 
 function getOpenFollowUpsFromMove(move: MoveRecord) {

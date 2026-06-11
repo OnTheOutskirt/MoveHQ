@@ -19,6 +19,10 @@ export function useSettingsEditor() {
       updateFollowUps: draft.updateFollowUps,
       updatePipelineCopy: draft.updatePipelineCopy,
       updateFieldCatalog: draft.updateFieldCatalog,
+      updatePriorityTierRules: draft.updatePriorityTierRules,
+      updatePipelineAutomations: draft.updatePipelineAutomations,
+      updateLeadRouting: draft.updateLeadRouting,
+      updateMoveTypeRules: draft.updateMoveTypeRules,
       isDraft: true as const,
     };
   }
@@ -33,6 +37,10 @@ export function useSettingsEditor() {
     updateFollowUps: live.updateFollowUps,
     updatePipelineCopy: live.updatePipelineCopy,
     updateFieldCatalog: live.updateFieldCatalog,
+    updatePriorityTierRules: live.updatePriorityTierRules,
+    updatePipelineAutomations: live.updatePipelineAutomations,
+    updateLeadRouting: live.updateLeadRouting,
+    updateMoveTypeRules: live.updateMoveTypeRules,
     isDraft: false as const,
   };
 }
@@ -51,6 +59,10 @@ export function useSettingsSection<K extends keyof AppSettings>(key: K) {
         followUps: editor.updateFollowUps,
         pipelineCopy: editor.updatePipelineCopy,
         fieldCatalog: editor.updateFieldCatalog,
+        priorityTierRules: editor.updatePriorityTierRules,
+        pipelineAutomations: editor.updatePipelineAutomations,
+        leadRouting: editor.updateLeadRouting,
+        moveTypeRules: editor.updateMoveTypeRules,
       } as const;
       (map[key] as (p: Partial<AppSettings[K]>) => void)(patch);
     },

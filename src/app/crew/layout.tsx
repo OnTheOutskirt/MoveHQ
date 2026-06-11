@@ -1,4 +1,6 @@
 import { CrewAppProvider } from "@/components/crew-app/CrewAppProvider";
+import { CrewAppChrome } from "@/components/crew-app/CrewAppChrome";
+import { ClaimsProvider } from "@/components/providers/ClaimsProvider";
 import { CrewRecordsProvider } from "@/components/providers/CrewRecordsProvider";
 import { SettingsProvider } from "@/components/providers/SettingsProvider";
 import type { Metadata, Viewport } from "next";
@@ -34,9 +36,13 @@ export default function CrewLayout({ children }: { children: ReactNode }) {
   return (
     <SettingsProvider>
       <CrewRecordsProvider>
-        <Suspense fallback={<CrewAppFallback />}>
-          <CrewAppProvider>{children}</CrewAppProvider>
-        </Suspense>
+        <ClaimsProvider>
+          <Suspense fallback={<CrewAppFallback />}>
+            <CrewAppProvider>
+              <CrewAppChrome>{children}</CrewAppChrome>
+            </CrewAppProvider>
+          </Suspense>
+        </ClaimsProvider>
       </CrewRecordsProvider>
     </SettingsProvider>
   );

@@ -1,6 +1,8 @@
 "use client";
 
+import { JobDayAddressField } from "@/components/moves/detail/JobDayAddressField";
 import { PropertyListingLink } from "@/components/moves/detail/PropertyListingLink";
+import { useWorkspace } from "@/components/providers/WorkspaceProvider";
 import {
   applyKnownLocation,
   collectKnownLocations,
@@ -12,9 +14,7 @@ import {
   googleMapsSearchUrl,
   INTAKE_LOCATION_TYPES,
   isHouseLocationType,
-  jobDayLocationCityStateZip,
   locationsMatch,
-  patchJobDayLocationCityStateZip,
   resolveLocationSelectKey,
   scopeDestinationForMove,
   scopeOriginForMove,
@@ -23,7 +23,10 @@ import {
   syncLocationFormattedAddress,
   type KnownJobDayLocation,
 } from "@/lib/moves/job-day-locations";
-import { INTAKE_ACCESS_FIELDS } from "@/lib/moves/location-address";
+import {
+  buildJobDayAccessNotes,
+  JOB_DAY_ACCESS_FIELDS,
+} from "@/lib/moves/location-address";
 import { intakeLocationLabel } from "@/lib/moves/intake-display";
 import type { IntakeLocationType } from "@/lib/moves/flat-rate-intake";
 import type { JobDayLocation, MoveRecord } from "@/lib/moves/types";
@@ -79,6 +82,8 @@ function LocationSlotEditor({
   location,
   scopeDefault,
   knownLocations,
+  defaultState,
+  addressSuggestions,
   onChange,
   onRemove,
   canRemove,
@@ -88,6 +93,8 @@ function LocationSlotEditor({
   location: JobDayLocation;
   scopeDefault: JobDayLocation | null;
   knownLocations: KnownJobDayLocation[];
+  defaultState: string;
+  addressSuggestions: string[];
   onChange: (loc: JobDayLocation) => void;
   onRemove?: () => void;
   canRemove?: boolean;
@@ -184,32 +191,42 @@ function LocationSlotEditor({
                 {location.accessNotes ? (
                   <p className="mt-0.5 text-xs text-slate-500">{location.accessNotes}</p>
                 ) : null}
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <a
-                    href={googleMapsSearchUrl(address)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:underline"
-                  >
-                    <MapPin className="h-3 w-3" />
-                    Map
-                    <ExternalLink className="h-2.5 w-2.5 opacity-50" />
-                  </a>
+                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
                   {location.role === "origin" && isHouseLocationType(location.locationType) ? (
                     <PropertyListingLink provider="zillow" address={address} />
-                  ) : null}
+                  ) : (
+                    <a
+                      href={googleMapsSearchUrl(address)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:underline"
+                    >
+                      <MapPin className="h-3 w-3" />
+                      Map
+                      <ExternalLink className="h-2.5 w-2.5 opacity-50" />
+                    </a>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setEditing(true)}
+                    className="text-xs font-semibold text-brand-700 hover:text-brand-800"
+                  >
+                    Change
+                  </button>
                 </div>
               </>
             ) : (
               <p className="text-xs text-slate-500">No address on file</p>
             )}
-            <button
-              type="button"
-              onClick={() => setEditing(true)}
-              className="mt-2 text-xs font-semibold text-brand-700 hover:text-brand-800"
-            >
-              Change
-            </button>
+            {!address ? (
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                className="mt-2 text-xs font-semibold text-brand-700 hover:text-brand-800"
+              >
+                Add address
+              </button>
+            ) : null}
           </div>
         ) : (
           <div className="space-y-2">
@@ -231,41 +248,16 @@ function LocationSlotEditor({
                   <input
                     value={location.label ?? ""}
                     onChange={(e) => patch("label", e.target.value)}
-                    className="mt-1 w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm"
+                    className="mt-0.5 w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm"
                   />
                 </label>
               ) : null}
-              <label className="block">
-                <span className="text-xs font-medium text-slate-600">Street</span>
-                <input
-                  value={location.street}
-                  onChange={(e) => patch("street", e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm"
-                />
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                {(["city", "state", "zip"] as const).map((field) => {
-                  const csz = jobDayLocationCityStateZip(location);
-                  return (
-                    <label key={field} className="block">
-                      <span className="text-xs font-medium text-slate-600">
-                        {field === "city" ? "City" : field === "state" ? "State" : "ZIP"}
-                      </span>
-                      <input
-                        value={csz[field]}
-                        onChange={(e) =>
-                          onChange(
-                            patchJobDayLocationCityStateZip(location, {
-                              [field]: e.target.value,
-                            }),
-                          )
-                        }
-                        className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
-                      />
-                    </label>
-                  );
-                })}
-              </div>
+              <JobDayAddressField
+                location={location}
+                defaultState={defaultState}
+                addressSuggestions={addressSuggestions}
+                onChange={onChange}
+              />
               <label className="block">
                 <span className="text-xs font-medium text-slate-600">Location type</span>
                 <select
@@ -273,7 +265,7 @@ function LocationSlotEditor({
                   onChange={(e) =>
                     patch("locationType", e.target.value as IntakeLocationType | "")
                   }
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
+                  className="mt-0.5 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
                 >
                   <option value="">—</option>
                   {INTAKE_LOCATION_TYPES.map((t) => (
@@ -283,40 +275,33 @@ function LocationSlotEditor({
                   ))}
                 </select>
               </label>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                {INTAKE_ACCESS_FIELDS.map(({ key, label }) => (
+              <div className="grid grid-cols-2 gap-2">
+                {JOB_DAY_ACCESS_FIELDS.map(({ key, label, options }) => (
                   <label key={key} className="block">
                     <span className="text-xs font-medium text-slate-600">{label}</span>
-                    <input
+                    <select
                       value={location.access?.[key] ?? ""}
                       onChange={(e) => {
                         const access = { ...location.access, [key]: e.target.value };
-                        const accessNotes = INTAKE_ACCESS_FIELDS.map(
-                          (f) => access[f.key],
-                        )
-                          .filter(Boolean)
-                          .join(" · ");
                         onChange(
                           syncLocationFormattedAddress({
                             ...location,
                             access,
-                            accessNotes: accessNotes || undefined,
+                            accessNotes: buildJobDayAccessNotes(access),
                           }),
                         );
                       }}
-                      className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
-                    />
+                      className="mt-0.5 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
+                    >
+                      {options.map((option) => (
+                        <option key={option || "blank"} value={option}>
+                          {option || "—"}
+                        </option>
+                      ))}
+                    </select>
                   </label>
                 ))}
               </div>
-              {location.role === "origin" &&
-              isHouseLocationType(location.locationType) &&
-              formatJobDayLocationAddress(location) ? (
-                <PropertyListingLink
-                  provider="zillow"
-                  address={formatJobDayLocationAddress(location)}
-                />
-              ) : null}
               <div className="flex flex-wrap items-center gap-2 pt-1">
                 <button
                   type="button"
@@ -351,9 +336,15 @@ export function JobDayLocationsEditor({
   locations,
   onChange,
 }: JobDayLocationsEditorProps) {
+  const { getLocationById } = useWorkspace();
   const knownLocations = useMemo(() => collectKnownLocations(move), [move]);
   const scopeOrigin = scopeOriginForMove(move);
   const scopeDestination = scopeDestinationForMove(move);
+  const defaultState = getLocationById(move.locationId)?.state?.trim() ?? "";
+  const addressSuggestions = useMemo(
+    () => knownLocations.map((known) => known.formattedAddress).filter(Boolean),
+    [knownLocations],
+  );
 
   const origin = locations.find((l) => l.role === "origin");
   const destination = locations.find((l) => l.role === "destination");
@@ -390,6 +381,8 @@ export function JobDayLocationsEditor({
           location={origin ?? scopeOrigin!}
           scopeDefault={scopeOrigin}
           knownLocations={knownLocations}
+          defaultState={defaultState}
+          addressSuggestions={addressSuggestions}
           onChange={(loc) => commit(loc, stops, destination)}
         />
       ) : null}
@@ -402,6 +395,8 @@ export function JobDayLocationsEditor({
           location={stop}
           scopeDefault={null}
           knownLocations={knownLocations}
+          defaultState={defaultState}
+          addressSuggestions={addressSuggestions}
           onChange={(loc) => {
             const next = [...stops];
             next[i] = loc;
@@ -436,6 +431,8 @@ export function JobDayLocationsEditor({
           location={destination ?? scopeDestination!}
           scopeDefault={scopeDestination}
           knownLocations={knownLocations}
+          defaultState={defaultState}
+          addressSuggestions={addressSuggestions}
           onChange={(loc) => commit(origin, stops, loc)}
         />
       ) : null}

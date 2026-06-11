@@ -1,140 +1,196 @@
-import { buildRipplingPayrollRows, ripplingPayrollCsvContent } from "./rippling-export";
-import type { PayPeriod, TimeEntry } from "./types";
+import { addDays, startOfWeekSunday, toDateKey } from "@/lib/calendar/date-utils";
+import {
+  billableHoursFromCategories,
+  buildCurrentPayPeriods,
+  normalizeTimeEntry,
+} from "./time-entry-utils";
+import type { PayPeriod, TimeEntry, TimeCategoryHours } from "./types";
 
 export { buildRipplingPayrollRows, ripplingPayrollCsvContent } from "./rippling-export";
 
-export const PAY_PERIODS: PayPeriod[] = [
-  { id: "pp-current", label: "Current week (May 19–25)", start: "2026-05-19", end: "2026-05-25" },
-  { id: "pp-prev", label: "Previous week (May 12–18)", start: "2026-05-12", end: "2026-05-18" },
-];
+type DemoPerson = {
+  personId: string;
+  personName: string;
+  workerType: TimeEntry["workerType"];
+  roleLabel: string;
+  hourlyRate: number | null;
+};
 
-export const MOCK_TIME_ENTRIES: TimeEntry[] = [
+const CREW: DemoPerson[] = [
   {
-    id: "te-1",
+    personId: "crew-marcus",
     personName: "Marcus T.",
     workerType: "crew",
     roleLabel: "Skipper",
-    date: "2026-05-20",
-    jobRef: "MV-BOOKED",
-    clockIn: "07:02",
-    clockOut: "15:48",
-    breakMinutes: 30,
-    hours: 8.27,
     hourlyRate: 22,
-    status: "approved",
-    source: "crew_app",
   },
   {
-    id: "te-2",
+    personId: "crew-tyler",
     personName: "Tyler Brooks",
     workerType: "crew",
     roleLabel: "Skipper / Driver",
-    date: "2026-05-20",
-    jobRef: "MV-BOOKED",
-    clockIn: "07:05",
-    clockOut: "16:10",
-    breakMinutes: 30,
-    hours: 8.58,
     hourlyRate: 21,
-    status: "approved",
-    source: "crew_app",
   },
   {
-    id: "te-3",
+    personId: "crew-devon",
     personName: "Devon Lee",
     workerType: "crew",
     roleLabel: "Driver",
-    date: "2026-05-20",
-    jobRef: "MV-BOOKED",
-    clockIn: "07:10",
-    clockOut: "14:55",
-    breakMinutes: 30,
-    hours: 7.25,
     hourlyRate: 19,
-    status: "pending",
-    source: "crew_app",
-    notes: "Clock-out looks early — verify with dispatch",
   },
   {
-    id: "te-4",
-    personName: "Alex Rivera",
-    workerType: "office",
-    roleLabel: "Sales · hourly",
-    date: "2026-05-20",
-    jobRef: null,
-    clockIn: "08:30",
-    clockOut: "17:15",
-    breakMinutes: 60,
-    hours: 7.75,
-    hourlyRate: 24,
-    status: "approved",
-    source: "office_manual",
-  },
-  {
-    id: "te-5",
-    personName: "Jordan Lee",
-    workerType: "office",
-    roleLabel: "Sales · hourly",
-    date: "2026-05-19",
-    jobRef: null,
-    clockIn: "09:00",
-    clockOut: "18:00",
-    breakMinutes: 60,
-    hours: 8,
-    hourlyRate: 23,
-    status: "approved",
-    source: "office_manual",
-  },
-  {
-    id: "te-6",
-    personName: "Lisa Parker",
-    workerType: "office",
-    roleLabel: "Operations · hourly",
-    date: "2026-05-20",
-    jobRef: null,
-    clockIn: "07:00",
-    clockOut: "16:30",
-    breakMinutes: 45,
-    hours: 8.25,
-    hourlyRate: 28,
-    status: "pending",
-    source: "manager_edit",
-    notes: "Adjusted lunch break per timesheet",
-  },
-  {
-    id: "te-7",
+    personId: "crew-sam",
     personName: "Sam R.",
     workerType: "crew",
     roleLabel: "Mover",
-    date: "2026-05-19",
-    jobRef: "MV-AI",
-    clockIn: "06:55",
-    clockOut: "15:20",
-    breakMinutes: 30,
-    hours: 7.92,
     hourlyRate: 18,
-    status: "approved",
-    source: "crew_app",
   },
   {
-    id: "te-8",
-    personName: "Mia Chen",
-    workerType: "office",
-    roleLabel: "Coordinator · salary",
-    date: "2026-05-20",
-    jobRef: null,
-    clockIn: "08:00",
-    clockOut: "17:00",
-    breakMinutes: 60,
-    hours: 8,
-    hourlyRate: null,
-    status: "approved",
-    source: "office_manual",
-    notes: "Salaried — hours tracked for job costing only",
+    personId: "crew-pat",
+    personName: "Pat Morrison",
+    workerType: "crew",
+    roleLabel: "Driver / Mover",
+    hourlyRate: 19,
   },
 ];
+
+const OFFICE: DemoPerson[] = [
+  {
+    personId: "office-alex",
+    personName: "Alex Rivera",
+    workerType: "office",
+    roleLabel: "Sales · hourly",
+    hourlyRate: 24,
+  },
+  {
+    personId: "office-lisa",
+    personName: "Lisa Parker",
+    workerType: "office",
+    roleLabel: "Operations · hourly",
+    hourlyRate: 28,
+  },
+];
+
+function crewEntry(
+  person: DemoPerson,
+  date: string,
+  jobRef: string,
+  categories: TimeCategoryHours,
+  status: TimeEntry["status"],
+  notes?: string,
+): TimeEntry {
+  return normalizeTimeEntry({
+    id: `te-${person.personId}-${date}-${jobRef}`,
+    personId: person.personId,
+    personName: person.personName,
+    workerType: person.workerType,
+    roleLabel: person.roleLabel,
+    date,
+    jobRef,
+    categories,
+    hours: billableHoursFromCategories(categories),
+    hourlyRate: person.hourlyRate,
+    status,
+    source: "crew_app",
+    notes,
+  });
+}
+
+function officeEntry(
+  person: DemoPerson,
+  date: string,
+  categories: TimeCategoryHours,
+  status: TimeEntry["status"],
+  notes?: string,
+): TimeEntry {
+  return normalizeTimeEntry({
+    id: `te-${person.personId}-${date}-office`,
+    personId: person.personId,
+    personName: person.personName,
+    workerType: person.workerType,
+    roleLabel: person.roleLabel,
+    date,
+    jobRef: null,
+    categories,
+    hours: billableHoursFromCategories(categories),
+    hourlyRate: person.hourlyRate,
+    status,
+    source: "office_manual",
+    notes,
+  });
+}
+
+/** Demo time entries anchored to the current calendar week and yesterday/today. */
+export function buildRollingMockTimeEntries(today = new Date()): TimeEntry[] {
+  const weekStart = startOfWeekSunday(today);
+  const todayKey = toDateKey(today);
+  const yesterdayKey = toDateKey(addDays(today, -1));
+
+  const entries: TimeEntry[] = [];
+
+  entries.push(
+    crewEntry(CREW[0]!, yesterdayKey, "MV-DONE", { move: 4.5, drive: 1.25, extra: 0, office: 0, break: 0.5 }, "approved"),
+    crewEntry(CREW[1]!, yesterdayKey, "MV-DONE", { move: 4.75, drive: 1.5, extra: 0.25, office: 0, break: 0.5 }, "approved"),
+    crewEntry(CREW[2]!, yesterdayKey, "MV-COMPLETE-2D", { move: 5, drive: 2, extra: 0, office: 0, break: 0.5 }, "approved"),
+    crewEntry(CREW[3]!, yesterdayKey, "MV-COMPLETE-2D", { move: 5.25, drive: 1.75, extra: 0, office: 0, break: 0.5 }, "approved"),
+  );
+
+  entries.push(
+    crewEntry(CREW[0]!, todayKey, "MV-BOOKED", { move: 3.5, drive: 0.75, extra: 0, office: 0, break: 0.25 }, "pending"),
+    crewEntry(CREW[1]!, todayKey, "MV-BOOKED", { move: 3.75, drive: 1, extra: 0.25, office: 0, break: 0.25 }, "pending"),
+    crewEntry(
+      CREW[2]!,
+      todayKey,
+      "MV-BOOKED",
+      { move: 2.5, drive: 1.25, extra: 0, office: 0, break: 0.25 },
+      "pending",
+      "Clock-out looks early — verify with dispatch",
+    ),
+    crewEntry(CREW[4]!, todayKey, "MV-AI", { move: 2, drive: 0.5, extra: 0, office: 0, break: 0 }, "pending"),
+    officeEntry(
+      OFFICE[1]!,
+      todayKey,
+      { move: 0, drive: 0, extra: 0, office: 6.5, break: 0.5 },
+      "pending",
+      "Adjusted lunch break per timesheet",
+    ),
+  );
+
+  for (let offset = 0; offset < 7; offset += 1) {
+    const date = toDateKey(addDays(weekStart, offset));
+    if (date >= todayKey) continue;
+    if (date === yesterdayKey) continue;
+
+    entries.push(
+      crewEntry(CREW[3]!, date, "MV-BOOKED", { move: 5, drive: 1.5, extra: 0, office: 0, break: 0.5 }, "approved"),
+    );
+    if (offset % 2 === 0) {
+      entries.push(
+        crewEntry(CREW[4]!, date, "MV-AI", { move: 4.25, drive: 1.25, extra: 0.25, office: 0, break: 0.5 }, "approved"),
+      );
+    }
+  }
+
+  entries.push(
+    officeEntry(
+      OFFICE[0]!,
+      yesterdayKey,
+      { move: 0, drive: 0, extra: 0, office: 7.5, break: 0.5 },
+      "approved",
+    ),
+  );
+
+  return entries;
+}
+
+export const MOCK_TIME_ENTRIES = buildRollingMockTimeEntries();
+
+export const PAY_PERIODS = buildCurrentPayPeriods();
 
 export function entriesInPeriod(entries: TimeEntry[], period: PayPeriod): TimeEntry[] {
   return entries.filter((e) => e.date >= period.start && e.date <= period.end);
 }
 
+export function payPeriodsForToday(today = new Date()): PayPeriod[] {
+  return buildCurrentPayPeriods(today);
+}

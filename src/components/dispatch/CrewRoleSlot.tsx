@@ -25,9 +25,32 @@ type CrewRoleSlotProps = {
   onClear: () => void;
   /** Compact chip for dispatch job cards — S/D/M only, horizontal row */
   compact?: boolean;
+  /** Narrower chips for schedule job list — ~3 per row when empty */
+  tight?: boolean;
+  skipperAlsoDriver?: boolean;
+  /** Names in separate driver slots — used when combining to S/D. */
+  filledDriverNames?: string[];
+  onToggleSkipperDriver?: () => void;
 };
 
-function badgeClass(slot: CrewSlotRef, filled: boolean): string {
+type SdToggleConfirm =
+  | { mode: "split" }
+  | { mode: "combine"; driverNames: string }
+  | null;
+
+function badgeClass(
+  slot: CrewSlotRef,
+  filled: boolean,
+  skipperAlsoDriver?: boolean,
+): string {
+  if (slot.kind === "skipper" && skipperAlsoDriver) {
+    return cn(
+      "flex h-6 w-6 shrink-0 items-center justify-center rounded text-[9px] font-bold leading-none",
+      filled
+        ? "bg-gradient-to-br from-violet-600 from-45% to-sky-600 to-55% text-white shadow-sm"
+        : "bg-gradient-to-br from-violet-100 from-45% to-sky-100 to-55% text-violet-800",
+    );
+  }
   return cn(
     "flex h-6 w-6 shrink-0 items-center justify-center rounded text-[10px] font-bold",
     slot.kind === "skipper" && (filled ? "bg-violet-600 text-white" : "bg-violet-100 text-violet-800"),
@@ -49,14 +72,20 @@ export function CrewRoleSlot({
   onAssign,
   onClear,
   compact,
+  tight = false,
+  skipperAlsoDriver,
+  filledDriverNames = [],
+  onToggleSkipperDriver,
 }: CrewRoleSlotProps) {
   const { label: roleLabel, initial, formatRoles } = useTerminology();
   const [dragOver, setDragOver] = useState(false);
   const [roleMismatch, setRoleMismatch] = useState<RoleMismatchPrompt | null>(null);
+  const [sdToggleConfirm, setSdToggleConfirm] = useState<SdToggleConfirm>(null);
   const { activeCrewForDispatch } = useFleet();
   const roster = activeCrewForDispatch();
   const member = crewId ? roster.find((c) => c.id === crewId) : undefined;
-  const slotBadge = initial(slot.kind);
+  const slotBadge =
+    slot.kind === "skipper" && skipperAlsoDriver ? "S/D" : initial(slot.kind);
   const filled = Boolean(member);
 
   function tryAssign(id: string) {
@@ -98,23 +127,81 @@ export function CrewRoleSlot({
     ? roster.find((c) => c.id === roleMismatch.crewId)
     : undefined;
 
-  const confirmDialog = roleMismatch ? (
-    <ConfirmDialog
-      open
-      onClose={() => setRoleMismatch(null)}
-      onConfirm={() => {
-        onAssign(roleMismatch.crewId);
-        setRoleMismatch(null);
-      }}
-      title={`Assign as ${roleLabel(roleMismatch.requiredRole)}?`}
-      description={
-        mismatchMember
-          ? `${roleMismatch.memberName} is listed as ${formatRoles(mismatchMember.roles)}, not ${roleLabel(roleMismatch.requiredRole).toLowerCase()}. Place them in the ${label} slot anyway?`
-          : `This person may not be qualified for the ${label} slot. Assign anyway?`
+  function handleSkipperDriverBadgeClick() {
+    if (!onToggleSkipperDriver) return;
+    if (skipperAlsoDriver) {
+      if (filled) {
+        setSdToggleConfirm({ mode: "split" });
+      } else {
+        onToggleSkipperDriver();
       }
-      confirmLabel="Assign anyway"
-    />
-  ) : null;
+      return;
+    }
+    if (filledDriverNames.length > 0) {
+      setSdToggleConfirm({
+        mode: "combine",
+        driverNames: filledDriverNames.join(", "),
+      });
+      return;
+    }
+    onToggleSkipperDriver();
+  }
+
+  const confirmDialog = (
+    <>
+      {roleMismatch ? (
+        <ConfirmDialog
+          open
+          onClose={() => setRoleMismatch(null)}
+          onConfirm={() => {
+            onAssign(roleMismatch.crewId);
+            setRoleMismatch(null);
+          }}
+          title={`Assign as ${roleLabel(roleMismatch.requiredRole)}?`}
+          description={
+            mismatchMember
+              ? `${roleMismatch.memberName} is listed as ${formatRoles(mismatchMember.roles)}, not ${roleLabel(roleMismatch.requiredRole).toLowerCase()}. Place them in the ${label} slot anyway?`
+              : `This person may not be qualified for the ${label} slot. Assign anyway?`
+          }
+          confirmLabel="Assign anyway"
+        />
+      ) : null}
+      {sdToggleConfirm?.mode === "split" ? (
+        <ConfirmDialog
+          open
+          onClose={() => setSdToggleConfirm(null)}
+          onConfirm={() => {
+            onToggleSkipperDriver?.();
+            setSdToggleConfirm(null);
+          }}
+          title="Split skipper and driver?"
+          description={
+            member
+              ? `${member.name} is covering both skipper and driver. Split into separate S and D slots again?`
+              : "Show separate skipper and driver slots again?"
+          }
+          confirmLabel="Split S & D"
+        />
+      ) : null}
+      {sdToggleConfirm?.mode === "combine" ? (
+        <ConfirmDialog
+          open
+          onClose={() => setSdToggleConfirm(null)}
+          onConfirm={() => {
+            onToggleSkipperDriver?.();
+            setSdToggleConfirm(null);
+          }}
+          title="Combine skipper and driver?"
+          description={`${sdToggleConfirm.driverNames} ${
+            filledDriverNames.length > 1 ? "are" : "is"
+          } assigned as driver. Combining to S/D will clear the separate driver slot${
+            filledDriverNames.length > 1 ? "s" : ""
+          }.`}
+          confirmLabel="Combine S/D"
+        />
+      ) : null}
+    </>
+  );
 
   if (compact) {
     return (
@@ -124,16 +211,40 @@ export function CrewRoleSlot({
         {...dropHandlers}
         title={member ? `${label}: ${member.name}` : `${label} — drop crew`}
         className={cn(
-          "inline-flex max-w-full items-center gap-1 rounded-md border border-dashed py-0.5 pl-0.5 pr-1",
+          "items-center gap-1 rounded-md border border-dashed py-0.5 pl-0.5 pr-1",
+          tight
+            ? filled
+              ? "inline-flex w-auto max-w-full shrink-0"
+              : "inline-flex min-w-0 max-w-[calc(33.333%-0.25rem)] shrink grow-0"
+            : "inline-flex max-w-full",
           dragOver ? "border-brand-400 bg-brand-50" : "border-slate-200 bg-slate-50/80",
         )}
       >
-        <span className={badgeClass(slot, filled)} title={label}>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleSkipperDriverBadgeClick();
+          }}
+          className={badgeClass(slot, filled, skipperAlsoDriver)}
+          title={
+            onToggleSkipperDriver
+              ? skipperAlsoDriver
+                ? "Combined skipper/driver — click to split"
+                : "Click to combine skipper & driver"
+              : label
+          }
+        >
           {slotBadge}
-        </span>
+        </button>
         <span
           className={cn(
-            "min-w-[2.75rem] whitespace-nowrap px-0.5 text-[11px] leading-tight",
+            "px-0.5 leading-tight",
+            tight
+              ? filled
+                ? "whitespace-nowrap text-[10px]"
+                : "min-w-0 flex-1 truncate text-[10px]"
+              : "min-w-[2.75rem] whitespace-nowrap text-[11px]",
             member ? "font-medium text-slate-900" : "text-slate-400",
           )}
         >
@@ -167,9 +278,27 @@ export function CrewRoleSlot({
         dragOver ? "border-brand-400 bg-brand-50" : "border-slate-200 bg-slate-50/80",
       )}
     >
-      <span className={badgeClass(slot, filled)} title={label}>
+      <button
+        type="button"
+        onClick={(e) => {
+          if (!onToggleSkipperDriver || slot.kind !== "skipper") return;
+          e.stopPropagation();
+          handleSkipperDriverBadgeClick();
+        }}
+        className={cn(
+          badgeClass(slot, filled, skipperAlsoDriver),
+          onToggleSkipperDriver && slot.kind === "skipper" ? "cursor-pointer" : "cursor-default",
+        )}
+        title={
+          onToggleSkipperDriver && slot.kind === "skipper"
+            ? skipperAlsoDriver
+              ? "Combined skipper/driver — click to split"
+              : "Click to combine skipper & driver"
+            : label
+        }
+      >
         {slotBadge}
-      </span>
+      </button>
       <span className="w-14 shrink-0 text-[10px] font-semibold text-slate-600">{label}</span>
       {member ? (
         <>

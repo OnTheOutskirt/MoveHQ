@@ -83,17 +83,42 @@ export function useSectionScrollSpy(
     const offset = MOVE_DETAIL_SECTION_ACTIVATE_OFFSET;
 
     function update() {
-      let current = sectionIds[0];
       const rootTop =
         container === window ? 0 : (container as HTMLElement).getBoundingClientRect().top;
+      const viewBottom =
+        container === window
+          ? window.innerHeight
+          : rootTop + (container as HTMLElement).clientHeight;
+      const bandTop = rootTop + offset;
+
+      let bestId = sectionIds[0]!;
+      let bestVisible = -1;
 
       for (const id of sectionIds) {
         const el = document.getElementById(id);
         if (!el) continue;
-        const top = el.getBoundingClientRect().top - rootTop;
-        if (top <= offset) current = id;
+
+        const rect = el.getBoundingClientRect();
+        const visibleTop = Math.max(rect.top, bandTop);
+        const visibleBottom = Math.min(rect.bottom, viewBottom);
+        const visibleHeight = Math.max(0, visibleBottom - visibleTop);
+
+        if (visibleHeight > bestVisible) {
+          bestVisible = visibleHeight;
+          bestId = id;
+        }
       }
-      setActiveId(current);
+
+      if (bestVisible <= 0) {
+        for (const id of sectionIds) {
+          const el = document.getElementById(id);
+          if (!el) continue;
+          const top = el.getBoundingClientRect().top - rootTop;
+          if (top <= offset) bestId = id;
+        }
+      }
+
+      setActiveId(bestId);
     }
 
     update();

@@ -1,75 +1,144 @@
 "use client";
 
+import { EmailComposeBody } from "@/components/communications/EmailComposeBody";
+import { useEmailDraft } from "@/components/communications/EmailDraftProvider";
+import { MessageTemplateBar } from "@/components/communications/MessageTemplateBar";
 import { Button } from "@/components/ui/Button";
+import {
+  buildMessageTemplateContextFromMove,
+  type MessageTemplateContext,
+} from "@/lib/communications/message-templates";
 import type { InboxChannel } from "@/lib/inbox/types";
 import type { MoveRecord } from "@/lib/moves/types";
+import { useState } from "react";
 
 type InboxComposerProps = {
   channel: InboxChannel;
-  move: Pick<MoveRecord, "customerPhone" | "customerEmail" | "reference">;
+  move: Pick<
+    MoveRecord,
+    | "customerName"
+    | "customerPhone"
+    | "customerEmail"
+    | "reference"
+    | "preferredDate"
+    | "originAddress"
+    | "destinationAddress"
+    | "assignedRep"
+  >;
 };
 
 export function InboxComposer({ channel, move }: InboxComposerProps) {
+  const templateContext = buildMessageTemplateContextFromMove(move);
+
   if (channel === "call") {
-    return (
-      <div className="space-y-3">
-        <label className="block text-sm">
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-            Call notes
-          </span>
-          <textarea
-            rows={2}
-            placeholder="Outcome, voicemail, callback time…"
-            className="mt-1 w-full resize-none rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
-          />
-        </label>
-        <div className="flex gap-2">
-          <Button type="button" disabled title="Coming soon" className="flex-1" size="sm">
-            Log call
-          </Button>
-          {move.customerPhone ? (
-            <a
-              href={`tel:${move.customerPhone}`}
-              className="inline-flex h-8 shrink-0 items-center rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            >
-              Dial
-            </a>
-          ) : null}
-        </div>
-      </div>
-    );
+    return <InboxCallComposer templateContext={templateContext} />;
   }
 
   if (channel === "sms") {
-    return (
-      <div className="space-y-2">
-        <p className="text-xs text-slate-500">
-          To <span className="font-medium text-slate-800">{move.customerPhone || "—"}</span>
-        </p>
-        <textarea
-          rows={2}
-          placeholder="Write a message…"
-          className="w-full resize-none rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
-        />
-        <Button type="button" disabled title="Coming soon" className="w-full" size="sm">
-          Send SMS
-        </Button>
-      </div>
-    );
+    return <InboxSmsComposer move={move} templateContext={templateContext} />;
   }
 
+  return <InboxEmailComposer move={move} templateContext={templateContext} />;
+}
+
+function InboxCallComposer({ templateContext }: { templateContext: MessageTemplateContext }) {
+  const [notes, setNotes] = useState("");
+
   return (
-    <div className="space-y-2">
-      <input
-        type="text"
-        defaultValue={`Re: ${move.reference}`}
-        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
-        aria-label="Email subject"
+    <div className="space-y-3">
+      <MessageTemplateBar channel="call" context={templateContext} onApply={setNotes} />
+      <label className="block text-sm">
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+          Call notes
+        </span>
+        <textarea
+          rows={3}
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="Outcome, voicemail, callback time…"
+          className="mt-1 w-full resize-none rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
+        />
+      </label>
+      <Button type="button" disabled title="Coming soon" className="w-full" size="sm">
+        Log call
+      </Button>
+    </div>
+  );
+}
+
+function InboxSmsComposer({
+  move,
+  templateContext,
+}: {
+  move: InboxComposerProps["move"];
+  templateContext: MessageTemplateContext;
+}) {
+  const [message, setMessage] = useState("");
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-slate-500">
+        To <span className="font-medium text-slate-800">{move.customerPhone || "—"}</span>
+      </p>
+      <MessageTemplateBar channel="sms" context={templateContext} onApply={setMessage} />
+      <label className="block text-sm">
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+          Message
+        </span>
+        <textarea
+          rows={3}
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          placeholder="Write a message…"
+          className="mt-1 w-full resize-none rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
+        />
+      </label>
+      <Button type="button" disabled title="Coming soon" className="w-full" size="sm">
+        Send SMS
+      </Button>
+    </div>
+  );
+}
+
+function InboxEmailComposer({
+  move,
+  templateContext,
+}: {
+  move: InboxComposerProps["move"];
+  templateContext: MessageTemplateContext;
+}) {
+  const { subject, setSubject, body, setBody } = useEmailDraft();
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-slate-500">
+        To <span className="font-medium text-slate-800">{move.customerEmail || "—"}</span>
+      </p>
+      <label className="block text-sm">
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+          Subject
+        </span>
+        <input
+          type="text"
+          value={subject}
+          onChange={(e) => setSubject(e.target.value)}
+          className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
+        />
+      </label>
+      <MessageTemplateBar
+        channel="email"
+        context={templateContext}
+        onApply={setBody}
+        onApplyEmail={({ subject: nextSubject, body: nextBody }) => {
+          setSubject(nextSubject);
+          setBody(nextBody);
+        }}
       />
-      <textarea
-        rows={2}
-        placeholder="Write your email…"
-        className="w-full resize-none rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
+      <EmailComposeBody
+        value={body}
+        onChange={setBody}
+        rows={4}
+        showSignaturePreview={false}
       />
       <Button type="button" disabled title="Coming soon" className="w-full" size="sm">
         Send email

@@ -75,7 +75,7 @@ type JobDayEditorSwitcherProps = {
   /** Resolved form for the active tab only. */
   activeValues: JobDayFormValues;
   resolveCardValues: (key: string) => JobDayFormValues;
-  newDayLabel: (key: string, index: number) => string;
+  resolveDayLabel: (key: string) => string;
   onSelect: (key: string) => void;
   onAddAnother?: () => void;
   atDayCap?: boolean;
@@ -87,7 +87,7 @@ export function JobDayEditorSwitcher({
   activeKey,
   activeValues,
   resolveCardValues,
-  newDayLabel,
+  resolveDayLabel,
   onSelect,
   onAddAnother,
   atDayCap,
@@ -115,7 +115,7 @@ export function JobDayEditorSwitcher({
           return (
             <SwitcherCard
               key={day.id}
-              label={day.label}
+              label={resolveDayLabel(day.id)}
               dateLabel={dateLabel}
               crewTruckLine={crewTruckLineFromForm(cardValues)}
               active={activeKey === day.id}
@@ -124,12 +124,12 @@ export function JobDayEditorSwitcher({
           );
         })}
 
-        {newDayKeys.map((key, index) => {
+        {newDayKeys.map((key) => {
           const cardValues = activeKey === key ? activeValues : resolveCardValues(key);
           return (
             <SwitcherCard
               key={key}
-              label={newDayLabel(key, index)}
+              label={resolveDayLabel(key)}
               dateLabel={
                 cardValues.date ? formatJobDayDate(cardValues.date) : "Set date"
               }

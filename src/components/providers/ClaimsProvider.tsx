@@ -6,6 +6,7 @@ import {
   loadClaimsStore,
   saveClaimsStore,
 } from "@/lib/operations/claims-storage";
+import { syncClaimWorkflow } from "@/lib/operations/claims-workflow";
 import type { MoveClaim, NewMoveClaim } from "@/lib/operations/claims-types";
 import {
   createContext,
@@ -24,6 +25,7 @@ type ClaimsContextValue = {
   updateClaim: (id: string, patch: Partial<MoveClaim>) => void;
   removeClaim: (id: string) => void;
   getClaimById: (id: string) => MoveClaim | undefined;
+  importClaims: (claims: MoveClaim[]) => void;
 };
 
 const ClaimsContext = createContext<ClaimsContextValue | null>(null);
@@ -52,21 +54,9 @@ export function ClaimsProvider({ children }: { children: ReactNode }) {
       const next = {
         claims: prev.claims.map((c) => {
           if (c.id !== id) return c;
-          const merged = { ...c, ...patch, updatedAt: new Date().toISOString() };
-          if (
-            (patch.status === "completed" || patch.status === "denied") &&
-            !merged.resolvedAt
-          ) {
-            merged.resolvedAt = new Date().toISOString();
-          }
-          if (
-            patch.status &&
-            patch.status !== "completed" &&
-            patch.status !== "denied"
-          ) {
-            merged.resolvedAt = undefined;
-          }
-          return merged;
+          const merged = { ...c, ...patch };
+          const synced = syncClaimWorkflow(merged);
+          return { ...merged, ...synced };
         }),
       };
       saveClaimsStore(next);
@@ -87,6 +77,19 @@ export function ClaimsProvider({ children }: { children: ReactNode }) {
     [store.claims],
   );
 
+  const importClaims = useCallback((claims: MoveClaim[]) => {
+    if (claims.length === 0) return;
+    setStore((prev) => {
+      const byId = new Map(claims.map((c) => [c.id, c] as const));
+      const merged = prev.claims.map((c) => byId.get(c.id) ?? c);
+      const existingIds = new Set(prev.claims.map((c) => c.id));
+      const newOnes = claims.filter((c) => !existingIds.has(c.id));
+      const next = { claims: [...newOnes, ...merged] };
+      saveClaimsStore(next);
+      return next;
+    });
+  }, []);
+
   const value = useMemo(
     () => ({
       isReady,
@@ -95,8 +98,9 @@ export function ClaimsProvider({ children }: { children: ReactNode }) {
       updateClaim,
       removeClaim,
       getClaimById,
+      importClaims,
     }),
-    [isReady, store.claims, addClaim, updateClaim, removeClaim, getClaimById],
+    [isReady, store.claims, addClaim, updateClaim, removeClaim, getClaimById, importClaims],
   );
 
   return <ClaimsContext.Provider value={value}>{children}</ClaimsContext.Provider>;

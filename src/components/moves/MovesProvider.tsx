@@ -1,6 +1,17 @@
 "use client";
 
-import { MOCK_MOVES } from "@/lib/moves/mock-data";
+import { NewMoveDialog } from "@/components/moves/NewMoveDialog";
+import { useSession } from "@/components/providers/SessionProvider";
+import { useWorkspace } from "@/components/providers/WorkspaceProvider";
+import { buildNewMoveFromPerson } from "@/lib/moves/create-move";
+import { ensureMovesHaveRateSnapshots, lockMoveRatesOnContract } from "@/lib/pricing/rate-snapshot";
+import {
+  initialMovesState,
+  MOVES_SESSION_KEY,
+  movesSessionFingerprint,
+  readMovesSession,
+  writeMovesSession,
+} from "@/lib/moves/moves-session-storage";
 import {
   buildLostReasonDisplay,
   LOST_QUALIFICATION_LABELS,
@@ -16,16 +27,40 @@ import {
   reopenLostMove,
   waitingSubstageLabel,
 } from "@/lib/moves/move-pipeline";
+import { buildMoveDocumentPortalUrl, resolveSentContract, resolveSentQuote } from "@/lib/moves/move-document-send";
+import {
+  crewFeedbackSummary,
+  googleReviewUrlForMove,
+  shouldOfferGoogleReview,
+} from "@/lib/moves/move-feedback-portal";
+import { loadSettings } from "@/lib/settings/storage";
+import { loadWorkspaceConfig } from "@/lib/workspace/storage";
+import type { DocumentSendKind } from "@/lib/moves/document-template-render";
 import { relabelJobDaysByDate } from "@/lib/moves/job-day-form";
 import { CHANNEL_TO_ROLES } from "@/lib/moves/lead-referral";
 import { applyIntakeToMove } from "@/lib/moves/sync-move-intake";
+import { applyMoveTypeRuleToMove, moveMatchesCatalogType } from "@/lib/settings/move-type-migration";
+import type { FieldCatalogSettings } from "@/lib/settings/field-catalog-types";
+import type { MoveTypeRulesSettings } from "@/lib/settings/move-type-rules";
+import { moveTypeCatalogIdToDisplay } from "@/lib/settings/field-catalog-defaults";
+import { ensureMovesWorkspaceFields } from "@/lib/workspace/move-scope";
+import { DEFAULT_COMPANY_ID } from "@/lib/workspace/constants";
 import type { FlatRateIntake } from "@/lib/moves/flat-rate-intake";
+import { linkPersonToMove } from "@/lib/people/people-storage";
 import type { PersonRecord } from "@/lib/people/types";
+import {
+  scheduleWalkthroughOnMove,
+  type WalkthroughScheduleDraft,
+} from "@/lib/moves/walkthroughs";
 import type {
   LeadChannel,
+  MoveActivity,
+  MoveActivityDocumentMeta,
+  MoveCrewFeedback,
   MoveJobDay,
   MoveLinkedPerson,
   MoveRecord,
+  MoveSentDocument,
   PipelineStageId,
   WaitingSubstage,
 } from "@/lib/moves/types";
@@ -33,7 +68,9 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -58,34 +95,161 @@ type MovesContextValue = {
     moveId: string,
     patch: Partial<FlatRateIntake> | ((prev: FlatRateIntake) => FlatRateIntake),
   ) => void;
+  updateMoveQuote: (
+    moveId: string,
+    patch: { quoteType?: MoveRecord["quoteType"]; quoteAmount?: number | null },
+  ) => void;
+  updateMoveQuoteDiscount: (
+    moveId: string,
+    discount: MoveRecord["quoteDiscount"],
+  ) => void;
+  recordMoveDocumentSent: (moveId: string, kind: DocumentSendKind) => void;
+  recordMoveDocumentViewed: (moveId: string, kind: DocumentSendKind) => void;
+  recordQuoteBookingRequested: (moveId: string) => void;
+  recordContractSignedWithDeposit: (moveId: string, depositAmount: number) => void;
+  recordCrewFeedback: (moveId: string, rating: number, comment: string) => void;
   updateLeadChannel: (moveId: string, channel: LeadChannel) => void;
+  createMove: (person: PersonRecord) => string;
+  openNewMoveDialog: () => void;
+  closeNewMoveDialog: () => void;
+  scheduleWalkthrough: (
+    moveId: string,
+    draft: WalkthroughScheduleDraft,
+    actor?: string,
+  ) => void;
+  recordWalkthroughLinkSent: (
+    moveId: string,
+    assignee: string,
+    linkUrl: string,
+    linkModeLabel?: string,
+  ) => void;
+  /** Reassign active moves when a catalog move type is deleted. */
+  reassignMovesFromDeletedMoveType: (
+    fromCatalogId: string,
+    toCatalogId: string,
+    moveTypeRules: MoveTypeRulesSettings,
+    catalog: FieldCatalogSettings,
+  ) => void;
+  /** Merge imported / migrated moves by id (setup CSV import). */
+  importMoves: (imported: MoveRecord[]) => void;
 };
 
-const MovesContext = createContext<MovesContextValue | null>(null);
+type MovesDataContextValue = Pick<MovesContextValue, "moves" | "getMoveById">;
+type MovesActionsContextValue = Omit<MovesContextValue, keyof MovesDataContextValue>;
+
+const MovesDataContext = createContext<MovesDataContextValue | null>(null);
+const MovesActionsContext = createContext<MovesActionsContextValue | null>(null);
+
+function hydrateMovesFromSession(companyId: string): MoveRecord[] {
+  const base = readMovesSession() ?? initialMovesState();
+  return ensureMovesHaveRateSnapshots(ensureMovesWorkspaceFields(base, companyId));
+}
 
 export function MovesProvider({ children }: { children: ReactNode }) {
-  const [moves, setMoves] = useState<MoveRecord[]>(() => [...MOCK_MOVES]);
+  const { user } = useSession();
+  const { filterByActiveScope, locationIdForNewRecords, config } = useWorkspace();
+  const [allMoves, setAllMoves] = useState<MoveRecord[]>(() => {
+    if (typeof window === "undefined") return initialMovesState();
+    return readMovesSession() ?? initialMovesState();
+  });
+  const [newMoveDialogOpen, setNewMoveDialogOpen] = useState(false);
+  const persistFingerprintRef = useRef("");
+
+  const moves = useMemo(
+    () => filterByActiveScope(allMoves),
+    [allMoves, filterByActiveScope],
+  );
+
+  useEffect(() => {
+    const normalized = hydrateMovesFromSession(config.company.id);
+    setAllMoves((prev) => {
+      if (movesSessionFingerprint(prev) === movesSessionFingerprint(normalized)) {
+        return prev;
+      }
+      return normalized;
+    });
+    persistFingerprintRef.current = movesSessionFingerprint(normalized);
+  }, [config.company.id]);
+
+  useEffect(() => {
+    function onStorage(event: StorageEvent) {
+      if (event.key !== MOVES_SESSION_KEY) return;
+      const stored = readMovesSession();
+      if (stored) {
+        setAllMoves(
+          ensureMovesHaveRateSnapshots(
+            ensureMovesWorkspaceFields(stored, config.company.id),
+          ),
+        );
+      }
+    }
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [config.company.id]);
+
+  useEffect(() => {
+    const fingerprint = movesSessionFingerprint(allMoves);
+    if (fingerprint === persistFingerprintRef.current) return;
+
+    const timer = window.setTimeout(() => {
+      persistFingerprintRef.current = fingerprint;
+      writeMovesSession(allMoves);
+    }, 400);
+
+    return () => window.clearTimeout(timer);
+  }, [allMoves]);
 
   const getMoveById = useCallback(
-    (id: string) => moves.find((m) => m.id === id),
-    [moves],
+    (id: string) => allMoves.find((m) => m.id === id),
+    [allMoves],
   );
 
   const appendActivity = (
     move: MoveRecord,
     summary: string,
     at = new Date().toISOString(),
+    options?: {
+      type?: MoveActivity["type"];
+      actor?: string;
+      document?: MoveActivityDocumentMeta;
+    },
   ): MoveRecord => ({
     ...move,
     updatedAt: at,
     activities: [
-      { id: `activity-${move.id}-${at}`, type: "status_change", at, summary },
+      {
+        id: `activity-${move.id}-${at}`,
+        type: options?.type ?? "status_change",
+        at,
+        summary,
+        actor: options?.actor,
+        document: options?.document,
+      },
       ...move.activities,
     ],
   });
 
+  function patchSentDocument(
+    move: MoveRecord,
+    kind: DocumentSendKind,
+    patch: Partial<MoveSentDocument>,
+  ): MoveRecord {
+    if (kind === "quote") {
+      const base = move.sentQuote ?? {
+        sentAt: move.updatedAt,
+        portalUrl: buildMoveDocumentPortalUrl(move.id, "quote"),
+      };
+      return { ...move, sentQuote: { ...base, ...patch } };
+    }
+    const base = move.sentContract ?? {
+      sentAt: move.updatedAt,
+      portalUrl: buildMoveDocumentPortalUrl(move.id, "contract"),
+    };
+    return { ...move, sentContract: { ...base, ...patch } };
+  }
+
   const updateMovePipelineStage = useCallback((moveId: string, stage: PipelineStageId) => {
-    setMoves((prev) =>
+    setAllMoves((prev) =>
       prev.map((move) => {
         if (move.id !== moveId || isMoveLost(move) || move.pipelineStage === stage) return move;
         const next = applyPipelineStage(move, stage);
@@ -98,7 +262,7 @@ export function MovesProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateWaitingSubstage = useCallback((moveId: string, substage: WaitingSubstage) => {
-    setMoves((prev) =>
+    setAllMoves((prev) =>
       prev.map((move) => {
         if (move.id !== moveId || isMoveLost(move)) return move;
         const next = applyWaitingSubstage(move, substage);
@@ -111,7 +275,7 @@ export function MovesProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const markAsLost = useCallback((moveId: string, payload: MarkLostPayload) => {
-    setMoves((prev) =>
+    setAllMoves((prev) =>
       prev.map((move) => {
         if (move.id !== moveId || isMoveLost(move)) return move;
         const next = markMoveLost(move, payload);
@@ -125,7 +289,7 @@ export function MovesProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const reopenMove = useCallback((moveId: string) => {
-    setMoves((prev) =>
+    setAllMoves((prev) =>
       prev.map((move) => {
         if (move.id !== moveId || !isMoveLost(move)) return move;
         const next = reopenLostMove(move);
@@ -135,7 +299,7 @@ export function MovesProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateAssignedRep = useCallback((moveId: string, rep: string) => {
-    setMoves((prev) =>
+    setAllMoves((prev) =>
       prev.map((move) => {
         if (move.id !== moveId || move.assignedRep === rep) return move;
         return appendActivity({ ...move, assignedRep: rep }, `Sales rep → ${rep}`);
@@ -144,7 +308,7 @@ export function MovesProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const addJobDay = useCallback((moveId: string, day: MoveJobDay) => {
-    setMoves((prev) =>
+    setAllMoves((prev) =>
       prev.map((move) => {
         if (move.id !== moveId) return move;
         const jobDays = relabelJobDaysByDate([...move.jobDays, day]);
@@ -155,7 +319,7 @@ export function MovesProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateJobDay = useCallback((moveId: string, day: MoveJobDay) => {
-    setMoves((prev) =>
+    setAllMoves((prev) =>
       prev.map((move) => {
         if (move.id !== moveId) return move;
         const merged = move.jobDays.map((d) => (d.id === day.id ? day : d));
@@ -168,7 +332,7 @@ export function MovesProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const removeJobDay = useCallback((moveId: string, dayId: string) => {
-    setMoves((prev) =>
+    setAllMoves((prev) =>
       prev.map((move) => {
         if (move.id !== moveId) return move;
         const removed = move.jobDays.find((d) => d.id === dayId);
@@ -183,7 +347,7 @@ export function MovesProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const addLinkedPerson = useCallback((moveId: string, person: MoveLinkedPerson) => {
-    setMoves((prev) =>
+    setAllMoves((prev) =>
       prev.map((move) => {
         if (move.id !== moveId) return move;
         const referralRoles = CHANNEL_TO_ROLES[move.leadChannel] ?? [];
@@ -205,7 +369,7 @@ export function MovesProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const clearShipper = useCallback((moveId: string) => {
-    setMoves((prev) =>
+    setAllMoves((prev) =>
       prev.map((move) => {
         if (move.id !== moveId) return move;
         const name = move.customerName.trim() || "Shipper";
@@ -225,7 +389,7 @@ export function MovesProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const setShipper = useCallback((moveId: string, person: PersonRecord) => {
-    setMoves((prev) =>
+    setAllMoves((prev) =>
       prev.map((move) => {
         if (move.id !== moveId) return move;
         const customerLink: MoveLinkedPerson = {
@@ -257,7 +421,7 @@ export function MovesProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const clearReferralContact = useCallback((moveId: string) => {
-    setMoves((prev) =>
+    setAllMoves((prev) =>
       prev.map((move) => {
         if (move.id !== moveId) return move;
         const referralRoles = CHANNEL_TO_ROLES[move.leadChannel] ?? [];
@@ -277,7 +441,7 @@ export function MovesProvider({ children }: { children: ReactNode }) {
       moveId: string,
       patch: Partial<FlatRateIntake> | ((prev: FlatRateIntake) => FlatRateIntake),
     ) => {
-      setMoves((prev) =>
+      setAllMoves((prev) =>
         prev.map((move) => {
           if (move.id !== moveId) return move;
           const nextIntake =
@@ -290,8 +454,235 @@ export function MovesProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const updateMoveQuote = useCallback(
+    (
+      moveId: string,
+      patch: { quoteType?: MoveRecord["quoteType"]; quoteAmount?: number | null },
+    ) => {
+      setAllMoves((prev) =>
+        prev.map((move) => {
+          if (move.id !== moveId) return move;
+          const nextType = patch.quoteType ?? move.quoteType;
+          const nextAmount =
+            patch.quoteAmount !== undefined ? patch.quoteAmount : move.quoteAmount;
+          const typeChanged = nextType !== move.quoteType;
+          const amountChanged = nextAmount !== move.quoteAmount;
+          if (!typeChanged && !amountChanged) return move;
+
+          const clearDiscount = typeChanged || patch.quoteAmount === null;
+          const label =
+            nextType === "flat"
+              ? `Flat rate quote set — ${nextAmount != null ? `$${nextAmount.toLocaleString()}` : "—"}`
+              : nextType === "hourly"
+                ? `Hourly rate set — ${nextAmount != null ? `$${nextAmount}/hr` : "—"}`
+                : "Quote updated";
+
+          return appendActivity(
+            {
+              ...move,
+              quoteType: nextType,
+              quoteAmount: nextAmount ?? move.quoteAmount,
+              quoteDiscount: clearDiscount ? null : move.quoteDiscount,
+            },
+            label,
+          );
+        }),
+      );
+    },
+    [],
+  );
+
+  const updateMoveQuoteDiscount = useCallback(
+    (moveId: string, discount: MoveRecord["quoteDiscount"]) => {
+      setAllMoves((prev) =>
+        prev.map((move) => {
+          if (move.id !== moveId) return move;
+          const same =
+            move.quoteDiscount?.reasonId === discount?.reasonId &&
+            move.quoteDiscount?.kind === discount?.kind &&
+            move.quoteDiscount?.value === discount?.value &&
+            (discount == null) === (move.quoteDiscount == null);
+          if (same) return move;
+
+          const label = discount
+            ? `Quote discount applied — ${discount.kind === "percent" ? `${discount.value}%` : `$${discount.value}`}`
+            : "Quote discount removed";
+
+          return appendActivity({ ...move, quoteDiscount: discount }, label);
+        }),
+      );
+    },
+    [],
+  );
+
+  const recordMoveDocumentSent = useCallback((moveId: string, kind: DocumentSendKind) => {
+    const now = new Date().toISOString();
+    setAllMoves((prev) =>
+      prev.map((move) => {
+        if (move.id !== moveId) return move;
+
+        const portalUrl = buildMoveDocumentPortalUrl(moveId, kind);
+        const resent = kind === "quote" ? move.sentQuote != null : move.sentContract != null;
+        const sentDoc: MoveSentDocument = {
+          sentAt: now,
+          portalUrl,
+          firstViewedAt: null,
+          lastViewedAt: null,
+          viewCount: 0,
+          bookingRequestedAt: kind === "quote" ? null : undefined,
+          signedAt: kind === "contract" ? null : undefined,
+          depositPaidAt: kind === "contract" ? null : undefined,
+          depositAmount: null,
+        };
+
+        if (kind === "quote") {
+          const next = applyPipelineStage({ ...move, sentQuote: sentDoc }, "quote_sent");
+          const summary = resent ? "Quote resent to customer" : "Quote sent to customer";
+          return appendActivity(next, summary, now, {
+            type: "document",
+            document: { kind: "quote", event: resent ? "resent" : "sent" },
+          });
+        }
+
+        const withRates = lockMoveRatesOnContract(
+          { ...move, sentContract: sentDoc },
+          now,
+        );
+        const next = applyPipelineStage(withRates, "booked");
+        const summary = resent
+          ? "Contract resent — move booked"
+          : "Contract sent — move booked";
+        return appendActivity(next, summary, now, {
+          type: "document",
+          document: { kind: "contract", event: resent ? "resent" : "sent" },
+        });
+      }),
+    );
+  }, []);
+
+  const recordMoveDocumentViewed = useCallback((moveId: string, kind: DocumentSendKind) => {
+    const now = new Date().toISOString();
+    setAllMoves((prev) =>
+      prev.map((move) => {
+        if (move.id !== moveId) return move;
+
+        const resolved = kind === "quote" ? resolveSentQuote(move) : resolveSentContract(move);
+        if (!resolved) return move;
+
+        const stored = kind === "quote" ? move.sentQuote : move.sentContract;
+        const existing = stored ?? resolved;
+        const firstView = existing.firstViewedAt ?? now;
+        const alreadyViewed = existing.firstViewedAt != null;
+        const viewCount = (existing.viewCount ?? 0) + 1;
+
+        const withDoc = patchSentDocument(move, kind, {
+          firstViewedAt: firstView,
+          lastViewedAt: now,
+          viewCount,
+        });
+
+        if (alreadyViewed) return withDoc;
+
+        const label = kind === "quote" ? "Customer viewed quote" : "Customer viewed contract";
+        return appendActivity(withDoc, label, now, {
+          type: "document",
+          document: { kind, event: "viewed" },
+        });
+      }),
+    );
+  }, []);
+
+  const recordQuoteBookingRequested = useCallback((moveId: string) => {
+    const now = new Date().toISOString();
+    setAllMoves((prev) =>
+      prev.map((move) => {
+        if (move.id !== moveId) return move;
+        if (["needs_contract", "booked", "completed"].includes(move.pipelineStage)) return move;
+        if (move.pipelineStage !== "quote_sent") return move;
+
+        const withDoc = patchSentDocument(move, "quote", { bookingRequestedAt: now });
+        const next = applyPipelineStage(withDoc, "needs_contract");
+        return appendActivity(next, "Customer requested to book via quote portal", now, {
+          type: "document",
+          document: { kind: "quote", event: "booking_requested" },
+        });
+      }),
+    );
+  }, []);
+
+  const recordCrewFeedback = useCallback(
+    (moveId: string, rating: number, comment: string) => {
+      const now = new Date().toISOString();
+      const settings = loadSettings();
+      const locations = loadWorkspaceConfig().locations;
+      const clampedRating = Math.min(5, Math.max(1, Math.round(rating)));
+
+      setAllMoves((prev) =>
+        prev.map((move) => {
+          if (move.id !== moveId) return move;
+
+          const googleUrl = googleReviewUrlForMove(move, locations);
+          const minStars = settings.defaults.postMoveGoogleReviewMinStars;
+          const googleReviewOffered = shouldOfferGoogleReview(
+            clampedRating,
+            minStars,
+            googleUrl,
+          );
+          const feedback: MoveCrewFeedback = {
+            rating: clampedRating,
+            comment: comment.trim(),
+            submittedAt: now,
+            googleReviewOffered,
+          };
+
+          let next: MoveRecord = { ...move, crewFeedback: feedback };
+          next = appendActivity(next, crewFeedbackSummary(feedback), now);
+          next = appendActivity(
+            next,
+            "Customer crew feedback received — ops team notified",
+            now,
+          );
+          return next;
+        }),
+      );
+    },
+    [],
+  );
+
+  const recordContractSignedWithDeposit = useCallback(
+    (moveId: string, depositAmount: number) => {
+      const now = new Date().toISOString();
+      setAllMoves((prev) =>
+        prev.map((move) => {
+          if (move.id !== moveId) return move;
+
+          let next = patchSentDocument(move, "contract", {
+            signedAt: now,
+            depositPaidAt: now,
+            depositAmount,
+          });
+
+          if (!["booked", "completed"].includes(next.pipelineStage)) {
+            next = applyPipelineStage(next, "booked");
+          }
+
+          next = appendActivity(next, `Deposit paid — $${depositAmount.toLocaleString()}`, now, {
+            type: "document",
+            document: { kind: "contract", event: "deposit_paid" },
+          });
+
+          return appendActivity(next, "Contract signed via portal", now, {
+            type: "document",
+            document: { kind: "contract", event: "signed" },
+          });
+        }),
+      );
+    },
+    [],
+  );
+
   const updateLeadChannel = useCallback((moveId: string, channel: LeadChannel) => {
-    setMoves((prev) =>
+    setAllMoves((prev) =>
       prev.map((move) => {
         if (move.id !== moveId || move.leadChannel === channel) return move;
         return appendActivity(
@@ -303,7 +694,7 @@ export function MovesProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const setReferralContact = useCallback((moveId: string, person: MoveLinkedPerson) => {
-    setMoves((prev) =>
+    setAllMoves((prev) =>
       prev.map((move) => {
         if (move.id !== moveId) return move;
         const referralRoles = CHANNEL_TO_ROLES[move.leadChannel] ?? [];
@@ -325,10 +716,108 @@ export function MovesProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
-  const value = useMemo(
+  const openNewMoveDialog = useCallback(() => setNewMoveDialogOpen(true), []);
+  const closeNewMoveDialog = useCallback(() => setNewMoveDialogOpen(false), []);
+
+  const scheduleWalkthrough = useCallback(
+    (moveId: string, draft: WalkthroughScheduleDraft, actor?: string) => {
+      setAllMoves((prev) =>
+        prev.map((move) => {
+          if (move.id !== moveId || isMoveLost(move)) return move;
+          return scheduleWalkthroughOnMove(move, draft, actor ?? user.name);
+        }),
+      );
+    },
+    [user.name],
+  );
+
+  const recordWalkthroughLinkSent = useCallback(
+    (moveId: string, assignee: string, linkUrl: string, linkModeLabel?: string) => {
+      const modeNote = linkModeLabel ? ` · ${linkModeLabel}` : "";
+      setAllMoves((prev) =>
+        prev.map((move) => {
+          if (move.id !== moveId || isMoveLost(move)) return move;
+          return appendActivity(
+            move,
+            `Walkthrough link sent${assignee ? ` — ${assignee}` : ""}${modeNote} (${linkUrl})`,
+            undefined,
+            { type: "note", actor: user.name },
+          );
+        }),
+      );
+    },
+    [user.name],
+  );
+
+  const reassignMovesFromDeletedMoveType = useCallback(
+    (
+      fromCatalogId: string,
+      toCatalogId: string,
+      moveTypeRules: MoveTypeRulesSettings,
+      catalog: FieldCatalogSettings,
+    ) => {
+      const toLabel = moveTypeCatalogIdToDisplay(toCatalogId, catalog);
+      setAllMoves((prev) =>
+        prev.map((move) => {
+          if (!moveMatchesCatalogType(move, fromCatalogId)) return move;
+          if (move.conditionStatus === "lost" || move.conditionStatus === "cancelled") {
+            return move;
+          }
+          const next = applyMoveTypeRuleToMove(move, toCatalogId, moveTypeRules, catalog);
+          return appendActivity(
+            next,
+            `Move type → ${toLabel} (removed type reassigned)`,
+          );
+        }),
+      );
+    },
+    [],
+  );
+
+  const createMove = useCallback(
+    (person: PersonRecord): string => {
+      let createdId = "";
+      setAllMoves((prev) => {
+        const move = buildNewMoveFromPerson(
+          person,
+          prev,
+          {
+            companyId: config.company.id ?? DEFAULT_COMPANY_ID,
+            locationId: locationIdForNewRecords(),
+          },
+          { name: user.name, assignedRep: user.assignedRep },
+        );
+        createdId = move.id;
+        return [move, ...prev];
+      });
+      return createdId;
+    },
+    [config.company.id, locationIdForNewRecords, user.name, user.assignedRep],
+  );
+
+  const importMoves = useCallback((imported: MoveRecord[]) => {
+    if (imported.length === 0) return;
+    setAllMoves((prev) => {
+      const byId = new Map(imported.map((m) => [m.id, m] as const));
+      const existingIds = new Set(prev.map((m) => m.id));
+      const updated = prev.map((m) => byId.get(m.id) ?? m);
+      const newOnes = imported.filter((m) => !existingIds.has(m.id));
+      return [...newOnes, ...updated];
+    });
+    for (const move of imported) {
+      if (move.contactId?.startsWith("imp-person-")) {
+        linkPersonToMove(move.contactId, move.id);
+      }
+    }
+  }, []);
+
+  const dataValue = useMemo(
+    () => ({ moves, getMoveById }),
+    [moves, getMoveById],
+  );
+
+  const actionsValue = useMemo(
     () => ({
-      moves,
-      getMoveById,
       updateMovePipelineStage,
       updateWaitingSubstage,
       markAsLost,
@@ -343,11 +832,23 @@ export function MovesProvider({ children }: { children: ReactNode }) {
       clearShipper,
       setShipper,
       updateMoveIntake,
+      updateMoveQuote,
+      updateMoveQuoteDiscount,
+      recordMoveDocumentSent,
+      recordMoveDocumentViewed,
+      recordQuoteBookingRequested,
+      recordContractSignedWithDeposit,
+      recordCrewFeedback,
       updateLeadChannel,
+      createMove,
+      openNewMoveDialog,
+      closeNewMoveDialog,
+      scheduleWalkthrough,
+      recordWalkthroughLinkSent,
+      reassignMovesFromDeletedMoveType,
+      importMoves,
     }),
     [
-      moves,
-      getMoveById,
       updateMovePipelineStage,
       updateWaitingSubstage,
       markAsLost,
@@ -362,17 +863,53 @@ export function MovesProvider({ children }: { children: ReactNode }) {
       clearShipper,
       setShipper,
       updateMoveIntake,
+      updateMoveQuote,
+      updateMoveQuoteDiscount,
+      recordMoveDocumentSent,
+      recordMoveDocumentViewed,
+      recordQuoteBookingRequested,
+      recordContractSignedWithDeposit,
+      recordCrewFeedback,
       updateLeadChannel,
+      createMove,
+      openNewMoveDialog,
+      closeNewMoveDialog,
+      scheduleWalkthrough,
+      recordWalkthroughLinkSent,
+      reassignMovesFromDeletedMoveType,
+      importMoves,
     ],
   );
 
-  return <MovesContext.Provider value={value}>{children}</MovesContext.Provider>;
+  return (
+    <MovesActionsContext.Provider value={actionsValue}>
+      <MovesDataContext.Provider value={dataValue}>
+        {children}
+        <NewMoveDialog open={newMoveDialogOpen} onClose={closeNewMoveDialog} />
+      </MovesDataContext.Provider>
+    </MovesActionsContext.Provider>
+  );
 }
 
-export function useMoves() {
-  const ctx = useContext(MovesContext);
+export function useMovesData() {
+  const ctx = useContext(MovesDataContext);
   if (!ctx) {
-    throw new Error("useMoves must be used within MovesProvider");
+    throw new Error("useMovesData must be used within MovesProvider");
   }
   return ctx;
+}
+
+/** Stable action callbacks — does not re-render when moves list changes. */
+export function useMovesActions() {
+  const ctx = useContext(MovesActionsContext);
+  if (!ctx) {
+    throw new Error("useMovesActions must be used within MovesProvider");
+  }
+  return ctx;
+}
+
+export function useMoves(): MovesContextValue {
+  const data = useMovesData();
+  const actions = useMovesActions();
+  return useMemo(() => ({ ...data, ...actions }), [data, actions]);
 }

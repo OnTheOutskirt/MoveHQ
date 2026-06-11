@@ -1,5 +1,7 @@
 import { isWebAiQuote } from "./acquisition";
-import type { MoveFollowUp, MoveRecord, PipelineStageId } from "./types";
+import { getMovePriorityTier } from "./move-priority-tier";
+import { followUpSourceForMove } from "@/lib/settings/priority-tier-rules-runtime";
+import type { FollowUpSource, MoveFollowUp, MoveRecord, PipelineStageId } from "./types";
 
 function dueDateKey(iso: string): string {
   return iso.slice(0, 10);
@@ -68,10 +70,12 @@ export function defaultFollowUpForStage(
   move: MoveRecord,
   stage: PipelineStageId,
 ): Omit<MoveFollowUp, "id" | "moveId"> | null {
+  const source = followUpSourceForMove(getMovePriorityTier(move), stage);
   const base = {
     assignedTo: move.assignedRep,
     status: "open" as const,
     linkedStage: stage,
+    source,
   };
 
   switch (stage) {
@@ -136,5 +140,12 @@ export function createFollowUp(
     id: `fu-${move.id}-${Date.now()}`,
     moveId: move.id,
     ...partial,
+    source: partial.source ?? "manual",
   };
+}
+
+export function resolveFollowUpSource(followUp: MoveFollowUp): FollowUpSource {
+  if (followUp.source) return followUp.source;
+  if (followUp.type === "custom") return "manual";
+  return "automation";
 }

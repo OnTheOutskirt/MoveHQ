@@ -1,5 +1,7 @@
 "use client";
 
+import { useCalendarSettings } from "@/components/providers/CalendarSettingsProvider";
+import { holdPillStyle, waitlistPillStyle } from "@/lib/calendar/color-styles";
 import { formatJobDayDate } from "@/lib/moves/job-days-plan";
 import {
   jobDayCrewLine,
@@ -7,14 +9,18 @@ import {
   jobDayTruckLine,
   serviceLabel,
 } from "@/lib/moves/job-day-display";
+import { fractionLabel, periodLabel } from "@/lib/day-share/labels";
+import { isJobDayFirstStop, jobDaySharePeriod } from "@/lib/moves/job-day-schedule";
 import type { MoveJobDay, MoveRecord } from "@/lib/moves/types";
 import { cn } from "@/lib/utils";
-import { Calendar, Copy, MapPin, Pencil, Truck, Users } from "lucide-react";
+import { Calendar, Clock, Copy, MapPin, Pencil, Truck, Users } from "lucide-react";
 
 type MoveJobDayHorizontalCardProps = {
   move: MoveRecord;
   day: MoveJobDay;
   index: number;
+  onHold?: boolean;
+  onWaitlist?: boolean;
   onEdit: () => void;
   onDuplicate: () => void;
 };
@@ -23,20 +29,36 @@ export function MoveJobDayHorizontalCard({
   move,
   day,
   index,
+  onHold = false,
+  onWaitlist = false,
   onEdit,
   onDuplicate,
 }: MoveJobDayHorizontalCardProps) {
+  const { colors } = useCalendarSettings();
   const locations = jobDayLocationLines(move, day);
   const crew = jobDayCrewLine(day);
   const truck = jobDayTruckLine(day);
   const services = day.services ?? [];
+  const hasPlacement = onHold || onWaitlist;
+  const cardAccentStyle = onHold
+    ? {
+        backgroundColor: colors.holdRowBg,
+        borderColor: colors.holdBorder,
+      }
+    : onWaitlist
+      ? {
+          backgroundColor: colors.waitlistRowBg,
+          borderColor: colors.waitlistBorder,
+        }
+      : undefined;
 
   return (
     <article
       className={cn(
-        "flex w-[min(100%,17rem)] shrink-0 flex-col rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:w-[17.5rem]",
-        "hover:border-brand-300 hover:shadow-md",
+        "flex w-[min(100%,17rem)] shrink-0 flex-col rounded-xl border p-3 shadow-sm sm:w-[17.5rem]",
+        hasPlacement ? "border-2" : "border-slate-200 bg-white hover:border-brand-300 hover:shadow-md",
       )}
+      style={cardAccentStyle}
     >
       <div className="flex items-start justify-between gap-2">
         <button
@@ -53,6 +75,42 @@ export function MoveJobDayHorizontalCard({
               <Calendar className="h-3 w-3 shrink-0 text-slate-400" />
               {formatJobDayDate(day.date)}
             </p>
+            {day.departureWindow || day.arrivalWindow ? (
+              <p className="mt-0.5 space-y-0.5 text-[10px] text-slate-600">
+                {day.departureWindow ? (
+                  <span className="flex items-center gap-1">
+                    <Clock className="h-2.5 w-2.5 shrink-0 text-slate-400" />
+                    Crew {day.departureWindow}
+                  </span>
+                ) : null}
+                {day.arrivalWindow ? (
+                  <span className="flex items-center gap-1">
+                    <Clock className="h-2.5 w-2.5 shrink-0 text-slate-400" />
+                    {day.arrivalWindow}
+                  </span>
+                ) : null}
+              </p>
+            ) : null}
+            {hasPlacement ? (
+              <div className="mt-1.5 flex flex-wrap gap-1">
+                {onHold ? (
+                  <span
+                    className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                    style={holdPillStyle(colors)}
+                  >
+                    On hold
+                  </span>
+                ) : null}
+                {onWaitlist ? (
+                  <span
+                    className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                    style={waitlistPillStyle(colors)}
+                  >
+                    Waitlist
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         </button>
         <div className="flex shrink-0 items-center gap-0.5">
@@ -82,6 +140,15 @@ export function MoveJobDayHorizontalCard({
         onClick={onEdit}
         className="mt-2 flex flex-1 flex-col text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 rounded-md"
       >
+
+      {day.dayFraction && day.dayFraction !== "long" ? (
+        <p className="mt-2 rounded-md bg-emerald-50 px-2 py-1 text-[10px] font-medium text-emerald-900">
+          {!isJobDayFirstStop(day)
+            ? "Follow-on"
+            : periodLabel(jobDaySharePeriod(day))}{" "}
+          · {fractionLabel(day.dayFraction)}
+        </p>
+      ) : null}
 
       {services.length > 0 ? (
         <div className="mt-2.5 flex flex-wrap gap-1">

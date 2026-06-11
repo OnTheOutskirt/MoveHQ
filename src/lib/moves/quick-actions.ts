@@ -102,18 +102,51 @@ function stageSpecificActions(stage: PipelineStageId): QuickActionDef[] {
   }
 }
 
-/** Up to six quick actions for the move detail right rail (stage-aware). */
-export function getMoveQuickActions(move: MoveRecord): QuickActionDef[] {
-  const core: QuickActionDef[] = CORE_QUICK_ACTION_IDS.map((id) => ({
+function coreQuickActions(): QuickActionDef[] {
+  return CORE_QUICK_ACTION_IDS.map((id) => ({
     id,
     label: QUICK_ACTION_LABELS[id],
   }));
+}
+
+/** Every stage-specific action — order used when “View all” is expanded. */
+const ALL_STAGE_QUICK_ACTION_IDS: StageQuickActionId[] = [
+  "follow-up",
+  "book-walkthrough",
+  "check-quote",
+  "send-reminder",
+  "collect-deposit",
+  "send-contract",
+  "confirm-move",
+  "ops-handoff",
+  "collect-payment",
+  "final-invoice",
+];
+
+/** Six quick actions: core four + two for the current pipeline stage. */
+export function getMoveQuickActions(move: MoveRecord): QuickActionDef[] {
+  const core = coreQuickActions();
 
   if (isMoveLost(move)) {
     return core;
   }
 
   return [...core, ...stageSpecificActions(move.pipelineStage)];
+}
+
+/** Full quick-action menu (all fourteen). */
+export function getAllMoveQuickActions(move: MoveRecord): QuickActionDef[] {
+  const core = coreQuickActions();
+  const stage = ALL_STAGE_QUICK_ACTION_IDS.map((id) => ({
+    id,
+    label: QUICK_ACTION_LABELS[id],
+  }));
+  return [...core, ...stage];
+}
+
+export function moveQuickActionsHasMore(move: MoveRecord): boolean {
+  if (isMoveLost(move)) return false;
+  return getAllMoveQuickActions(move).length > getMoveQuickActions(move).length;
 }
 
 /** @deprecated Use getMoveQuickActions(move) — static list for lead/waiting only. */

@@ -1,8 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useCalendarPlacements } from "@/components/providers/CalendarPlacementProvider";
+import {
+  jobDayDateSetForMove,
+  MoveJobDaysWaitlistSummary,
+} from "@/components/moves/detail/MoveJobDaysWaitlistSummary";
+import { movePlacementDateSets, waitlistDatesFromPlacements } from "@/lib/calendar/placement";
+import { useMemo, useState } from "react";
 import { MoveJobDayEditorSidebar } from "@/components/moves/detail/MoveJobDayEditorSidebar";
 import { MoveJobDayHorizontalCard } from "@/components/moves/detail/MoveJobDayHorizontalCard";
+import { MoveJobDaysHoldWaitlistActions } from "@/components/moves/detail/MoveJobDaysHoldWaitlistActions";
 import { Button } from "@/components/ui/Button";
 import { formatMoveDate } from "@/lib/moves/format";
 import { getSortedJobDays } from "@/lib/moves/job-day-form";
@@ -27,6 +34,17 @@ export function MoveJobDaysHorizontalTimeline({
   const [internalEditor, setInternalEditor] = useState<MoveJobDayEditorState>({ open: false });
   const editor = controlledEditor ?? internalEditor;
   const setEditor = onEditorChange ?? setInternalEditor;
+  const [waitlistDialogOpen, setWaitlistDialogOpen] = useState(false);
+  const { placements } = useCalendarPlacements();
+  const { holdDates, waitlistDates } = useMemo(
+    () => movePlacementDateSets(placements, move.id),
+    [placements, move.id],
+  );
+  const waitlistDateList = useMemo(
+    () => waitlistDatesFromPlacements(placements, move.id),
+    [placements, move.id],
+  );
+  const jobDayDateSet = useMemo(() => jobDayDateSetForMove(move), [move]);
   const days = getSortedJobDays(move);
   const moveDate = move.intake.moveDate || move.preferredDate;
 
@@ -49,12 +67,26 @@ export function MoveJobDaysHorizontalTimeline({
   return (
     <>
       <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
-          <h2 className="text-sm font-semibold text-slate-900">Job days</h2>
-          <Button type="button" size="sm" onClick={openCreate}>
-            <Plus className="h-3.5 w-3.5" />
-            Add day
-          </Button>
+        <div className="border-b border-slate-100">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+            <h2 className="text-sm font-semibold text-slate-900">Job days</h2>
+            <div className="flex flex-wrap items-center gap-2">
+              <MoveJobDaysHoldWaitlistActions
+                move={move}
+                waitlistDialogOpen={waitlistDialogOpen}
+                onWaitlistDialogOpenChange={setWaitlistDialogOpen}
+              />
+              <Button type="button" size="sm" onClick={openCreate}>
+                <Plus className="h-3.5 w-3.5" />
+                Add day
+              </Button>
+            </div>
+          </div>
+          <MoveJobDaysWaitlistSummary
+            dates={waitlistDateList}
+            jobDayDateSet={jobDayDateSet}
+            onEdit={() => setWaitlistDialogOpen(true)}
+          />
         </div>
 
         {days.length === 0 ? (
@@ -78,6 +110,8 @@ export function MoveJobDaysHorizontalTimeline({
                   move={move}
                   day={day}
                   index={i}
+                  onHold={holdDates.has(day.date)}
+                  onWaitlist={waitlistDates.has(day.date)}
                   onEdit={() => openEdit(day.id)}
                   onDuplicate={() => openDuplicate(day.id)}
                 />

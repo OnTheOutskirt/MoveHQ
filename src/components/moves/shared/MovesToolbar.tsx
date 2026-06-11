@@ -21,7 +21,15 @@ type MovesToolbarProps = {
 };
 
 export function MovesToolbar({ filters, view, onViewChange }: MovesToolbarProps) {
-  const { repFilter, setRepFilter, quoteChannelFilter, setQuoteChannelFilter, reps } = filters;
+  const {
+    repFilter,
+    setRepFilter,
+    quoteChannelFilter,
+    setQuoteChannelFilter,
+    leadScoreFilter,
+    setLeadScoreFilter,
+    reps,
+  } = filters;
 
   return (
     <div className="flex flex-wrap items-center gap-3">
@@ -60,6 +68,20 @@ export function MovesToolbar({ filters, view, onViewChange }: MovesToolbarProps)
           <option value="phone">Phone quotes</option>
           <option value="office">Office quotes</option>
           <option value="web_review">Web booking · needs review</option>
+        </select>
+
+        <select
+          value={leadScoreFilter}
+          onChange={(e) => setLeadScoreFilter(e.target.value as typeof leadScoreFilter)}
+          aria-label="Filter by lead score"
+          className={SELECT_CLASS}
+        >
+          <option value="all">All lead scores</option>
+          <option value="Q1">Q1 — priority</option>
+          <option value="Q2">Q2 — strategic</option>
+          <option value="Q3">Q3 — quick win</option>
+          <option value="Q4">Q4 — nurture</option>
+          <option value="unscored">Unscored</option>
         </select>
       </div>
     </div>

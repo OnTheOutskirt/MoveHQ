@@ -30,6 +30,12 @@ export function normalizeDocumentTemplates(raw: unknown): DocumentTemplate[] {
       ...base,
       name: item.name ?? base.name,
       description: item.description ?? base.description,
+      accentColor:
+        typeof (item as { accentColor?: unknown }).accentColor === "string"
+          ? (item as { accentColor: string }).accentColor
+          : (item as { accentColor?: null }).accentColor === null
+            ? null
+            : base.accentColor,
       email: {
         subject: item.email?.subject ?? base.email.subject,
         body: item.email?.body ?? (item.body ? migrateBodyToEmail(item.body, id) : base.email.body),
@@ -37,6 +43,17 @@ export function normalizeDocumentTemplates(raw: unknown): DocumentTemplate[] {
       portal: {
         ...base.portal,
         ...item.portal,
+        termsHourly: item.portal?.termsHourly ?? base.portal.termsHourly,
+        termsFlat: item.portal?.termsFlat ?? base.portal.termsFlat,
+        showTerms: item.portal?.showTerms ?? base.portal.showTerms,
+        showValuation: item.portal?.showValuation ?? base.portal.showValuation,
+        showContents: item.portal?.showContents ?? base.portal.showContents,
+        showFlatBreakdown: item.portal?.showFlatBreakdown ?? base.portal.showFlatBreakdown,
+        bookingCardChargeAcknowledgment:
+          item.portal?.bookingCardChargeAcknowledgment ??
+          base.portal.bookingCardChargeAcknowledgment,
+        unregulatedValuationDisplay:
+          item.portal?.unregulatedValuationDisplay ?? base.portal.unregulatedValuationDisplay,
         mainContent:
           item.portal?.mainContent ??
           (item.body && !item.email?.body ? migrateBodyToPortal(item.body) : base.portal.mainContent),

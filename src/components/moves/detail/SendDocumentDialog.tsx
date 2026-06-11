@@ -1,6 +1,7 @@
 "use client";
 
 import { DocumentPortalPreview } from "@/components/admin/setup/document-templates/DocumentPortalPreview";
+import { DocumentPortalPhoneFrame } from "@/components/admin/setup/document-templates/DocumentPortalPhoneFrame";
 import { useSettings } from "@/components/providers/SettingsProvider";
 import { Button } from "@/components/ui/Button";
 import {
@@ -10,13 +11,15 @@ import {
   type DocumentSendKind,
 } from "@/lib/moves/document-template-render";
 import { computeMoveDeposit } from "@/lib/moves/move-deposit";
+import { buildMoveDocumentPortalUrl } from "@/lib/moves/move-document-send";
 import { formatQuote } from "@/lib/moves/format";
+import { resolveDocumentAccentColor } from "@/lib/settings/document-accent";
 import { loadDocumentTemplates } from "@/lib/settings/storage";
 import type { MoveRecord } from "@/lib/moves/types";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 import {
   DollarSign,
-  Eye,
   FileSignature,
   FileText,
   Mail,
@@ -30,13 +33,22 @@ type SendDocumentDialogProps = {
   kind: DocumentSendKind | null;
   open: boolean;
   onClose: () => void;
+  onSent?: () => void;
+  isResend?: boolean;
 };
 
 function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
 
-export function SendDocumentDialog({ move, kind, open, onClose }: SendDocumentDialogProps) {
+export function SendDocumentDialog({
+  move,
+  kind,
+  open,
+  onClose,
+  onSent,
+  isResend = false,
+}: SendDocumentDialogProps) {
   const { settings } = useSettings();
   const [ccList, setCcList] = useState<string[]>([]);
   const [ccInput, setCcInput] = useState("");
@@ -46,7 +58,7 @@ export function SendDocumentDialog({ move, kind, open, onClose }: SendDocumentDi
   const [sent, setSent] = useState(false);
 
   const deposit = useMemo(
-    () => computeMoveDeposit(move, settings.defaults),
+    () => computeMoveDeposit(move, settings.defaults, settings.fieldCatalog.discountReasons),
     [move, settings.defaults],
   );
 
@@ -66,7 +78,19 @@ export function SendDocumentDialog({ move, kind, open, onClose }: SendDocumentDi
     return renderDocumentTemplate(template.email.subject, templateVars);
   }, [template, templateVars]);
 
+  const previewAccent = useMemo(
+    () =>
+      template
+        ? resolveDocumentAccentColor(template, settings.branding.accentColor)
+        : settings.branding.accentColor,
+    [template, settings.branding.accentColor],
+  );
+
   const toEmail = move.customerEmail?.trim() || "";
+  const depositDefaultLabel =
+    settings.defaults.depositMode === "percent"
+      ? `${settings.defaults.depositValue}% of quote total`
+      : "Fixed amount from company defaults";
 
   useEffect(() => {
     if (!open) return;
@@ -103,6 +127,7 @@ export function SendDocumentDialog({ move, kind, open, onClose }: SendDocumentDi
   }
 
   function handleSend() {
+    onSent?.();
     setSent(true);
   }
 
@@ -125,7 +150,7 @@ export function SendDocumentDialog({ move, kind, open, onClose }: SendDocumentDi
         aria-label="Close"
       />
 
-      <div className="relative flex max-h-[min(92vh,52rem)] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+      <div className="relative flex max-h-[min(92vh,52rem)] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
         <header className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white px-5 py-4">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
@@ -165,12 +190,26 @@ export function SendDocumentDialog({ move, kind, open, onClose }: SendDocumentDi
               {ccList.length > 0 ? ` and ${ccList.length} CC` : ""}. E-sign and payment links will
               connect when integrations go live.
             </p>
+            <Link
+              href={buildMoveDocumentPortalUrl(move.id, kind)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm font-medium text-brand-600 hover:text-brand-700"
+            >
+              Open customer portal link
+            </Link>
             <Button type="button" variant="secondary" onClick={onClose}>
               Done
             </Button>
           </div>
         ) : (
           <>
+            {isResend ? (
+              <div className="shrink-0 border-b border-amber-200 bg-amber-50 px-5 py-2.5 text-sm text-amber-900">
+                Resending to the customer — they will receive another email with the same portal
+                link.
+              </div>
+            ) : null}
             <div className="grid min-h-0 flex-1 lg:grid-cols-5">
               <div className="flex min-h-0 flex-col gap-4 overflow-y-auto border-b border-slate-100 p-5 lg:col-span-2 lg:border-b-0 lg:border-r">
                 <div className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50/80 p-3 sm:grid-cols-3">
@@ -185,7 +224,7 @@ export function SendDocumentDialog({ move, kind, open, onClose }: SendDocumentDi
                       currency: "USD",
                       maximumFractionDigits: 0,
                     }).format(deposit.depositDue)}
-                    sub={deposit.depositLabel}
+                    sub={`${deposit.depositLabel} · ${depositDefaultLabel}`}
                   />
                   <DepositStat
                     label="Received"
@@ -308,43 +347,41 @@ export function SendDocumentDialog({ move, kind, open, onClose }: SendDocumentDi
                     </>
                   ) : (
                     <label className="flex items-center gap-2 text-sm text-slate-700">
-                      <input
-                        type="checkbox"
-                        defaultChecked
-                        className="rounded border-slate-300"
-                      />
+                      <input type="checkbox" defaultChecked className="rounded border-slate-300" />
                       Show deposit required on quote ({deposit.depositLabel})
                     </label>
                   )}
                 </div>
               </div>
 
-              <div className="flex min-h-0 flex-col bg-slate-100/80 lg:col-span-3">
-                <div className="flex shrink-0 items-center justify-between gap-2 border-b border-slate-200/80 px-4 py-2.5">
-                  <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    <Eye className="h-3.5 w-3.5" />
-                    Document preview
+              <div className="flex min-h-0 flex-col overflow-hidden bg-slate-100/80 lg:col-span-3">
+                <div className="shrink-0 border-b border-slate-200/80 px-4 py-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                    Customer portal preview (mobile)
                   </p>
-                  <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-medium text-slate-600 shadow-sm">
-                    {template.name}
-                  </span>
                 </div>
-                <div className="min-h-0 flex-1 overflow-y-auto p-4">
-                  <DocumentPortalPreview
-                    portal={template.portal}
-                    vars={templateVars}
-                    kind={kind}
-                    logoDataUrl={settings.branding.logoDataUrl}
-                    accentColor={settings.branding.accentColor}
-                    companyName={settings.branding.companyName}
-                  />
+                <div className="flex min-h-0 flex-1 items-stretch justify-center overflow-hidden p-4">
+                  <DocumentPortalPhoneFrame fillHeight className="w-full">
+                    <DocumentPortalPreview
+                      portal={template.portal}
+                      vars={templateVars}
+                      kind={kind}
+                      logoDataUrl={settings.branding.logoDataUrl}
+                      accentColor={previewAccent}
+                      companyName={settings.branding.companyName}
+                      compact
+                      framed
+                      interactive={false}
+                      viewport="mobile"
+                    />
+                  </DocumentPortalPhoneFrame>
                 </div>
               </div>
             </div>
 
             <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/90 px-5 py-4">
               <p className="text-xs text-slate-500">
-                Template from Admin → Setup · edits apply to future sends
+                Portal content from this move and Admin → Setup document templates
               </p>
               <div className="flex gap-2">
                 <Button type="button" variant="secondary" onClick={onClose}>
@@ -392,7 +429,7 @@ function DepositStat({
         {label}
       </p>
       <p className="mt-0.5 text-sm font-semibold tabular-nums text-slate-900">{value}</p>
-      {sub ? <p className="text-[10px] text-slate-500">{sub}</p> : null}
+      {sub ? <p className="text-[10px] leading-snug text-slate-500">{sub}</p> : null}
     </div>
   );
 }

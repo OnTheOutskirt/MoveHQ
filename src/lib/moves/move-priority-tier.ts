@@ -10,9 +10,16 @@ import type {
   QuadrantId,
   ValueTier,
 } from "./types";
-import { catalogLeadSourceIsHot, catalogLeadSourceLabel, catalogPriorityTierConfig } from "@/lib/settings/field-catalog-runtime";
+import { catalogLeadSourceIsHot, catalogLeadSourceLabel } from "@/lib/settings/field-catalog-runtime";
+import {
+  catalogHighValueThreshold,
+  catalogPriorityTierConfig,
+  tierPrefersAutomatedFollowUps,
+} from "@/lib/settings/priority-tier-rules-runtime";
+import { DEFAULT_HIGH_VALUE_THRESHOLD } from "@/lib/settings/priority-tier-rules";
 
-export const VALUE_THRESHOLD = 2000;
+/** @deprecated Use `catalogHighValueThreshold()` — admin-configurable. */
+export const VALUE_THRESHOLD = DEFAULT_HIGH_VALUE_THRESHOLD;
 
 export type PriorityTierId = QuadrantId;
 
@@ -122,7 +129,7 @@ export function leadHeatLabel(heat: LeadHeat): string {
 
 export function valueTierFromAmount(amount: number | null): ValueTier | null {
   if (amount == null) return null;
-  return amount >= VALUE_THRESHOLD ? "high" : "low";
+  return amount >= catalogHighValueThreshold() ? "high" : "low";
 }
 
 export function valueTierLabel(tier: ValueTier): string {
@@ -203,19 +210,30 @@ export function compareSalesPriority(a: MoveRecord, b: MoveRecord): number {
 }
 
 export function shouldAutomateFollowUp(move: MoveRecord): boolean {
-  return (
-    getMovePriorityTier(move) === "Q4" &&
-    move.followUpDue != null &&
-    move.conditionStatus === "active"
-  );
+  const tier = getMovePriorityTier(move);
+  if (!tier || move.conditionStatus !== "active") return false;
+  return tierPrefersAutomatedFollowUps(tier);
 }
 
 /** Hot + High Value — for quadrant badge tooltips. */
 export function quadrantInputsLabel(move: MoveRecord): string {
   const heat = leadHeatFromChannel(move.leadChannel);
   const tier = getMoveValueTier(move);
+  const threshold = catalogHighValueThreshold();
   if (!tier) return `${leadHeatLabel(heat)} · value pending`;
-  return `${leadHeatLabel(heat)} + ${valueTierLabel(tier)} value`;
+  const valueHint =
+    tier === "high"
+      ? `${formatThreshold(threshold)}+`
+      : `under ${formatThreshold(threshold)}`;
+  return `${leadHeatLabel(heat)} · ${valueHint}`;
+}
+
+function formatThreshold(amount: number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(amount);
 }
 
 export function heatValueSummary(move: MoveRecord): string {

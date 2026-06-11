@@ -1,18 +1,34 @@
 "use client";
 
-import { CrewJobCard } from "@/components/crew-app/CrewJobCard";
-import { CrewRoleSwitcher } from "@/components/crew-app/CrewRoleSwitcher";
+import { TodayJobsGroupedList } from "@/components/crew-app/TodayJobsGroupedList";
+import { TodayLoadPanel } from "@/components/crew-app/TodayLoadPanel";
 import { useCrewApp } from "@/components/crew-app/CrewAppProvider";
+import { canSeeInventory } from "@/lib/crew-app/role-access";
+import { crewScheduleTodayKey } from "@/lib/crew-app/crew-history";
 import { jobsForDate } from "@/lib/crew-app/mock-jobs";
-import { toDateKey } from "@/lib/calendar/date-utils";
+import { isJobComplete, readJobFieldState, subscribeJobFieldStore } from "@/lib/crew-app/job-field-storage";
 import { formatMoveDate } from "@/lib/moves/format";
 import { Briefcase, Sun } from "lucide-react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 export function CrewTodayScreen() {
-  const { myJobs, session } = useCrewApp();
-  const todayKey = toDateKey(new Date());
-  const todayJobs = useMemo(() => jobsForDate(myJobs, todayKey), [myJobs, todayKey]);
+  const { myJobs, session, isClientReady } = useCrewApp();
+  const showInventory = canSeeInventory(session.appRoles);
+  const todayKey = isClientReady ? crewScheduleTodayKey() : "";
+  const todayJobs = useMemo(
+    () => (todayKey ? jobsForDate(myJobs, todayKey) : []),
+    [myJobs, todayKey],
+  );
+  const [fieldRevision, setFieldRevision] = useState(0);
+
+  useEffect(() => subscribeJobFieldStore(() => setFieldRevision((n) => n + 1)), []);
+
+  const nextJob = useMemo(() => {
+    void fieldRevision;
+    return (
+      todayJobs.find((job) => !isJobComplete(readJobFieldState(job.id))) ?? todayJobs[0] ?? null
+    );
+  }, [todayJobs, fieldRevision]);
 
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
@@ -25,8 +41,6 @@ export function CrewTodayScreen() {
 
   return (
     <div className="space-y-4">
-      <CrewRoleSwitcher />
-
       <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
         <div className="bg-gradient-to-br from-brand-50 to-white px-4 py-4">
           <p className="flex items-center gap-1.5 text-xs font-medium text-brand-700">
@@ -40,16 +54,23 @@ export function CrewTodayScreen() {
           </p>
           <p className="mt-0.5 text-xs text-slate-500">{formatMoveDate(todayKey)}</p>
         </div>
-        {todayJobs.length > 0 ? (
+        {nextJob ? (
           <div className="flex items-center gap-2 border-t border-slate-100 px-4 py-2.5 text-xs text-slate-600">
             <Briefcase className="h-3.5 w-3.5 text-brand-600" />
             Next up:{" "}
             <span className="font-medium text-slate-900">
-              {todayJobs[0]!.arrivalWindow ?? "TBD"} — {todayJobs[0]!.customerName}
+              {nextJob.arrivalWindow ?? "TBD"} — {nextJob.customerName}
             </span>
+          </div>
+        ) : todayJobs.length > 0 ? (
+          <div className="flex items-center gap-2 border-t border-emerald-100 bg-emerald-50/60 px-4 py-2.5 text-xs text-emerald-800">
+            <Briefcase className="h-3.5 w-3.5" />
+            All jobs complete for today
           </div>
         ) : null}
       </div>
+
+      {showInventory && todayJobs.length > 0 ? <TodayLoadPanel jobs={todayJobs} /> : null}
 
       {todayJobs.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-10 text-center">
@@ -59,13 +80,7 @@ export function CrewTodayScreen() {
           </p>
         </div>
       ) : (
-        <ul className="space-y-3">
-          {todayJobs.map((job) => (
-            <li key={job.id}>
-              <CrewJobCard job={job} />
-            </li>
-          ))}
-        </ul>
+        <TodayJobsGroupedList jobs={todayJobs} revision={fieldRevision} />
       )}
     </div>
   );

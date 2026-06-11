@@ -32,9 +32,13 @@ import { DayPipelineTable } from "@/components/calendar/DayPipelineTable";
 import { calendarMoveDetailHref } from "@/lib/calendar/resolve-move-link";
 import { DaySalesSection } from "@/components/calendar/DaySalesSection";
 import { DayWarningIcon } from "@/components/calendar/DayWarningIcon";
+import { CalendarHoverTooltip } from "@/components/calendar/CalendarHoverTooltip";
 import { expandFtaPillLabels } from "@/lib/calendar/fta";
+import { formatSlotHoverFromCode } from "@/lib/day-share/labels";
 import type { ClosedDaySource } from "@/lib/calendar/settings/types";
+import { AddCalendarPlacementDialog } from "@/components/calendar/AddCalendarPlacementDialog";
 import type { CalendarDayData, HoldEntry, WaitlistEntry } from "@/lib/calendar/types";
+import { cn } from "@/lib/utils";
 
 type DayDetailSidebarProps = {
   open: boolean;
@@ -46,6 +50,10 @@ type DayDetailSidebarProps = {
   onManuallyMarkedBookedChange: (checked: boolean) => void;
   onMarkDayOff: (label: string) => void;
   onReopenDay: () => void;
+  side?: "left" | "right";
+  showBackdrop?: boolean;
+  lockBodyScroll?: boolean;
+  zIndexClassName?: string;
 };
 
 const HOLD_PILL_CLASS =
@@ -197,6 +205,7 @@ function SidebarCustomerTable({
   tableStyle,
   borderColor,
   moverColumnLabel,
+  onAdd,
 }: {
   title: string;
   emptyMessage: string;
@@ -204,10 +213,22 @@ function SidebarCustomerTable({
   tableStyle: ReturnType<typeof holdTableStyle>;
   borderColor: string;
   moverColumnLabel: string;
+  onAdd?: () => void;
 }) {
   return (
     <section className="min-w-0">
-      <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
+        {onAdd ? (
+          <button
+            type="button"
+            onClick={onAdd}
+            className="text-xs font-semibold text-brand-600 hover:text-brand-700"
+          >
+            + Add
+          </button>
+        ) : null}
+      </div>
       {entries.length === 0 ? (
         <p className="mt-2 text-sm text-slate-500">{emptyMessage}</p>
       ) : (
@@ -359,10 +380,15 @@ export function DayDetailSidebar({
   onManuallyMarkedBookedChange,
   onMarkDayOff,
   onReopenDay,
+  side = "right",
+  showBackdrop = true,
+  lockBodyScroll = true,
+  zIndexClassName = "z-50",
 }: DayDetailSidebarProps) {
   const [confirmReopenOpen, setConfirmReopenOpen] = useState(false);
   const [markDayOffOpen, setMarkDayOffOpen] = useState(false);
-  const { colors } = useCalendarSettings();
+  const [waitlistDialogOpen, setWaitlistDialogOpen] = useState(false);
+  const { colors, dayShareSettings } = useCalendarSettings();
   const { getTruckCapacityBreakdownForDate } = useFleet();
   const { terminology, leftHeading, plural } = useTerminology();
 
@@ -382,6 +408,10 @@ export function DayDetailSidebar({
         onClose={onClose}
         title={formatDayLong(date)}
         widthClassName="max-w-xl"
+        side={side}
+        showBackdrop={showBackdrop}
+        lockBodyScroll={lockBodyScroll}
+        zIndexClassName={zIndexClassName}
       >
         <div className="space-y-4">
           <div
@@ -450,6 +480,10 @@ export function DayDetailSidebar({
         />
       }
       widthClassName="max-w-xl"
+      side={side}
+      showBackdrop={showBackdrop}
+      lockBodyScroll={lockBodyScroll}
+      zIndexClassName={zIndexClassName}
     >
       <MarkDayOffDialog
         open={markDayOffOpen}
@@ -457,7 +491,7 @@ export function DayDetailSidebar({
         onConfirm={onMarkDayOff}
       />
       <div className="space-y-4">
-        <DaySalesSection sales={day.sales} date={date} />
+        <DaySalesSection sales={day.sales} date={date} day={day} />
 
         <section>
           <div className="flex items-center gap-2">
@@ -508,20 +542,32 @@ export function DayDetailSidebar({
             ) : null}
 
             <div className="mt-4">
-              <p className="text-xs font-medium text-slate-500">FTAs available</p>
+              <p className="text-xs font-medium text-slate-500">
+                {dayShareSettings.sectionLabel}
+              </p>
               {ftaPills.length === 0 ? (
-                <p className="mt-1.5 text-sm text-slate-500">None</p>
+                <p className="mt-1.5 text-sm text-slate-500">None needed for this day.</p>
               ) : (
-                <div className="mt-1.5 flex flex-wrap gap-1.5">
-                {ftaPills.map((label, i) => (
-                  <span
-                    key={`${label}-${i}`}
-                    className={FTA_PILL_CLASS}
-                    style={pillStyle(colors.ftaBg, colors.ftaText)}
-                  >
-                    {label}
-                  </span>
-                ))}
+                <div className="mt-1.5 flex flex-wrap gap-1">
+                  {ftaPills.map((label, i) => {
+                    const hoverLine =
+                      formatSlotHoverFromCode(label, dayShareSettings) ?? label;
+                    return (
+                      <CalendarHoverTooltip
+                        key={`${label}-${i}`}
+                        lines={[hoverLine]}
+                        bgColor={colors.ftaBg}
+                        textColor={colors.ftaText}
+                      >
+                        <span
+                          className={cn(FTA_PILL_CLASS, "cursor-default")}
+                          style={pillStyle(colors.ftaBg, colors.ftaText)}
+                        >
+                          {label}
+                        </span>
+                      </CalendarHoverTooltip>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -587,7 +633,7 @@ export function DayDetailSidebar({
           <div className="min-w-0 space-y-4">
             <SidebarCustomerTable
               title="On hold"
-              emptyMessage="No customers on hold for this day."
+              emptyMessage="No customers on hold for this day. Place holds from a move's job days."
               entries={day.holds}
               tableStyle={holdTableStyle(colors)}
               borderColor={colors.holdBorder}
@@ -600,6 +646,7 @@ export function DayDetailSidebar({
               tableStyle={waitlistTableStyle(colors)}
               borderColor={colors.waitlistBorder}
               moverColumnLabel={plural("mover")}
+              onAdd={() => setWaitlistDialogOpen(true)}
             />
           </div>
         </div>
@@ -608,6 +655,15 @@ export function DayDetailSidebar({
           <DayPipelineTable rows={day.pipeline} />
         </div>
       </div>
+
+      {waitlistDialogOpen ? (
+        <AddCalendarPlacementDialog
+          open
+          kind="waitlist"
+          anchorDate={date}
+          onClose={() => setWaitlistDialogOpen(false)}
+        />
+      ) : null}
     </DetailSidebar>
   );
 }

@@ -216,3 +216,10 @@ export function openOpsPrepTasks(
 ): OpsPrepTask[] {
   return tasks.filter((t) => !doneIds.has(t.id));
 }
+
+export function doneOpsPrepTasks(
+  tasks: OpsPrepTask[],
+  doneIds: Set<string>,
+): OpsPrepTask[] {
+  return tasks.filter((t) => doneIds.has(t.id));
+}

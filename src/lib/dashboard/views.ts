@@ -12,11 +12,11 @@ export type DashboardViewMeta = {
 };
 
 export const dashboardViews: Record<DashboardView, DashboardViewMeta> = {
-  ceo: {
-    id: "ceo",
-    label: "CEO",
+  executive: {
+    id: "executive",
+    label: "Executive",
     headline: "Executive overview",
-    audience: "Owner / admin (e.g. Jonah) — company health at a glance.",
+    audience: "Owner / admin — company health at a glance.",
     plannedWidgets: [
       "Revenue & margin (MTD / YTD)",
       "Booked vs capacity trend",

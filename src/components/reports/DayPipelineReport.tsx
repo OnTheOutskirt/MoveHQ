@@ -2,6 +2,7 @@
 
 import { useCalendarSettings } from "@/components/providers/CalendarSettingsProvider";
 import {
+  BOOKING_RATE_FORMULA_LABEL,
   bookingRatePercent,
   formatLeadsQualification,
   totalLeads,
@@ -29,9 +30,9 @@ function buildPipelineRows(sales: DaySalesMetrics): PipelineRow[] {
   const leads = totalLeads(sales);
   return [
     {
-      stage: "Leads",
-      count: leads,
-      detail: `${formatLeadsQualification(sales)} · ${sales.leadsLocal} local · ${sales.leadsLongDistance} long distance`,
+      stage: "Qualified leads",
+      count: sales.leadsQualified,
+      detail: `${sales.leadsUnqualified} unqualified · ${sales.leadsLocal} local · ${sales.leadsLongDistance} long distance (${leads} total)`,
     },
     {
       stage: "Proposals sent",
@@ -73,13 +74,15 @@ export function DayPipelineReport({ date, sales }: DayPipelineReportProps) {
     },
     {
       key: "leads",
-      header: "Leads",
+      header: "Qualified leads",
       cell: (row) => (
         <span className="tabular-nums">
-          {row.leadsLocal + row.leadsLongDistance}
-          <span className="ml-1 block text-xs font-normal text-slate-500">
-            {row.leadsQualified} qual · {row.leadsUnqualified} unqual
-          </span>
+          {row.leadsQualified}
+          {row.leadsUnqualified > 0 ? (
+            <span className="ml-1 block text-xs font-normal text-slate-400">
+              {row.leadsUnqualified} unqualified
+            </span>
+          ) : null}
         </span>
       ),
     },
@@ -121,8 +124,13 @@ export function DayPipelineReport({ date, sales }: DayPipelineReportProps) {
       <div className="grid gap-4 sm:grid-cols-4">
         <Card>
           <CardContent className="py-4 text-center">
-            <p className="text-2xl font-semibold tabular-nums">{sales.leadsLocal + sales.leadsLongDistance}</p>
-            <p className="text-xs text-slate-500">Leads</p>
+            <p className="text-2xl font-semibold tabular-nums">{sales.leadsQualified}</p>
+            <p className="text-xs text-slate-500">Qualified leads</p>
+            {sales.leadsUnqualified > 0 ? (
+              <p className="mt-0.5 text-[10px] text-slate-400">
+                {sales.leadsUnqualified} unqualified
+              </p>
+            ) : null}
           </CardContent>
         </Card>
         <Card>
@@ -146,7 +154,7 @@ export function DayPipelineReport({ date, sales }: DayPipelineReportProps) {
               {rate}%
             </p>
             <p className="text-xs text-slate-500">Booking rate</p>
-            <p className="mt-0.5 text-[10px] text-slate-500">booked ÷ proposals</p>
+            <p className="mt-0.5 text-[10px] text-slate-500">{BOOKING_RATE_FORMULA_LABEL}</p>
           </CardContent>
         </Card>
       </div>

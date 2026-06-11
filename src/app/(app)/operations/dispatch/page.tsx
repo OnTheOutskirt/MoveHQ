@@ -1,13 +1,5 @@
-"use client";
-
-import { DispatchProvider } from "@/components/dispatch/DispatchProvider";
-import { DispatchWorkspace } from "@/components/dispatch/DispatchWorkspace";
-import { tomorrowDateKey } from "@/lib/dispatch/collect-day-jobs";
+import { DispatchPageClient } from "@/app/(app)/operations/dispatch/DispatchPageClient";
 
 export default function DispatchPage() {
-  return (
-    <DispatchProvider initialDateKey={tomorrowDateKey()}>
-      <DispatchWorkspace />
-    </DispatchProvider>
-  );
+  return <DispatchPageClient />;
 }

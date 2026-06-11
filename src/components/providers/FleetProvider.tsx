@@ -58,7 +58,12 @@ type FleetContextValue = {
   getTruckCapacityBreakdownForDate: (dateKey: string) => TruckCapacityBreakdown;
   updateCrewMember: (
     id: string,
-    patch: Partial<Pick<FleetCrewMember, "name" | "roles" | "active" | "teamMemberId">>,
+    patch: Partial<
+      Pick<
+        FleetCrewMember,
+        "name" | "roles" | "active" | "teamMemberId" | "headshotDataUrl" | "bio" | "showOnCustomerPortal"
+      >
+    >,
   ) => void;
   addCrewMember: (input: {
     name: string;
@@ -229,11 +234,36 @@ export function FleetProvider({ children }: { children: ReactNode }) {
 
   const updateTimeOffRequest = useCallback((id: string, patch: Partial<TimeOffRequest>) => {
     setStore((prev) => {
+      const prior = prev.timeOffRequests.find((r) => r.id === id);
       const timeOffRequests = prev.timeOffRequests.map((r) =>
         r.id === id ? { ...r, ...patch } : r,
       );
+      const updated = timeOffRequests.find((r) => r.id === id);
       const next = { ...prev, timeOffRequests };
       saveFleetStore(next);
+      if (
+        updated &&
+        prior &&
+        patch.status &&
+        patch.status !== prior.status &&
+        (patch.status === "approved" || patch.status === "denied")
+      ) {
+        void import("@/lib/crew-app/crew-inbox-storage").then(({ notifyCrewTimeOffDecision }) => {
+          const status = patch.status as "approved" | "denied";
+          notifyCrewTimeOffDecision(
+            updated.crewId,
+            {
+              id: updated.id,
+              startDate: updated.startDate,
+              endDate: updated.endDate,
+              note: updated.reason,
+              status: "pending",
+              submittedAt: updated.submittedAt,
+            },
+            status,
+          );
+        });
+      }
       return next;
     });
   }, []);
@@ -254,13 +284,18 @@ export function FleetProvider({ children }: { children: ReactNode }) {
         ...prev,
         trucks: prev.trucks.map((t) => {
           if (t.id !== id) return t;
-          const merged = {
+          const merged: TruckFormInput = {
             label: patch.label ?? t.label,
             vehicleType: patch.vehicleType ?? t.vehicleType,
             lengthFt: patch.lengthFt !== undefined ? patch.lengthFt : t.lengthFt,
             cabSize: patch.cabSize !== undefined ? patch.cabSize : t.cabSize,
             hasLiftgate: patch.hasLiftgate !== undefined ? patch.hasLiftgate : t.hasLiftgate,
             active: patch.active !== undefined ? patch.active : t.active,
+            make: patch.make !== undefined ? patch.make : t.make,
+            model: patch.model !== undefined ? patch.model : t.model,
+            year: patch.year !== undefined ? patch.year : t.year,
+            vin: patch.vin !== undefined ? patch.vin : t.vin,
+            plate: patch.plate !== undefined ? patch.plate : t.plate,
           };
           return truckFromFormInput(id, merged);
         }),

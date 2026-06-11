@@ -1,102 +1,66 @@
 "use client";
 
-import { useSettingsEditor } from "@/lib/settings/use-settings-editor";
-import { SettingsField, SettingsInput, SettingsSelect } from "@/components/settings/SettingsField";
+import { useWorkspace } from "@/components/providers/WorkspaceProvider";
+import { SettingsField, SettingsInput } from "@/components/settings/SettingsField";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
-
-const TIMEZONES = [
-  "America/Denver",
-  "America/Chicago",
-  "America/New_York",
-  "America/Los_Angeles",
-  "America/Phoenix",
-];
+import Link from "next/link";
 
 export function CompanyTab() {
-  const { settings, updateCompany } = useSettingsEditor();
-  const { company } = settings;
+  const { config, updateConfig } = useWorkspace();
+  const { company } = config;
+
+  function patchCompany(patch: Partial<typeof company>) {
+    updateConfig({ ...config, company: { ...company, ...patch } });
+  }
 
   return (
     <div className="space-y-6">
-    <Card>
-      <CardHeader>
-        <CardTitle>Company contact</CardTitle>
-      </CardHeader>
-      <CardContent className="grid gap-5 sm:grid-cols-2">
-        <SettingsField label="Phone" className="sm:col-span-2">
-          <SettingsInput
-            type="tel"
-            value={company.phone}
-            onChange={(e) => updateCompany({ phone: e.target.value })}
-            placeholder="(555) 555-0100"
-          />
-        </SettingsField>
-        <SettingsField label="Email" className="sm:col-span-2">
-          <SettingsInput
-            type="email"
-            value={company.email}
-            onChange={(e) => updateCompany({ email: e.target.value })}
-            placeholder="office@jonahsmovers.com"
-          />
-        </SettingsField>
-        <SettingsField label="Website" className="sm:col-span-2">
-          <SettingsInput
-            value={company.website}
-            onChange={(e) => updateCompany({ website: e.target.value })}
-            placeholder="https://jonahsmovers.com"
-          />
-        </SettingsField>
-        <SettingsField label="Street address" className="sm:col-span-2">
-          <SettingsInput
-            value={company.address}
-            onChange={(e) => updateCompany({ address: e.target.value })}
-          />
-        </SettingsField>
-        <SettingsField label="City">
-          <SettingsInput value={company.city} onChange={(e) => updateCompany({ city: e.target.value })} />
-        </SettingsField>
-        <SettingsField label="State">
-          <SettingsInput value={company.state} onChange={(e) => updateCompany({ state: e.target.value })} />
-        </SettingsField>
-        <SettingsField label="ZIP">
-          <SettingsInput value={company.zip} onChange={(e) => updateCompany({ zip: e.target.value })} />
-        </SettingsField>
-        <SettingsField label="Timezone">
-          <SettingsSelect
-            value={company.timezone}
-            onChange={(e) => updateCompany({ timezone: e.target.value })}
-          >
-            {TIMEZONES.map((tz) => (
-              <option key={tz} value={tz}>
-                {tz}
-              </option>
-            ))}
-          </SettingsSelect>
-        </SettingsField>
-      </CardContent>
-    </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Company (organization)</CardTitle>
+          <p className="text-sm text-slate-500">
+            Legal and brand identity for the whole business. Branch addresses, phones, hours, and
+            calendars are configured per location.
+          </p>
+        </CardHeader>
+        <CardContent className="grid gap-5 sm:grid-cols-2">
+          <SettingsField label="Legal name" className="sm:col-span-2">
+            <SettingsInput
+              value={company.legalName}
+              onChange={(e) => patchCompany({ legalName: e.target.value })}
+              placeholder="Jonah's Movers LLC"
+            />
+          </SettingsField>
+          <SettingsField label="Company display name" hint="Often matches Branding tab.">
+            <SettingsInput
+              value={company.name}
+              onChange={(e) => patchCompany({ name: e.target.value })}
+            />
+          </SettingsField>
+          <SettingsField label="Corporate website" hint="Optional — branches can have their own.">
+            <SettingsInput
+              value={company.website}
+              onChange={(e) => patchCompany({ website: e.target.value })}
+              placeholder="https://jonahsmovers.com"
+            />
+          </SettingsField>
+        </CardContent>
+      </Card>
 
-    <Card>
-      <CardHeader>
-        <CardTitle>Business hours</CardTitle>
-      </CardHeader>
-      <CardContent className="grid gap-5 sm:grid-cols-2">
-        <SettingsField label="Office opens" hint="Used for scheduling and customer-facing hours.">
-          <SettingsInput
-            type="time"
-            value={company.businessHoursStart}
-            onChange={(e) => updateCompany({ businessHoursStart: e.target.value })}
-          />
-        </SettingsField>
-        <SettingsField label="Office closes">
-          <SettingsInput
-            type="time"
-            value={company.businessHoursEnd}
-            onChange={(e) => updateCompany({ businessHoursEnd: e.target.value })}
-          />
-        </SettingsField>
-      </CardContent>
-    </Card>
+      <Card className="border-brand-100 bg-brand-50/30">
+        <CardContent className="py-4">
+          <p className="text-sm text-brand-900">
+            <span className="font-semibold">
+              Phone, address, Google review link, office hours, crew days, and timezone
+            </span>{" "}
+            live on the{" "}
+            <Link href="/admin/company?tab=locations" className="font-semibold underline">
+              Locations
+            </Link>{" "}
+            tab for each branch. With a single location, that tab is your full business profile.
+          </p>
+        </CardContent>
+      </Card>
     </div>
   );
 }

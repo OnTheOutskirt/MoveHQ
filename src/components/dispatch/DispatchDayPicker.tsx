@@ -1,7 +1,7 @@
 "use client";
 
 import { useDispatch } from "@/components/dispatch/DispatchProvider";
-import { addDays, formatDayLong, parseDateKey, toDateKey } from "@/lib/calendar/date-utils";
+import { addDays, parseDateKey, toDateKey } from "@/lib/calendar/date-utils";
 import { cn } from "@/lib/utils";
 import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -17,7 +17,7 @@ export function DispatchDayPicker() {
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex shrink-0 flex-nowrap items-center gap-2">
       <div className="flex items-center rounded-lg border border-slate-200 bg-white shadow-sm">
         <button
           type="button"
@@ -48,9 +48,10 @@ export function DispatchDayPicker() {
 
       <div className="flex gap-1">
         <QuickDayButton
-          label="Today"
+          label="Today · reassign"
           active={dateKey === todayKey}
           onClick={() => setDateKey(todayKey)}
+          title="Same-day crew reassignments"
         />
         <QuickDayButton
           label="Tomorrow"
@@ -58,8 +59,6 @@ export function DispatchDayPicker() {
           onClick={() => setDateKey(tomorrowKey)}
         />
       </div>
-
-      <p className="text-sm text-slate-600">{formatDayLong(date)}</p>
     </div>
   );
 }
@@ -68,14 +67,17 @@ function QuickDayButton({
   label,
   active,
   onClick,
+  title,
 }: {
   label: string;
   active: boolean;
   onClick: () => void;
+  title?: string;
 }) {
   return (
     <button
       type="button"
+      title={title}
       onClick={onClick}
       className={cn(
         "rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",

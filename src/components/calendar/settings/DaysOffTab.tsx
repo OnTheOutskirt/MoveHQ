@@ -17,7 +17,8 @@ function formatClosedDate(dateKey: string): string {
 }
 
 export function DaysOffTab() {
-  const { closedDays, addClosedDay, updateClosedDay, removeClosedDay } = useCalendarSettings();
+  const { settingsClosedDays, addClosedDay, updateClosedDay, removeClosedDay } =
+    useCalendarSettings();
 
   const [newDate, setNewDate] = useState("");
   const [newLabel, setNewLabel] = useState("");
@@ -68,10 +69,10 @@ export function DaysOffTab() {
 
       <div>
         <p className="mb-2 text-sm font-semibold text-slate-900">
-          Scheduled closures ({closedDays.length})
+          Scheduled closures ({settingsClosedDays.length})
         </p>
         <ul className="space-y-2">
-          {closedDays.map((entry) => (
+          {settingsClosedDays.map((entry) => (
             <ClosedDayRow
               key={entry.id}
               entry={entry}

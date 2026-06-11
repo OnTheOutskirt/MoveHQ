@@ -1,6 +1,5 @@
 "use client";
 
-import { useCrewApp } from "@/components/crew-app/CrewAppProvider";
 import type { CrewAppRole } from "@/lib/crew-app/types";
 import { useTerminology } from "@/lib/terminology/use-terminology";
 import { cn } from "@/lib/utils";
@@ -8,12 +7,21 @@ import { cn } from "@/lib/utils";
 const ROLES: CrewAppRole[] = ["skipper", "driver", "mover"];
 
 type CrewRoleSwitcherProps = {
+  role: CrewAppRole;
+  onRoleChange: (role: CrewAppRole) => void;
   variant?: "light" | "dark";
+  label?: string;
   className?: string;
 };
 
-export function CrewRoleSwitcher({ variant = "light", className }: CrewRoleSwitcherProps) {
-  const { session, setSession } = useCrewApp();
+/** Admin preview only — not shown inside the crew PWA. */
+export function CrewRoleSwitcher({
+  role,
+  onRoleChange,
+  variant = "light",
+  label = "Preview role",
+  className,
+}: CrewRoleSwitcherProps) {
   const { label: roleLabel } = useTerminology();
 
   return (
@@ -24,17 +32,17 @@ export function CrewRoleSwitcher({ variant = "light", className }: CrewRoleSwitc
           variant === "dark" ? "text-white/70" : "text-slate-500",
         )}
       >
-        Preview as
+        {label}
       </p>
       <div className="mt-1.5 flex flex-wrap gap-2">
-        {ROLES.map((role) => (
+        {ROLES.map((r) => (
           <button
-            key={role}
+            key={r}
             type="button"
-            onClick={() => setSession({ ...session, primaryRole: role })}
+            onClick={() => onRoleChange(r)}
             className={cn(
               "rounded-full border px-3 py-1 text-xs font-semibold transition-colors",
-              session.primaryRole === role
+              role === r
                 ? variant === "dark"
                   ? "border-white/30 bg-white/20 text-white"
                   : "border-brand-600 bg-brand-50 text-brand-900"
@@ -43,11 +51,10 @@ export function CrewRoleSwitcher({ variant = "light", className }: CrewRoleSwitc
                   : "border-slate-200 bg-white text-slate-600 hover:border-slate-300",
             )}
           >
-            {roleLabel(role)}
+            {roleLabel(r)}
           </button>
         ))}
       </div>
     </div>
   );
 }
-

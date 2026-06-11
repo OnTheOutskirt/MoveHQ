@@ -5,6 +5,7 @@ import { SettingsDraftProvider, useSettingsDraft } from "@/components/providers/
 import { useSettings } from "@/components/providers/SettingsProvider";
 import { ModulePage } from "@/components/shared/ModulePage";
 import { TabBar } from "@/components/shared/TabBar";
+import { LocationsTab } from "@/components/admin/company/LocationsTab";
 import { BrandingTab } from "@/components/settings/settings-tabs/BrandingTab";
 import { CompanyTab } from "@/components/settings/settings-tabs/CompanyTab";
 import { DefaultsTab } from "@/components/settings/settings-tabs/DefaultsTab";
@@ -15,7 +16,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 const TABS = [
   { id: "branding", label: "Branding" },
-  { id: "profile", label: "Business info" },
+  { id: "profile", label: "Company" },
+  { id: "locations", label: "Locations" },
   { id: "defaults", label: "Defaults" },
   { id: "notifications", label: "Notifications" },
 ] as const;
@@ -28,6 +30,8 @@ function TabPanel({ tab }: { tab: TabId }) {
       return <BrandingTab />;
     case "profile":
       return <CompanyTab />;
+    case "locations":
+      return <LocationsTab />;
     case "defaults":
       return <DefaultsTab />;
     case "notifications":

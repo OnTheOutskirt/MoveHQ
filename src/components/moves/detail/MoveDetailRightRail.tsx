@@ -1,11 +1,15 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { NextActionBanner } from "@/components/moves/detail/workspace/NextActionBanner";
+import { MoveCustomerPortalPanel } from "@/components/moves/detail/MoveCustomerPortalPanel";
 import { MoveDetailLeadSourcePanel } from "@/components/moves/detail/MoveDetailLeadSourcePanel";
 import { MoveDetailMediaPanel } from "@/components/moves/detail/MoveDetailMediaPanel";
 import { MoveDetailPeopleRailSection } from "@/components/moves/detail/MoveDetailPeopleRailSection";
 import {
+  getAllMoveQuickActions,
   getMoveQuickActions,
+  moveQuickActionsHasMore,
   MOVE_QUICK_ACTIONS_WITH_PANEL,
   type MoveQuickActionId,
 } from "@/lib/moves/quick-actions";
@@ -54,7 +58,13 @@ export function MoveDetailRightRail({
   onOpenContact,
   onQuickAction,
 }: MoveDetailRightRailProps) {
-  const actions = getMoveQuickActions(move);
+  const [showAllActions, setShowAllActions] = useState(false);
+  const hasMoreActions = moveQuickActionsHasMore(move);
+  const actions = showAllActions ? getAllMoveQuickActions(move) : getMoveQuickActions(move);
+
+  useEffect(() => {
+    setShowAllActions(false);
+  }, [move.id]);
 
   return (
     <aside
@@ -66,9 +76,20 @@ export function MoveDetailRightRail({
       </div>
 
       <div className="shrink-0 border-b border-slate-200 p-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-          Quick actions
-        </p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Quick actions
+          </p>
+          {hasMoreActions ? (
+            <button
+              type="button"
+              onClick={() => setShowAllActions((open) => !open)}
+              className="shrink-0 text-[11px] font-medium text-slate-400 hover:text-brand-600"
+            >
+              {showAllActions ? "View less" : "View all"}
+            </button>
+          ) : null}
+        </div>
         <div className="mt-2 grid min-w-0 grid-cols-2 gap-1.5">
           {actions.map((action) => {
             const Icon = ACTION_ICONS[action.id] ?? StickyNote;
@@ -88,6 +109,8 @@ export function MoveDetailRightRail({
           })}
         </div>
       </div>
+
+      <MoveCustomerPortalPanel move={move} />
 
       <MoveDetailPeopleRailSection move={move} onOpenContact={onOpenContact} />
 

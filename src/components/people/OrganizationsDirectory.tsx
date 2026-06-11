@@ -2,7 +2,8 @@
 
 import { DirectoryContactActions } from "@/components/people/DirectoryContactActions";
 import { DataTable, type Column } from "@/components/ui/DataTable";
-import { getPeopleForOrganization, MOCK_ORGANIZATIONS } from "@/lib/people/mock-data";
+import { listAllOrganizations } from "@/lib/people/organizations-storage";
+import { listAllPeople } from "@/lib/people/people-storage";
 import { organizationTypeConfig, organizationTypeLabel } from "@/lib/people/display";
 import type { OrganizationRecord, OrganizationType } from "@/lib/people/types";
 import { cn } from "@/lib/utils";
@@ -20,7 +21,7 @@ export function OrganizationsDirectory({ onSelectOrganization }: OrganizationsDi
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return MOCK_ORGANIZATIONS.filter((o) => {
+    return listAllOrganizations().filter((o) => {
       if (typeFilter !== "all" && o.orgType !== typeFilter) return false;
       if (!q) return true;
       return (
@@ -75,7 +76,7 @@ export function OrganizationsDirectory({ onSelectOrganization }: OrganizationsDi
         key: "contacts",
         header: "Contacts",
         cell: (o) => {
-          const count = getPeopleForOrganization(o.id).length;
+          const count = listAllPeople().filter((p) => p.organizationId === o.id).length;
           return <span className="tabular-nums text-slate-700">{count}</span>;
         },
       },

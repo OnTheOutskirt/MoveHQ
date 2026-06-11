@@ -2,7 +2,11 @@ import {
   QUALIFIED_LOST_REASONS,
   UNQUALIFIED_LOST_REASONS,
 } from "@/lib/moves/lost-reasons-constants";
-import type { FieldCatalogEntry, FieldCatalogSettings } from "./field-catalog-types";
+import type {
+  DiscountReasonEntry,
+  FieldCatalogEntry,
+  FieldCatalogSettings,
+} from "./field-catalog-types";
 
 const PIPELINE_STAGE_SEED: FieldCatalogEntry[] = [
   {
@@ -126,6 +130,41 @@ const MOVE_TYPE_SEED: FieldCatalogEntry[] = [
   { id: "labor_only", label: "Labor only", builtIn: true },
 ];
 
+const DISCOUNT_REASON_SEED: DiscountReasonEntry[] = [
+  {
+    id: "repeat_customer",
+    label: "Repeat customer",
+    description: "Returning client loyalty discount",
+    kind: "percent",
+    defaultValue: 10,
+    builtIn: true,
+  },
+  {
+    id: "referral",
+    label: "Referral",
+    description: "Referred by an existing customer",
+    kind: "percent",
+    defaultValue: 5,
+    builtIn: true,
+  },
+  {
+    id: "price_match",
+    label: "Price match",
+    description: "Matched a competitor quote",
+    kind: "dollar",
+    defaultValue: 150,
+    builtIn: true,
+  },
+  {
+    id: "manager_approval",
+    label: "Manager approval",
+    description: "One-off discount approved by management",
+    kind: "dollar",
+    defaultValue: 100,
+    builtIn: true,
+  },
+];
+
 const PRIORITY_TIER_SEED: FieldCatalogEntry[] = [
   { id: "Q1", label: "Q1 Priority Lead", shortCode: "Q1", meaning: "Hot source + high value ($2k+)", badgeClass: "bg-emerald-100 text-emerald-900", builtIn: true },
   { id: "Q2", label: "Q2 Strategic Lead", shortCode: "Q2", meaning: "Cold source + high value ($2k+)", badgeClass: "bg-sky-100 text-sky-900", builtIn: true },
@@ -141,6 +180,7 @@ export function defaultFieldCatalog(): FieldCatalogSettings {
     leadSources: LEAD_SOURCE_SEED.map((s) => ({ ...s })),
     moveTypes: MOVE_TYPE_SEED.map((s) => ({ ...s })),
     priorityTiers: PRIORITY_TIER_SEED.map((s) => ({ ...s })),
+    discountReasons: DISCOUNT_REASON_SEED.map((s) => ({ ...s })),
     lostReasons: [
       ...UNQUALIFIED_LOST_REASONS.map((r) => ({
         id: r.id,
@@ -194,6 +234,35 @@ function mergeEntries(
   return merged;
 }
 
+function mergeDiscountReasons(
+  defaults: DiscountReasonEntry[],
+  saved: DiscountReasonEntry[] | undefined,
+): DiscountReasonEntry[] {
+  if (!saved?.length) return defaults;
+  const savedById = new Map(saved.map((e) => [e.id, e]));
+  const merged = defaults.map((d) => ({
+    ...d,
+    ...savedById.get(d.id),
+    id: d.id,
+    builtIn: true,
+    kind: savedById.get(d.id)?.kind ?? d.kind,
+    defaultValue: Number.isFinite(savedById.get(d.id)?.defaultValue)
+      ? (savedById.get(d.id)!.defaultValue)
+      : d.defaultValue,
+  }));
+  for (const entry of saved) {
+    if (!defaults.some((d) => d.id === entry.id)) {
+      merged.push({
+        ...entry,
+        builtIn: entry.builtIn ?? false,
+        kind: entry.kind === "dollar" ? "dollar" : "percent",
+        defaultValue: Number.isFinite(entry.defaultValue) ? entry.defaultValue : 0,
+      });
+    }
+  }
+  return merged;
+}
+
 export function normalizeFieldCatalog(raw: Partial<FieldCatalogSettings> | undefined): FieldCatalogSettings {
   const defaults = defaultFieldCatalog();
   if (!raw) return defaults;
@@ -205,6 +274,7 @@ export function normalizeFieldCatalog(raw: Partial<FieldCatalogSettings> | undef
     moveTypes: mergeEntries(defaults.moveTypes, raw.moveTypes),
     priorityTiers: mergeEntries(defaults.priorityTiers, raw.priorityTiers),
     lostReasons: mergeEntries(defaults.lostReasons, raw.lostReasons),
+    discountReasons: mergeDiscountReasons(defaults.discountReasons, raw.discountReasons),
   };
 }
 
@@ -215,8 +285,8 @@ export function fieldCatalogEntryCount(catalog: FieldCatalogSettings): number {
     catalog.conditionStatuses.length +
     catalog.leadSources.length +
     catalog.moveTypes.length +
-    catalog.priorityTiers.length +
-    catalog.lostReasons.length
+    catalog.lostReasons.length +
+    catalog.discountReasons.length
   );
 }
 

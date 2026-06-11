@@ -8,6 +8,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { DataTable, type Column } from "@/components/ui/DataTable";
 import { DetailSidebar } from "@/components/ui/DetailSidebar";
+import {
+  APP_ACCESS_META,
+  appsForPermissionLevel,
+  memberModuleCustomizations,
+} from "@/lib/team/access-profiles";
 import { formatPay, formatPermission, memberDisplayName } from "@/lib/team/format";
 import { createEmptyMember, type TeamMemberRecord } from "@/lib/team/types";
 import { cn } from "@/lib/utils";
@@ -20,14 +25,6 @@ type PendingDelete = {
   id: string;
   name: string;
 };
-
-function AccessPill({ enabled, label }: { enabled: boolean; label: string }) {
-  return (
-    <Badge variant={enabled ? "success" : "default"} className="mr-1">
-      {enabled ? label : `No ${label}`}
-    </Badge>
-  );
-}
 
 function JobTitleBadges({ titles }: { titles: TeamMemberRecord["jobTitles"] }) {
   if (titles.length === 0) return <span className="text-slate-400">—</span>;
@@ -111,23 +108,38 @@ export function DirectoryTab() {
     },
     {
       key: "titles",
-      header: "Job roles",
+      header: "Field roles",
       cell: (row) => <JobTitleBadges titles={row.jobTitles} />,
-    },
-    {
-      key: "permission",
-      header: "Permission",
-      cell: (row) => formatPermission(row.permissionLevel),
     },
     {
       key: "access",
       header: "Access",
-      cell: (row) => (
-        <div className="flex flex-wrap gap-1">
-          <AccessPill enabled={row.hasSoftwareAccess} label="Software" />
-          <AccessPill enabled={row.hasCrewAppAccess} label="Crew app" />
-        </div>
-      ),
+      cell: (row) => {
+        const apps = appsForPermissionLevel(row.permissionLevel);
+        const customizations = memberModuleCustomizations(
+          row.permissionLevel,
+          row.capabilityOverrides,
+        );
+        return (
+          <div>
+            <p className="text-sm font-medium text-slate-800">
+              {formatPermission(row.permissionLevel)}
+            </p>
+            <p className="mt-0.5 text-xs text-slate-500">
+              {apps.map((a) => APP_ACCESS_META[a].short).join(" · ")}
+            </p>
+            {customizations.length > 0 ? (
+              <div className="mt-1 flex flex-wrap gap-1">
+                {customizations.map((label) => (
+                  <Badge key={label} variant="default" className="text-[10px]">
+                    {label}
+                  </Badge>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        );
+      },
     },
     {
       key: "pay",
@@ -149,7 +161,10 @@ export function DirectoryTab() {
       className: "w-20",
       cell: (row) => (
         <div className="flex items-center justify-end gap-1">
-          <IconButton label={`Edit ${memberDisplayName(row)}`} onClick={() => setPanel({ type: "edit", id: row.id })}>
+          <IconButton
+            label={`Edit ${memberDisplayName(row)}`}
+            onClick={() => setPanel({ type: "edit", id: row.id })}
+          >
             <Pencil className="h-4 w-4" />
           </IconButton>
           <IconButton
@@ -184,7 +199,11 @@ export function DirectoryTab() {
               </button>
             ))}
           </div>
-          <Button type="button" size="sm" onClick={() => setPanel({ type: "add" })}>
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => setPanel({ type: "add" })}
+          >
             <Plus className="h-4 w-4" />
             Add team member
           </Button>
@@ -212,41 +231,40 @@ export function DirectoryTab() {
         title={panel.type === "add" ? "Add team member" : `Edit — ${editing ? memberDisplayName(editing) : ""}`}
         description={
           panel.type === "add"
-            ? "Add a new person to Jonah's Movers. Rippling employee # is required for payroll."
-            : "Update access, roles, and pay. Rippling employee # is required for payroll."
+            ? "Profile, field roles, and access level. Rippling # required for payroll."
+            : "Profile, field roles, access level, and pay."
         }
         widthClassName="max-w-lg"
       >
-        {sidebarOpen && (
-          <MemberForm
-            key={panel.type === "add" ? "add" : panel.id}
-            initial={
-              panel.type === "add"
-                ? createEmptyMember()
-                : editing
-                  ? (() => {
-                      const { id: _id, ...data } = editing;
-                      return data;
-                    })()
-                  : createEmptyMember()
-            }
-            submitLabel={panel.type === "add" ? "Add member" : "Save changes"}
-            onCancel={() => setPanel({ type: "closed" })}
-            onDelete={
-              panel.type === "edit" && editing
-                ? () => requestDelete(editing)
-                : undefined
-            }
-            onSubmit={(data) => {
-              if (panel.type === "add") {
-                addMember(data);
-              } else {
+        {sidebarOpen ? (
+          panel.type === "edit" && editing ? (
+            <MemberForm
+              key={panel.id}
+              initial={(() => {
+                const { id: _id, ...data } = editing;
+                return data;
+              })()}
+              submitLabel="Save changes"
+              onCancel={() => setPanel({ type: "closed" })}
+              onDelete={() => requestDelete(editing)}
+              onSubmit={(data) => {
                 updateMember(panel.id, data);
-              }
-              setPanel({ type: "closed" });
-            }}
-          />
-        )}
+                setPanel({ type: "closed" });
+              }}
+            />
+          ) : (
+            <MemberForm
+              key="add"
+              initial={createEmptyMember()}
+              submitLabel="Add member"
+              onCancel={() => setPanel({ type: "closed" })}
+              onSubmit={(data) => {
+                addMember(data);
+                setPanel({ type: "closed" });
+              }}
+            />
+          )
+        ) : null}
       </DetailSidebar>
 
       <ConfirmDialog

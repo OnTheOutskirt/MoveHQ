@@ -1,25 +1,37 @@
 export type WorkerType = "crew" | "office";
 
-export type TimeEntrySource = "crew_app" | "office_manual" | "manager_edit";
+export type TimeEntrySource = "crew_app" | "office_clock" | "office_manual" | "manager_edit";
 
 export type TimeEntryStatus = "pending" | "approved";
 
+/** Hours by clock category — crew uses move/drive/extra; office staff uses office. */
+export type TimeCategoryHours = {
+  move: number;
+  drive: number;
+  extra: number;
+  office: number;
+  break: number;
+};
+
 export type TimeEntry = {
   id: string;
+  personId: string;
   personName: string;
   workerType: WorkerType;
   roleLabel: string;
   date: string;
   jobRef: string | null;
-  clockIn: string;
-  clockOut: string;
-  breakMinutes: number;
-  /** Paid hours after break deduction */
+  categories: TimeCategoryHours;
+  /** Billable hours — move + drive + extra + office */
   hours: number;
   hourlyRate: number | null;
   status: TimeEntryStatus;
   source: TimeEntrySource;
   notes?: string;
+  clockInAt?: string;
+  clockOutAt?: string | null;
+  /** Still on the clock — hours refresh until clock out */
+  isLiveClock?: boolean;
 };
 
 export type PayPeriod = {
@@ -41,3 +53,10 @@ export type PayrollExportRow = {
 };
 
 export type { RipplingPayrollRow } from "./rippling-columns";
+
+export type TimeEntryDaySelection = {
+  personId: string;
+  personName: string;
+  date: string;
+  entries: TimeEntry[];
+};

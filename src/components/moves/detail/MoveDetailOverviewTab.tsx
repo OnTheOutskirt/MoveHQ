@@ -138,6 +138,7 @@ export function MoveDetailOverviewTab({ move, onNavigateTab }: MoveDetailOvervie
           <div className="flex flex-wrap gap-2">
             <NavButton onClick={() => onNavigateTab?.("move-plan")}>Move scope</NavButton>
             <NavButton onClick={() => onNavigateTab?.("quote-contract")}>Quote &amp; contract</NavButton>
+            <NavButton onClick={() => onNavigateTab?.("payment")}>Payment</NavButton>
           </div>
         </div>
 

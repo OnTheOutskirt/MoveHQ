@@ -4,7 +4,23 @@ import {
   resolveJobDayLocations,
   syncLegacyLocationNotes,
 } from "./job-day-locations";
-import type { JobDayLocation, JobDayService, MoveJobDay, MoveRecord } from "./types";
+import { FLEXIBLE_ARRIVAL_WINDOW } from "@/lib/day-share/arrival-windows";
+import { defaultCrewDepartureLabel } from "@/lib/moves/crew-departure";
+import {
+  arrivalWindowsEquivalent,
+  computeJobDayArrivalWindow,
+} from "@/lib/moves/job-day-arrival";
+import type { DefaultsSettings } from "@/lib/settings/types";
+import type { WorkspaceLocation } from "@/lib/workspace/types";
+import { fractionLabel } from "@/lib/day-share/labels";
+import { isJobDayFirstStop, jobDaySharePeriod } from "./job-day-schedule";
+import type {
+  JobDayFraction,
+  JobDayLocation,
+  JobDayService,
+  MoveJobDay,
+  MoveRecord,
+} from "./types";
 
 /** Soft cap for job days per move (UI); can be raised later. */
 export const MAX_JOB_DAYS_PER_MOVE = 10;
@@ -28,6 +44,31 @@ export const JOB_DAY_SERVICE_OPTIONS: { id: JobDayService; label: string }[] = [
   { id: "junk_removal", label: "Junk removal" },
 ];
 
+export const JOB_DAY_FRACTION_OPTIONS: { id: JobDayFraction; label: string }[] = [
+  { id: "long", label: "Long (full day)" },
+  { id: "medium", label: "Medium (⅔ day)" },
+  { id: "short", label: "Short (½ day)" },
+  { id: "brief", label: "Brief (⅓ day)" },
+];
+
+/** Follow-on jobs share the crew — cannot block a full day. */
+export const DEFAULT_FOLLOW_ON_DAY_FRACTION: JobDayFraction = "medium";
+
+export function jobDayFractionOptionsForSchedule(
+  isFirstJobOfDay: boolean,
+): typeof JOB_DAY_FRACTION_OPTIONS {
+  if (isFirstJobOfDay) return JOB_DAY_FRACTION_OPTIONS;
+  return JOB_DAY_FRACTION_OPTIONS.filter((opt) => opt.id !== "long");
+}
+
+export function coerceFollowOnDayFraction(
+  dayFraction: JobDayFraction,
+  isFirstJobOfDay: boolean,
+): JobDayFraction {
+  if (isFirstJobOfDay || dayFraction !== "long") return dayFraction;
+  return DEFAULT_FOLLOW_ON_DAY_FRACTION;
+}
+
 export type JobDayFormValues = {
   date: string;
   services: JobDayService[];
@@ -35,7 +76,50 @@ export type JobDayFormValues = {
   crewSize: string;
   truckCount: string;
   hoursEstimated: string;
+  dayFraction: JobDayFraction;
+  /** Crew's first stop that day — shop departure + calculated morning arrival. */
+  isFirstJobOfDay: boolean;
+  /** Crew shop departure — display label (e.g. "7:15 AM"). */
+  departureWindow: string;
+  /** Customer-facing arrival window for this job day. */
+  arrivalWindow: string;
+  /** When false, arrival is recalculated from departure and drive time (or 11–4 for follow-on). */
+  arrivalWindowManual: boolean;
 };
+
+export type JobDayDefaultsContext = {
+  defaults?: Pick<
+    DefaultsSettings,
+    | "defaultCrewDepartureTime"
+    | "defaultCustomerArrivalWindowMinutes"
+    | "defaultDepotToJobDriveMinutes"
+    | "defaultFollowOnArrivalStartTime"
+    | "defaultFollowOnArrivalEndTime"
+  >;
+  depot?: Pick<WorkspaceLocation, "addressLine1" | "city" | "state" | "zip">;
+};
+
+export type JobDayFormContext = JobDayDefaultsContext & {
+  move: MoveRecord;
+};
+
+export function resolveComputedArrivalWindow(
+  values: Pick<
+    JobDayFormValues,
+    "isFirstJobOfDay" | "departureWindow" | "locations"
+  >,
+  move: MoveRecord,
+  context: JobDayDefaultsContext = {},
+): string {
+  return computeJobDayArrivalWindow({
+    isFirstJobOfDay: values.isFirstJobOfDay,
+    departureWindow: values.departureWindow,
+    locations: values.locations,
+    move,
+    depot: context.depot,
+    defaults: context.defaults,
+  });
+}
 
 function nextCalendarDay(isoDate: string): string {
   const d = new Date(isoDate + "T12:00:00");
@@ -44,8 +128,11 @@ function nextCalendarDay(isoDate: string): string {
 }
 
 /** Form values for duplicating a job day — copies settings/locations; date defaults to day after source. */
-export function duplicateJobDayFormValues(source: MoveJobDay): JobDayFormValues {
-  const base = jobDayToFormValues(source);
+export function duplicateJobDayFormValues(
+  source: MoveJobDay,
+  context?: JobDayFormContext,
+): JobDayFormValues {
+  const base = jobDayToFormValues(source, context);
   return {
     ...base,
     date: source.date ? nextCalendarDay(source.date) : "",
@@ -56,18 +143,53 @@ export function duplicateJobDayFormValues(source: MoveJobDay): JobDayFormValues 
   };
 }
 
-export function jobDayToFormValues(day: MoveJobDay): JobDayFormValues {
+export function jobDayToFormValues(
+  day: MoveJobDay,
+  context?: JobDayFormContext,
+): JobDayFormValues {
   const truckCount =
     day.truckCount ??
     (day.truckSummary?.match(/(\d+)/)?.[1] ? parseInt(day.truckSummary.match(/(\d+)/)![1]!, 10) : undefined);
 
-  return {
+  const isFirstJobOfDay = isJobDayFirstStop(day);
+  const dayFraction = coerceFollowOnDayFraction(day.dayFraction ?? "long", isFirstJobOfDay);
+  const locations = resolveJobDayLocations(day);
+  const departureWindow = isFirstJobOfDay
+    ? day.departureWindow ?? defaultCrewDepartureLabel(context?.defaults)
+    : "";
+
+  const baseValues: JobDayFormValues = {
     date: day.date,
     services: day.services ?? [],
-    locations: resolveJobDayLocations(day),
+    locations,
     crewSize: day.crewSize != null ? String(day.crewSize) : "",
     truckCount: truckCount != null ? String(truckCount) : "",
     hoursEstimated: day.hoursEstimated != null ? String(day.hoursEstimated) : "",
+    dayFraction,
+    isFirstJobOfDay,
+    departureWindow,
+    arrivalWindow: day.arrivalWindow?.trim() ?? "",
+    arrivalWindowManual: false,
+  };
+
+  if (!context?.move) {
+    return {
+      ...baseValues,
+      arrivalWindow:
+        baseValues.arrivalWindow ||
+        (isFirstJobOfDay ? "8:00 – 8:30 AM" : FLEXIBLE_ARRIVAL_WINDOW),
+    };
+  }
+
+  const computed = resolveComputedArrivalWindow(baseValues, context.move, context);
+  const stored = baseValues.arrivalWindow;
+  const arrivalWindowManual =
+    stored.length > 0 && !arrivalWindowsEquivalent(stored, computed);
+
+  return {
+    ...baseValues,
+    arrivalWindow: arrivalWindowManual ? stored : computed,
+    arrivalWindowManual,
   };
 }
 
@@ -95,14 +217,60 @@ function defaultDayDate(move: MoveRecord, extraDates: string[] = []): string {
 export function createDefaultJobDayFormValues(
   move: MoveRecord,
   extraDates: string[] = [],
+  context: JobDayDefaultsContext = {},
 ): JobDayFormValues {
-  const day = createDefaultJobDay(move, extraDates);
-  return jobDayToFormValues(day);
+  const day = createDefaultJobDay(move, extraDates, context);
+  return jobDayToFormValues(day, { move, ...context });
 }
 
 /** Auto title — day number only (services shown on the card separately). */
 export function generateJobDayLabel(dayIndex: number): string {
   return `Day ${dayIndex + 1}`;
+}
+
+export type JobDayEditorDateEntry = {
+  key: string;
+  date: string;
+};
+
+function sortJobDayEditorEntries(
+  entries: JobDayEditorDateEntry[],
+): JobDayEditorDateEntry[] {
+  return [...entries].sort((a, b) => {
+    const aDate = a.date.trim();
+    const bDate = b.date.trim();
+    if (aDate && bDate) {
+      const diff = new Date(aDate).getTime() - new Date(bDate).getTime();
+      if (diff !== 0) return diff;
+    } else if (aDate) {
+      return -1;
+    } else if (bDate) {
+      return 1;
+    }
+    return a.key.localeCompare(b.key);
+  });
+}
+
+/** Day labels for all tabs in the job day editor — ordered by date (drafts included). */
+export function buildJobDaySwitcherLabels(
+  entries: JobDayEditorDateEntry[],
+): Map<string, string> {
+  const sorted = sortJobDayEditorEntries(entries);
+  const map = new Map<string, string>();
+  sorted.forEach((entry, index) => {
+    map.set(entry.key, generateJobDayLabel(index));
+  });
+  return map;
+}
+
+/** 0-based day index among editor entries (saved + unsaved), ordered by date. */
+export function jobDayIndexAmongEditorEntries(
+  selfKey: string,
+  entries: JobDayEditorDateEntry[],
+): number {
+  const sorted = sortJobDayEditorEntries(entries);
+  const index = sorted.findIndex((entry) => entry.key === selfKey);
+  return index >= 0 ? index : sorted.length;
 }
 
 /** Day number (0-based) from chronological order by date, including the given date. */
@@ -127,11 +295,18 @@ function defaultServicesForDay(move: MoveRecord, index: number): JobDayService[]
 }
 
 /** First job day when a move is created — uses intake move date, locations, and defaults. */
-export function createInitialJobDayFromIntake(move: MoveRecord): MoveJobDay {
-  return createDefaultJobDay({ ...move, jobDays: [] });
+export function createInitialJobDayFromIntake(
+  move: MoveRecord,
+  context: JobDayDefaultsContext = {},
+): MoveJobDay {
+  return createDefaultJobDay({ ...move, jobDays: [] }, [], context);
 }
 
-export function createDefaultJobDay(move: MoveRecord, extraDates: string[] = []): MoveJobDay {
+export function createDefaultJobDay(
+  move: MoveRecord,
+  extraDates: string[] = [],
+  context: JobDayDefaultsContext = {},
+): MoveJobDay {
   const date = defaultDayDate(move, extraDates);
   const index = jobDayIndexForDate(move, date);
   const services = defaultServicesForDay(move, index);
@@ -139,16 +314,32 @@ export function createDefaultJobDay(move: MoveRecord, extraDates: string[] = [])
   const proposed = isPreBookPipelineStage(move.pipelineStage);
   const label = generateJobDayLabel(index);
 
+  const locations = defaultLocationsForNewDay(move);
+  const departureWindow = defaultCrewDepartureLabel(context.defaults);
+  const arrivalWindow = computeJobDayArrivalWindow({
+    isFirstJobOfDay: true,
+    departureWindow,
+    locations,
+    move,
+    depot: context.depot,
+    defaults: context.defaults,
+  });
+
   const base: MoveJobDay = {
     id: `jd-${move.id}-${Date.now()}`,
     label,
     date,
     status: proposed ? "proposed" : "scheduled",
     services,
-    locations: defaultLocationsForNewDay(move),
+    locations,
     crewSize,
     truckCount: 1,
     hoursEstimated: 8,
+    dayFraction: "long",
+    isFirstJobOfDay: true,
+    dayPeriod: "morning",
+    arrivalWindow,
+    departureWindow,
   };
 
   return { ...base, ...syncLegacyLocationNotes(base) };
@@ -189,6 +380,20 @@ export function formValuesToJobDay(
       ? `${truckCount} truck${truckCount === 1 ? "" : "s"}`
       : undefined;
 
+  const isFirstJobOfDay = values.isFirstJobOfDay;
+  const dayFraction = coerceFollowOnDayFraction(values.dayFraction, isFirstJobOfDay);
+  const dayPeriod = jobDaySharePeriod({ isFirstJobOfDay, dayPeriod: existing?.dayPeriod });
+  const arrivalWindow = values.arrivalWindow.trim()
+    ? values.arrivalWindow.trim()
+    : resolveComputedArrivalWindow(values, move);
+  const departureWindow = isFirstJobOfDay
+    ? values.departureWindow.trim() ||
+      existing?.departureWindow ||
+      defaultCrewDepartureLabel()
+    : undefined;
+  const durationLabel =
+    dayFraction === "long" ? existing?.durationLabel : fractionLabel(dayFraction);
+
   const draft: MoveJobDay = {
     id: existing?.id ?? `jd-${Date.now()}`,
     label: generateJobDayLabel(index),
@@ -202,8 +407,12 @@ export function formValuesToJobDay(
     truckSummary,
     hoursEstimated: hours,
     hoursActual: existing?.hoursActual,
-    arrivalWindow: existing?.arrivalWindow,
-    durationLabel: existing?.durationLabel,
+    dayFraction,
+    isFirstJobOfDay,
+    dayPeriod,
+    arrivalWindow,
+    departureWindow,
+    durationLabel,
     dispatchNotes: existing?.dispatchNotes,
     accessNotes: existing?.accessNotes,
   };

@@ -1,7 +1,11 @@
 import type { FtaDuration, FtaPeriod, FtaSlot } from "@/lib/calendar/types";
+import type { DispatchJob } from "./types";
 import { formatFtaSlot } from "@/lib/calendar/fta";
+import { defaultDayShareSettings } from "@/lib/day-share/settings-defaults";
+import { DAY_SHARE_COMBINATION_HINT, fractionUnits } from "@/lib/day-share/units";
+import type { DayShareFraction } from "@/lib/day-share/types";
 
-/** Day fraction for FTA bookings. */
+/** Day fraction for partial-day bookings. */
 export const FTA_DAY_FRACTIONS = ["brief", "short", "medium", "long"] as const;
 export type FtaDayFraction = (typeof FTA_DAY_FRACTIONS)[number];
 
@@ -13,15 +17,11 @@ export type DispatchFtaBooking = {
   duration: FtaDayFraction;
 };
 
-export const FTA_FRACTION_LABELS: Record<FtaDayFraction, string> = {
-  brief: "Brief (⅓ day)",
-  short: "Short (½ day)",
-  medium: "Medium (⅔ day)",
-  long: "Long (full day)",
-};
+const settings = defaultDayShareSettings();
 
-export const FTA_COMBINATION_RULES =
-  "One long · or brief + medium · or 2 shorts · or 3 briefs — fills a crew-day";
+export const FTA_FRACTION_LABELS: Record<FtaDayFraction, string> = settings.fractionLabels;
+
+export const FTA_COMBINATION_RULES = DAY_SHARE_COMBINATION_HINT;
 
 /** Map legacy calendar duration to dispatch fractions (medium → ⅔ day; add long separately). */
 export function calendarDurationToFraction(
@@ -52,7 +52,7 @@ export function ftaBookingCode(booking: DispatchFtaBooking): string {
     booking.duration === "long" ? "medium" : (booking.duration as FtaDuration);
   return formatFtaSlot({
     count: 1,
-    crewSize: booking.crewSize as 2 | 3,
+    crewSize: booking.crewSize,
     period: booking.period,
     duration: legacyDuration,
   });
@@ -61,11 +61,11 @@ export function ftaBookingCode(booking: DispatchFtaBooking): string {
 /** Parse calendar pill like (1)2As into a booking when possible. */
 export function parseFtaLabel(label: string | null | undefined): DispatchFtaBooking | null {
   if (!label) return null;
-  const m = label.match(/^\(\d+\)(\d)([MA])([bsm])$/i);
+  const m = label.match(/^\(\d+\)(\d+)([MA])([bsm])$/i);
   if (!m) return null;
-  const crewSize = Number(m[1]) as 2 | 3;
-  const period = m[2]!.toUpperCase() === "M" ? "morning" : "afternoon";
-  const durChar = m[3]!.toLowerCase();
+  const crewSize = Number(m[2]);
+  const period = m[3]!.toUpperCase() === "M" ? "morning" : "afternoon";
+  const durChar = m[4]!.toLowerCase();
   const durationMap: Record<string, FtaDayFraction> = {
     b: "brief",
     s: "short",
@@ -81,15 +81,10 @@ export function parseFtaLabel(label: string | null | undefined): DispatchFtaBook
   };
 }
 
-export function fractionUnits(duration: FtaDayFraction): number {
-  switch (duration) {
-    case "brief":
-      return 1;
-    case "short":
-      return 2;
-    case "medium":
-      return 2;
-    case "long":
-      return 3;
-  }
+/** Partial-day afternoon (PM) jobs — styled distinctly on the dispatch schedule. */
+export function isAfternoonDispatchJob(job: Pick<DispatchJob, "ftaBooking">): boolean {
+  return job.ftaBooking?.period === "afternoon";
 }
+
+export { fractionUnits } from "@/lib/day-share/units";
+export type { DayShareFraction };

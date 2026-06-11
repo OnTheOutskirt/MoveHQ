@@ -6,8 +6,8 @@ import { Card, CardContent } from "@/components/ui/Card";
 import {
   buildRipplingPayrollRows,
   entriesInPeriod,
+  payPeriodsForToday,
   ripplingPayrollCsvContent,
-  PAY_PERIODS,
 } from "@/lib/payroll/mock-time-entries";
 import {
   RIPPLING_PAYROLL_COLUMNS,
@@ -23,9 +23,10 @@ type PayrollExportTabProps = {
 };
 
 export function PayrollExportTab({ entries }: PayrollExportTabProps) {
-  const [periodId, setPeriodId] = useState(PAY_PERIODS[0]!.id);
+  const payPeriods = useMemo(() => payPeriodsForToday(), []);
+  const [periodId, setPeriodId] = useState(payPeriods[0]!.id);
 
-  const period = PAY_PERIODS.find((p) => p.id === periodId) ?? PAY_PERIODS[0]!;
+  const period = payPeriods.find((p) => p.id === periodId) ?? payPeriods[0]!;
   const periodEntries = useMemo(
     () => entriesInPeriod(entries, period),
     [entries, period],
@@ -82,7 +83,7 @@ export function PayrollExportTab({ entries }: PayrollExportTabProps) {
             onChange={(e) => setPeriodId(e.target.value)}
             className="mt-1 block h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm"
           >
-            {PAY_PERIODS.map((p: PayPeriod) => (
+            {payPeriods.map((p: PayPeriod) => (
               <option key={p.id} value={p.id}>
                 {p.label}
               </option>

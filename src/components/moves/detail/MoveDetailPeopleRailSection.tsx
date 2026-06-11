@@ -2,10 +2,15 @@
 
 import { useState } from "react";
 import { MoveDetailContactCard } from "@/components/moves/detail/MoveDetailContactCard";
-import { useMoves } from "@/components/moves/MovesProvider";
+import {
+  ShipperPersonPicker,
+  type ShipperPersonValue,
+} from "@/components/moves/ShipperPersonPicker";
+import { useMovesActions } from "@/components/moves/MovesProvider";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { moveHasShipper } from "@/lib/moves/get-move-contact";
-import { MOCK_PEOPLE } from "@/lib/people/mock-data";
+import { addCustomPerson } from "@/lib/people/people-storage";
+import { getStoredPersonById } from "@/lib/people/people-storage";
 import type { MoveRecord } from "@/lib/moves/types";
 import { User } from "lucide-react";
 
@@ -18,27 +23,27 @@ export function MoveDetailPeopleRailSection({
   move,
   onOpenContact,
 }: MoveDetailPeopleRailSectionProps) {
-  const { clearShipper, setShipper } = useMoves();
+  const { clearShipper, setShipper } = useMovesActions();
   const hasShipper = moveHasShipper(move);
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [selectedPersonId, setSelectedPersonId] = useState("");
-
-  const directoryOptions = MOCK_PEOPLE.filter(
-    (p) => p.kind === "customer" || p.kind === "lead" || p.kind === "referral",
-  );
+  const [shipperDraft, setShipperDraft] = useState<ShipperPersonValue>(null);
 
   const shipperName =
     move.customerName.trim() ||
     move.linkedPeople.find((p) => p.role === "customer")?.name ||
     "this shipper";
 
-  function linkShipper() {
-    if (!selectedPersonId) return;
-    const person = directoryOptions.find((p) => p.id === selectedPersonId);
-    if (!person) return;
-    setShipper(move.id, person);
-    setSelectedPersonId("");
+  function applyShipper() {
+    if (!shipperDraft) return;
+    if (shipperDraft.mode === "existing") {
+      const person = getStoredPersonById(shipperDraft.personId);
+      if (person) setShipper(move.id, person);
+    } else {
+      const person = addCustomPerson(shipperDraft.draft);
+      setShipper(move.id, person);
+    }
+    setShipperDraft(null);
     setPickerOpen(false);
   }
 
@@ -68,35 +73,21 @@ export function MoveDetailPeopleRailSection({
             </>
           ) : (
             <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50/80 p-2.5">
-              <label className="block">
-                <span className="text-[10px] font-semibold uppercase text-slate-500">
-                  Select from directory
-                </span>
-                <select
-                  value={selectedPersonId}
-                  onChange={(e) => setSelectedPersonId(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-2.5 py-2 text-sm"
-                >
-                  <option value="">Choose a person…</option>
-                  {directoryOptions.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                      {p.phone ? ` · ${p.phone}` : ""}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <ShipperPersonPicker value={shipperDraft} onChange={setShipperDraft} />
               <button
                 type="button"
-                onClick={linkShipper}
-                disabled={!selectedPersonId}
+                onClick={applyShipper}
+                disabled={!shipperDraft}
                 className="w-full rounded-lg bg-brand-600 px-2 py-1.5 text-xs font-medium text-white hover:bg-brand-700 disabled:opacity-50"
               >
                 Set as shipper
               </button>
               <button
                 type="button"
-                onClick={() => setPickerOpen(false)}
+                onClick={() => {
+                  setPickerOpen(false);
+                  setShipperDraft(null);
+                }}
                 className="w-full text-center text-[11px] text-slate-500 hover:text-slate-700"
               >
                 Cancel

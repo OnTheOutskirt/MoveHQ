@@ -2,7 +2,8 @@
 
 import { DirectoryContactActions } from "@/components/people/DirectoryContactActions";
 import { DataTable, type Column } from "@/components/ui/DataTable";
-import { getOrganizationForPerson, MOCK_PEOPLE } from "@/lib/people/mock-data";
+import { getOrganizationForPerson } from "@/lib/people/mock-data";
+import { listAllPeople } from "@/lib/people/people-storage";
 import {
   personKindConfig,
   personKindLabel,
@@ -28,7 +29,7 @@ export function PeopleDirectory({ onSelectPerson }: PeopleDirectoryProps) {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return MOCK_PEOPLE.filter((p) => {
+    return listAllPeople().filter((p) => {
       if (kindFilter !== "all" && p.kind !== kindFilter) return false;
       if (
         kindFilter === "referral" &&

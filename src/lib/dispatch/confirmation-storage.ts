@@ -1,6 +1,6 @@
 import type { DayBeforeConfirmationStatus } from "./day-before-confirmation";
 
-const STORAGE_KEY = "jm-dispatch-day-before-confirmation-v1";
+const STORAGE_KEY = "jm-dispatch-day-before-confirmation-v2";
 
 type ConfirmationStore = Record<string, DayBeforeConfirmationStatus>;
 

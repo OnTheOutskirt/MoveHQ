@@ -1,9 +1,4 @@
-/** Mock signed-in user until auth is wired up. */
-export const CURRENT_USER = {
-  id: "user-alex-rivera",
-  name: "Alex Rivera",
-  initials: "AR",
-  title: "Sales",
-  /** Matches `MoveRecord.assignedRep` for follow-up filtering */
-  assignedRep: "Alex Rivera",
-} as const;
+/** @deprecated Use `useSession()` in client components — kept for SSR fallbacks. */
+export { REAL_ADMIN_PERSONA as CURRENT_USER } from "./personas";
+
+export { DEMO_WORKSPACE_MEMBERSHIP as CURRENT_USER_WORKSPACE } from "@/lib/workspace/membership";

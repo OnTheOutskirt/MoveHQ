@@ -1,23 +1,28 @@
 "use client";
 
 import { SetupAccordion } from "@/components/admin/setup/SetupAccordion";
-import { SettingsField, SettingsInput } from "@/components/settings/SettingsField";
+import { SettingsInput } from "@/components/settings/SettingsField";
 import { Button } from "@/components/ui/Button";
-import type { FieldCatalogEntry, FieldCatalogGroup } from "@/lib/settings/field-catalog-types";
+import type {
+  FieldCatalogEntry,
+  FieldCatalogEntryGroup,
+} from "@/lib/settings/field-catalog-types";
 import { uniqueCatalogId } from "@/lib/settings/field-catalog-defaults";
 import type { FieldCatalogSettings } from "@/lib/settings/field-catalog-types";
 import { useSettingsSection } from "@/lib/settings/use-settings-editor";
 import { LOST_QUALIFICATION_LABELS, type LostQualification } from "@/lib/moves/lost-reasons";
 import { Plus, Trash2 } from "lucide-react";
+import type { CSSProperties } from "react";
+
+const COMPACT_INPUT =
+  "w-full min-w-0 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20";
 
 type GroupConfig = {
-  key: FieldCatalogGroup;
+  key: FieldCatalogEntryGroup;
   title: string;
   hint: string;
   showDescription?: boolean;
-  showHotToggle?: boolean;
   showHideFromBoard?: boolean;
-  showQualification?: boolean;
   showShortCode?: boolean;
   showMeaning?: boolean;
   lostQualification?: LostQualification;
@@ -46,28 +51,14 @@ const GROUPS: GroupConfig[] = [
   {
     key: "leadSources",
     title: "Lead sources",
-    hint: "How the customer found you — hot sources boost priority tier.",
+    hint: "How the customer found you — hot/cold and Q1–Q4 quadrants are under Setup → Leads.",
     showDescription: true,
-    showHotToggle: true,
-  },
-  {
-    key: "moveTypes",
-    title: "Move types",
-    hint: "Service classification on moves, jobs, and profitability.",
-  },
-  {
-    key: "priorityTiers",
-    title: "Priority tags",
-    hint: "Auto-assigned from lead source heat + estimated move value.",
-    showMeaning: true,
-    showShortCode: true,
   },
   {
     key: "lostReasons",
     title: `Lost reasons · ${LOST_QUALIFICATION_LABELS.unqualified}`,
     hint: "Used when marking a lead lost before it was a real sales opportunity.",
     showDescription: true,
-    showQualification: true,
     lostQualification: "unqualified",
   },
   {
@@ -75,7 +66,6 @@ const GROUPS: GroupConfig[] = [
     title: `Lost reasons · ${LOST_QUALIFICATION_LABELS.qualified}`,
     hint: "Used when you quoted or pursued a real move that did not book.",
     showDescription: true,
-    showQualification: true,
     lostQualification: "qualified",
   },
 ];
@@ -83,11 +73,11 @@ const GROUPS: GroupConfig[] = [
 export function StatusesFieldsSection() {
   const { value: fieldCatalog, update } = useSettingsSection("fieldCatalog");
 
-  function setGroup(key: FieldCatalogGroup, entries: FieldCatalogEntry[]) {
+  function setGroup(key: FieldCatalogEntryGroup, entries: FieldCatalogEntry[]) {
     update({ [key]: entries });
   }
 
-  function patchEntry(key: FieldCatalogGroup, id: string, patch: Partial<FieldCatalogEntry>) {
+  function patchEntry(key: FieldCatalogEntryGroup, id: string, patch: Partial<FieldCatalogEntry>) {
     const list = fieldCatalog[key];
     setGroup(
       key,
@@ -95,14 +85,14 @@ export function StatusesFieldsSection() {
     );
   }
 
-  function removeEntry(key: FieldCatalogGroup, id: string) {
+  function removeEntry(key: FieldCatalogEntryGroup, id: string) {
     setGroup(
       key,
       fieldCatalog[key].filter((e) => e.id !== id || e.builtIn),
     );
   }
 
-  function addEntry(key: FieldCatalogGroup, partial: Partial<FieldCatalogEntry>) {
+  function addEntry(key: FieldCatalogEntryGroup, partial: Partial<FieldCatalogEntry>) {
     const list = fieldCatalog[key];
     const label = partial.label ?? "New item";
     const entry: FieldCatalogEntry = {
@@ -121,7 +111,7 @@ export function StatusesFieldsSection() {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {GROUPS.map((group) => {
         const entries = fieldCatalog[group.key].filter((e) =>
           group.lostQualification ? e.qualification === group.lostQualification : true,
@@ -129,6 +119,11 @@ export function StatusesFieldsSection() {
         const groupKey = group.lostQualification
           ? `${group.key}-${group.lostQualification}`
           : group.key;
+        const secondaryLabel = group.showMeaning
+          ? "Meaning"
+          : group.showDescription
+            ? "Description"
+            : null;
 
         return (
           <SetupAccordion
@@ -137,90 +132,93 @@ export function StatusesFieldsSection() {
             description={group.hint}
             count={entries.length}
           >
-            <ul className="space-y-3">
+            {secondaryLabel || group.showShortCode || group.showHideFromBoard ? (
+              <div
+                className="mb-1.5 hidden gap-2 px-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400 sm:grid"
+                style={catalogRowStyle(group)}
+              >
+                <span>Label</span>
+                {group.showShortCode ? <span>Code</span> : null}
+                {secondaryLabel ? <span>{secondaryLabel}</span> : null}
+                {group.showHideFromBoard ? <span className="text-center">Board</span> : null}
+                <span className="sr-only">Actions</span>
+              </div>
+            ) : null}
+            <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white">
               {entries.map((entry) => (
                 <li
                   key={entry.id}
-                  className="rounded-lg border border-slate-200 bg-slate-50/50 p-3 space-y-2"
+                  title={`${entry.id}${entry.builtIn ? " · built-in" : ""}`}
+                  className="flex flex-wrap items-center gap-2 px-2.5 py-1.5 sm:grid sm:gap-2"
+                  style={catalogRowStyle(group)}
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1 grid gap-2 sm:grid-cols-2">
-                      <SettingsField label="Label">
-                        <SettingsInput
-                          value={entry.label}
-                          onChange={(e) =>
-                            patchEntry(group.key, entry.id, { label: e.target.value })
-                          }
-                        />
-                      </SettingsField>
-                      {group.showShortCode ? (
-                        <SettingsField label="Short code">
-                          <SettingsInput
-                            value={entry.shortCode ?? ""}
-                            onChange={(e) =>
-                              patchEntry(group.key, entry.id, { shortCode: e.target.value })
-                            }
-                          />
-                        </SettingsField>
-                      ) : null}
-                    </div>
+                  <SettingsInput
+                    value={entry.label}
+                    onChange={(e) => patchEntry(group.key, entry.id, { label: e.target.value })}
+                    placeholder="Label"
+                    className={COMPACT_INPUT}
+                    aria-label="Label"
+                  />
+                  {group.showShortCode ? (
+                    <SettingsInput
+                      value={entry.shortCode ?? ""}
+                      onChange={(e) =>
+                        patchEntry(group.key, entry.id, { shortCode: e.target.value })
+                      }
+                      placeholder="Q1"
+                      className={COMPACT_INPUT}
+                      aria-label="Short code"
+                    />
+                  ) : null}
+                  {secondaryLabel ? (
+                    <SettingsInput
+                      value={
+                        group.showMeaning
+                          ? (entry.meaning ?? entry.description ?? "")
+                          : (entry.description ?? "")
+                      }
+                      onChange={(e) =>
+                        patchEntry(
+                          group.key,
+                          entry.id,
+                          group.showMeaning
+                            ? { meaning: e.target.value }
+                            : { description: e.target.value },
+                        )
+                      }
+                      placeholder={secondaryLabel}
+                      className={COMPACT_INPUT}
+                      aria-label={secondaryLabel}
+                    />
+                  ) : null}
+                  {group.showHideFromBoard ? (
+                    <label className="flex items-center justify-center gap-1.5 text-xs text-slate-600">
+                      <input
+                        type="checkbox"
+                        checked={entry.hideFromBoard ?? false}
+                        onChange={(e) =>
+                          patchEntry(group.key, entry.id, { hideFromBoard: e.target.checked })
+                        }
+                        className="rounded border-slate-300"
+                        title="Hide from pipeline board"
+                      />
+                      <span className="sm:hidden">Hide board</span>
+                    </label>
+                  ) : null}
+                  <div className="flex justify-end sm:justify-center">
                     {!entry.builtIn ? (
                       <button
                         type="button"
                         onClick={() => removeEntry(group.key, entry.id)}
-                        className="shrink-0 rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                        className="rounded p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
                         title="Remove"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-3.5 w-3.5" />
                       </button>
-                    ) : null}
+                    ) : (
+                      <span className="w-7" aria-hidden />
+                    )}
                   </div>
-                  {group.showDescription || group.showMeaning ? (
-                    <SettingsField label={group.showMeaning ? "Meaning" : "Description (optional)"}>
-                      <SettingsInput
-                        value={
-                          group.showMeaning ? (entry.meaning ?? entry.description ?? "") : (entry.description ?? "")
-                        }
-                        onChange={(e) =>
-                          patchEntry(group.key, entry.id, group.showMeaning
-                            ? { meaning: e.target.value }
-                            : { description: e.target.value })
-                        }
-                      />
-                    </SettingsField>
-                  ) : null}
-                  <div className="flex flex-wrap gap-4">
-                    {group.showHotToggle ? (
-                      <label className="flex items-center gap-2 text-xs text-slate-600">
-                        <input
-                          type="checkbox"
-                          checked={entry.isHot ?? false}
-                          onChange={(e) =>
-                            patchEntry(group.key, entry.id, { isHot: e.target.checked })
-                          }
-                          className="rounded border-slate-300"
-                        />
-                        Hot lead source
-                      </label>
-                    ) : null}
-                    {group.showHideFromBoard ? (
-                      <label className="flex items-center gap-2 text-xs text-slate-600">
-                        <input
-                          type="checkbox"
-                          checked={entry.hideFromBoard ?? false}
-                          onChange={(e) =>
-                            patchEntry(group.key, entry.id, { hideFromBoard: e.target.checked })
-                          }
-                          className="rounded border-slate-300"
-                        />
-                        Hide from pipeline board
-                      </label>
-                    ) : null}
-                  </div>
-                  <p className="text-[10px] text-slate-400">
-                    ID: {entry.id}
-                    {entry.builtIn ? " · built-in" : ""}
-                  </p>
                 </li>
               ))}
             </ul>
@@ -228,7 +226,7 @@ export function StatusesFieldsSection() {
               type="button"
               variant="secondary"
               size="sm"
-              className="mt-3 gap-1"
+              className="mt-2 gap-1"
               onClick={() =>
                 addEntry(group.key, {
                   label: "New item",
@@ -246,6 +244,15 @@ export function StatusesFieldsSection() {
   );
 }
 
+function catalogRowStyle(group: GroupConfig): CSSProperties {
+  const cols: string[] = ["minmax(7rem,1.2fr)"];
+  if (group.showShortCode) cols.push("5rem");
+  if (group.showDescription || group.showMeaning) cols.push("minmax(8rem,2fr)");
+  if (group.showHideFromBoard) cols.push("3.5rem");
+  cols.push("2rem");
+  return { gridTemplateColumns: cols.join(" ") };
+}
+
 export function fieldCatalogCount(catalog: FieldCatalogSettings): number {
   return (
     catalog.pipelineStages.length +
@@ -253,7 +260,6 @@ export function fieldCatalogCount(catalog: FieldCatalogSettings): number {
     catalog.conditionStatuses.length +
     catalog.leadSources.length +
     catalog.moveTypes.length +
-    catalog.priorityTiers.length +
     catalog.lostReasons.length
   );
 }

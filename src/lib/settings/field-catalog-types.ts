@@ -31,6 +31,18 @@ export type FieldCatalogEntry = {
   detailLabel?: string;
 };
 
+export type QuoteDiscountKind = "percent" | "dollar";
+
+export type DiscountReasonEntry = {
+  id: string;
+  label: string;
+  description?: string;
+  kind: QuoteDiscountKind;
+  defaultValue: number;
+  /** System-provided — label editable; cannot remove. */
+  builtIn?: boolean;
+};
+
 export type FieldCatalogSettings = {
   pipelineStages: FieldCatalogEntry[];
   waitingSubstages: FieldCatalogEntry[];
@@ -39,6 +51,10 @@ export type FieldCatalogSettings = {
   moveTypes: FieldCatalogEntry[];
   priorityTiers: FieldCatalogEntry[];
   lostReasons: FieldCatalogEntry[];
+  discountReasons: DiscountReasonEntry[];
 };
 
 export type FieldCatalogGroup = keyof FieldCatalogSettings;
+
+/** Catalog lists that use `FieldCatalogEntry` (excludes discount reasons). */
+export type FieldCatalogEntryGroup = Exclude<FieldCatalogGroup, "discountReasons">;

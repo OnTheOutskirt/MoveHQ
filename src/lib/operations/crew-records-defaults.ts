@@ -1,5 +1,7 @@
 import { toDateKey } from "@/lib/calendar/date-utils";
-import type { CrewRecordsStore } from "./crew-records-types";
+import type { CrewRecordsStore, DriverReview, SkipperRating } from "./crew-records-types";
+import { computeDriverRating } from "./driver-violations";
+import { computeSkipperRating } from "./skipper-violations";
 
 function daysFromToday(offset: number): string {
   const d = new Date();
@@ -7,17 +9,37 @@ function daysFromToday(offset: number): string {
   return toDateKey(d);
 }
 
+function normalizeCrewRecordsStore(store: {
+  issues: CrewRecordsStore["issues"];
+  skipperRatings: Omit<SkipperRating, "rating">[];
+  driverReviews: Omit<DriverReview, "rating">[];
+}): CrewRecordsStore {
+  return {
+    ...store,
+    skipperRatings: store.skipperRatings.map((rating) => {
+      const violations = rating.violations ?? [];
+      return { ...rating, violations, rating: computeSkipperRating(violations) };
+    }),
+    driverReviews: store.driverReviews.map((review) => {
+      const violations = review.violations ?? [];
+      return { ...review, violations, rating: computeDriverRating(violations) };
+    }),
+  };
+}
+
 export function defaultCrewRecordsStore(): CrewRecordsStore {
   const now = new Date().toISOString();
 
-  return {
+  return normalizeCrewRecordsStore({
     issues: [
       {
         id: "issue-1",
         crewId: "crew-sam",
-        type: "tardy",
+        kind: "violation",
+        subject: "attendance",
         date: daysFromToday(-2),
-        title: "Late to yard — 25 min",
+        description: "Late to yard — 25 min. Crew lead notified at 6:40 AM.",
+        messageSent: true,
         jobRef: "JM-1042",
         status: "open",
         reportedBy: "Dispatch",
@@ -26,10 +48,11 @@ export function defaultCrewRecordsStore(): CrewRecordsStore {
       {
         id: "issue-2",
         crewId: "crew-devon",
-        type: "driving",
+        kind: "violation",
+        subject: "seat_belt",
         date: daysFromToday(-5),
-        title: "Hard braking event — dash cam",
-        description: "Flagged by telematics on I-94 segment.",
+        description: "Hard braking event flagged by telematics on I-94 segment.",
+        messageSent: true,
         status: "under_review",
         reportedBy: "Fleet safety",
         createdAt: now,
@@ -37,9 +60,11 @@ export function defaultCrewRecordsStore(): CrewRecordsStore {
       {
         id: "issue-3",
         crewId: "crew-chris",
-        type: "on_job",
+        kind: "failure",
+        subject: "customer_complaint",
         date: daysFromToday(-8),
-        title: "Customer complaint — packing care",
+        description: "Customer reported insufficient padding on dining room wrap.",
+        messageSent: false,
         jobRef: "JM-1038",
         moveId: "move-1",
         status: "resolved",
@@ -49,24 +74,13 @@ export function defaultCrewRecordsStore(): CrewRecordsStore {
         notes: "Coached on wrap protocol; no claim filed.",
       },
       {
-        id: "issue-4",
-        crewId: "crew-marcus",
-        type: "callback",
-        date: daysFromToday(-12),
-        title: "Callback — missed reassembly item",
-        jobRef: "JM-1029",
-        status: "resolved",
-        reportedBy: "Operations",
-        createdAt: now,
-        resolvedAt: daysFromToday(-10),
-      },
-      {
         id: "issue-5",
         crewId: "crew-tyler",
-        type: "claim",
+        kind: "failure",
+        subject: "customer_complaint",
         date: daysFromToday(-18),
-        title: "Claim — scratched hardwood",
-        description: "Customer filed damage claim; photos on file.",
+        description: "Customer filed damage claim for scratched hardwood — photos on file.",
+        messageSent: true,
         jobRef: "JM-1015",
         status: "under_review",
         reportedBy: "Claims",
@@ -75,25 +89,70 @@ export function defaultCrewRecordsStore(): CrewRecordsStore {
       {
         id: "issue-6",
         crewId: "crew-pat",
-        type: "tardy",
+        kind: "violation",
+        subject: "attendance",
         date: daysFromToday(-1),
-        title: "No-show call — arrived 40 min late",
+        description: "No call — arrived 40 min late to yard meet.",
+        messageSent: false,
         status: "open",
         reportedBy: "Skipper",
         createdAt: now,
       },
+      {
+        id: "issue-7",
+        crewId: "crew-james",
+        kind: "mistake",
+        subject: "uniforms",
+        date: daysFromToday(-4),
+        description: "Wore non-approved footwear on a corporate account job.",
+        messageSent: true,
+        status: "resolved",
+        reportedBy: "Operations",
+        createdAt: now,
+        resolvedAt: daysFromToday(-2),
+      },
+      {
+        id: "issue-alex-1",
+        crewId: "crew-alex",
+        kind: "mistake",
+        subject: "work_rule",
+        date: daysFromToday(-15),
+        description: "Wardrobe box count not updated on load list before departure.",
+        messageSent: true,
+        jobRef: "JM-1042",
+        status: "resolved",
+        reportedBy: "Dispatch",
+        createdAt: now,
+        resolvedAt: daysFromToday(-12),
+        notes: "Coached on load list sign-off.",
+      },
     ],
     skipperRatings: [
+      {
+        id: "rate-alex-1",
+        skipperId: "crew-alex",
+        date: daysFromToday(-4),
+        jobRef: "JM-1088",
+        violations: [],
+        ratedBy: "Dispatch",
+        createdAt: now,
+      },
+      {
+        id: "rate-alex-2",
+        skipperId: "crew-alex",
+        date: daysFromToday(-11),
+        jobRef: "JM-1042",
+        violations: ["no_truck_picture", "materials_not_put_away"],
+        notes: "Close-out checklist missed on truck photo.",
+        ratedBy: "Operations",
+        createdAt: now,
+      },
       {
         id: "rate-1",
         skipperId: "crew-marcus",
         date: daysFromToday(-3),
         jobRef: "JM-1042",
-        rating: 5,
-        communication: 5,
-        leadership: 5,
-        care: 4,
-        efficiency: 5,
+        violations: [],
         ratedBy: "Dispatch",
         createdAt: now,
       },
@@ -102,12 +161,8 @@ export function defaultCrewRecordsStore(): CrewRecordsStore {
         skipperId: "crew-tyler",
         date: daysFromToday(-6),
         jobRef: "JM-1035",
-        rating: 4,
-        communication: 4,
-        leadership: 4,
-        care: 5,
-        efficiency: 4,
-        notes: "Strong crew management; paperwork slow at close.",
+        violations: ["billing_inaccurate", "gas_receipts"],
+        notes: "Paperwork slow at close.",
         ratedBy: "Operations",
         createdAt: now,
       },
@@ -116,11 +171,11 @@ export function defaultCrewRecordsStore(): CrewRecordsStore {
         skipperId: "crew-james",
         date: daysFromToday(-10),
         jobRef: "JM-1028",
-        rating: 3,
-        communication: 3,
-        leadership: 3,
-        care: 4,
-        efficiency: 3,
+        violations: [
+          "addendum_not_submitted",
+          "no_truck_picture",
+          "trucks_not_fueled",
+        ],
         notes: "Customer follow-up needed on arrival comms.",
         ratedBy: "Dispatch",
         createdAt: now,
@@ -130,10 +185,65 @@ export function defaultCrewRecordsStore(): CrewRecordsStore {
         skipperId: "crew-marcus",
         date: daysFromToday(-14),
         jobRef: "JM-1020",
-        rating: 5,
+        violations: ["dirty_truck"],
         ratedBy: "Dispatch",
         createdAt: now,
       },
     ],
-  };
+    driverReviews: [
+      {
+        id: "drv-jordan-1",
+        driverId: "crew-jordan",
+        date: daysFromToday(-7),
+        jobRef: "JM-1060",
+        violations: ["rolling_stop"],
+        reviewedBy: "Fleet safety",
+        createdAt: now,
+      },
+      {
+        id: "drv-jordan-2",
+        driverId: "crew-jordan",
+        date: daysFromToday(-16),
+        jobRef: "JM-1032",
+        violations: [],
+        reviewedBy: "Operations",
+        createdAt: now,
+      },
+      {
+        id: "drv-1",
+        driverId: "crew-devon",
+        date: daysFromToday(-5),
+        jobRef: "JM-1040",
+        violations: ["braking", "speeding"],
+        reviewedBy: "Fleet safety",
+        createdAt: now,
+      },
+      {
+        id: "drv-2",
+        driverId: "crew-devon",
+        date: daysFromToday(-12),
+        violations: ["phone", "rolling_stop", "no_spotter"],
+        notes: "Telematics batch review.",
+        reviewedBy: "Fleet safety",
+        createdAt: now,
+      },
+      {
+        id: "drv-3",
+        driverId: "crew-pat",
+        date: daysFromToday(-8),
+        violations: ["cornering"],
+        reviewedBy: "Operations",
+        createdAt: now,
+      },
+      {
+        id: "drv-4",
+        driverId: "crew-pat",
+        date: daysFromToday(-20),
+        jobRef: "JM-1012",
+        violations: [],
+        reviewedBy: "Fleet safety",
+        createdAt: now,
+      },
+    ],
+  });
 }

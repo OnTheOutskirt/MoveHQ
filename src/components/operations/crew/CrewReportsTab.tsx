@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { DataTable, type Column } from "@/components/ui/DataTable";
 import { buildCrewPerformanceSummaries, type CrewMemberPerformanceSummary } from "@/lib/operations/crew-records";
+import { formatViolationRating, violationRatingTextClass } from "@/lib/operations/violation-rating";
+import { cn } from "@/lib/utils";
 import { useMemo, useState } from "react";
 
 const PERIODS = [
@@ -18,12 +20,12 @@ type PeriodId = (typeof PERIODS)[number]["id"];
 
 export function CrewReportsTab() {
   const { crew } = useFleet();
-  const { issues, skipperRatings } = useCrewRecords();
+  const { issues, skipperRatings, driverReviews } = useCrewRecords();
   const [period, setPeriod] = useState<PeriodId>("30");
 
   const summaries = useMemo(
-    () => buildCrewPerformanceSummaries(crew, { issues, skipperRatings }),
-    [crew, issues, skipperRatings],
+    () => buildCrewPerformanceSummaries(crew, { issues, skipperRatings, driverReviews }),
+    [crew, issues, skipperRatings, driverReviews],
   );
 
   const columns = useMemo<Column<CrewMemberPerformanceSummary>[]>(
@@ -44,11 +46,13 @@ export function CrewReportsTab() {
       },
       {
         key: "rating",
-        header: "Avg rating",
+        header: "Avg score",
         cell: (row) =>
           row.isSkipper ? (
             row.avgRating != null ? (
-              <span className="tabular-nums font-medium">{row.avgRating}</span>
+              <span className={cn("tabular-nums font-medium", violationRatingTextClass(row.avgRating))}>
+                {formatViolationRating(row.avgRating)}
+              </span>
             ) : (
               "—"
             )
@@ -66,26 +70,30 @@ export function CrewReportsTab() {
         ),
       },
       {
-        key: "tardies",
-        header: "Tardies (30d)",
-        cell: (row) => row.tardies30d,
+        key: "attendance",
+        header: "Attendance (30d)",
+        cell: (row) => row.attendance30d,
       },
       {
-        key: "driving",
-        header: "Driving (30d)",
-        cell: (row) => row.driving30d,
+        key: "seatBelt",
+        header: "Seat belt (30d)",
+        cell: (row) => row.seatBelt30d,
       },
       {
-        key: "onjob",
-        header: "On-job (30d)",
-        cell: (row) => row.onJob30d,
+        key: "complaints",
+        header: "Customer (30d)",
+        cell: (row) => row.customerComplaints30d,
       },
       {
-        key: "claims",
-        header: "Open claims",
+        key: "complaintsOpen",
+        header: "Open customer",
         cell: (row) => (
-          <span className={row.claimsOpen > 0 ? "font-medium text-red-700" : "text-slate-600"}>
-            {row.claimsOpen}
+          <span
+            className={
+              row.openCustomerComplaints > 0 ? "font-medium text-red-700" : "text-slate-600"
+            }
+          >
+            {row.openCustomerComplaints}
           </span>
         ),
       },
@@ -107,11 +115,11 @@ export function CrewReportsTab() {
     return summaries.reduce(
       (acc, row) => ({
         openIssues: acc.openIssues + row.openIssues,
-        tardies: acc.tardies + row.tardies30d,
-        claims: acc.claims + row.claimsOpen,
+        attendance: acc.attendance + row.attendance30d,
+        customerOpen: acc.customerOpen + row.openCustomerComplaints,
         callbacks: acc.callbacks + row.callbacks30d,
       }),
-      { openIssues: 0, tardies: 0, claims: 0, callbacks: 0 },
+      { openIssues: 0, attendance: 0, customerOpen: 0, callbacks: 0 },
     );
   }, [summaries]);
 
@@ -119,12 +127,12 @@ export function CrewReportsTab() {
     const headers = [
       "Crew",
       "Skipper",
-      "Avg rating",
+      "Avg score (/10)",
       "Open issues",
-      "Tardies (30d)",
-      "Driving (30d)",
-      "On-job (30d)",
-      "Open claims",
+      "Attendance (30d)",
+      "Seat belt (30d)",
+      "Customer (30d)",
+      "Open customer",
       "Callbacks (30d)",
       "Total issues (30d)",
     ];
@@ -132,12 +140,12 @@ export function CrewReportsTab() {
       [
         r.name,
         r.isSkipper ? "Yes" : "No",
-        r.avgRating ?? "",
+        r.isSkipper && r.avgRating != null ? r.avgRating.toFixed(1) : r.isSkipper ? "" : "",
         r.openIssues,
-        r.tardies30d,
-        r.driving30d,
-        r.onJob30d,
-        r.claimsOpen,
+        r.attendance30d,
+        r.seatBelt30d,
+        r.customerComplaints30d,
+        r.openCustomerComplaints,
         r.callbacks30d,
         r.totalIssues30d,
       ].join(","),
@@ -180,8 +188,12 @@ export function CrewReportsTab() {
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <ReportStat label="Open issues (team)" value={teamTotals.openIssues} />
-        <ReportStat label="Tardies (30d)" value={teamTotals.tardies} />
-        <ReportStat label="Open claims" value={teamTotals.claims} warn={teamTotals.claims > 0} />
+        <ReportStat label="Attendance (30d)" value={teamTotals.attendance} />
+        <ReportStat
+          label="Open customer issues"
+          value={teamTotals.customerOpen}
+          warn={teamTotals.customerOpen > 0}
+        />
         <ReportStat label="Callbacks (30d)" value={teamTotals.callbacks} />
       </div>
 

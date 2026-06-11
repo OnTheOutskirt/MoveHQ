@@ -1,8 +1,10 @@
 "use client";
 
 import { MoveDetailActivityTab } from "@/components/moves/detail/MoveDetailActivityTab";
+import { MoveDetailEquipmentSuppliesTab } from "@/components/moves/detail/MoveDetailEquipmentSuppliesTab";
 import { MoveDetailMovePlanTab } from "@/components/moves/detail/MoveDetailMovePlanTab";
 import { MoveDetailOperationsTab } from "@/components/moves/detail/MoveDetailOperationsTab";
+import { MoveDetailPaymentTab } from "@/components/moves/detail/MoveDetailPaymentTab";
 import { MoveDetailProfitabilityTab } from "@/components/moves/detail/MoveDetailProfitabilityTab";
 import { MoveDetailQuoteContractTab } from "@/components/moves/detail/MoveDetailQuoteContractTab";
 import { TabBar } from "@/components/shared/TabBar";
@@ -52,7 +54,9 @@ export function MoveDetailMain({ move, activeTab, onTabChange }: MoveDetailMainP
 
       <div className="min-w-0 bg-slate-50/50 px-4 py-4 lg:px-5 lg:py-5">
         {tab === "move-plan" && <MoveDetailMovePlanTab move={move} />}
+        {tab === "equipment-supplies" && <MoveDetailEquipmentSuppliesTab move={move} />}
         {tab === "quote-contract" && <MoveDetailQuoteContractTab move={move} />}
+        {tab === "payment" && <MoveDetailPaymentTab move={move} />}
         {tab === "operations" && <MoveDetailOperationsTab move={move} />}
         {tab === "profitability" && <MoveDetailProfitabilityTab move={move} />}
         {tab === "activity" && <MoveDetailActivityTab move={move} />}

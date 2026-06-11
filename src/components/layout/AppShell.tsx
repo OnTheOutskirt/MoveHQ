@@ -1,7 +1,11 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { isOfficeSignedIn } from "@/lib/session/office-auth";
+import { ROUTES } from "@/lib/navigation/routes";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { RouteCapabilityGuard } from "@/components/auth/RouteCapabilityGuard";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 
@@ -11,6 +15,13 @@ type AppShellProps = {
 
 export function AppShell({ children }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isOfficeSignedIn()) {
+      router.replace(ROUTES.signIn);
+    }
+  }, [router]);
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50">
@@ -34,7 +45,9 @@ export function AppShell({ children }: AppShellProps) {
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <Topbar onMenuClick={() => setSidebarOpen(true)} />
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6">{children}</main>
+        <main className="flex-1 overflow-y-auto p-4 lg:p-6">
+          <RouteCapabilityGuard>{children}</RouteCapabilityGuard>
+        </main>
       </div>
     </div>
   );

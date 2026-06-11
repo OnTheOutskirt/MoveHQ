@@ -4,6 +4,7 @@ import { SidebarFollowUpsNav } from "@/components/layout/SidebarFollowUpsNav";
 import { SidebarInboxNav } from "@/components/layout/SidebarInboxNav";
 import { SidebarOperationsJobsNav } from "@/components/layout/SidebarOperationsJobsNav";
 import { SidebarWebsiteNav } from "@/components/layout/SidebarWebsiteNav";
+import { LocationSwitcher } from "@/components/workspace/LocationSwitcher";
 import { useSettings } from "@/components/providers/SettingsProvider";
 import { ROUTES } from "@/lib/navigation/routes";
 import {
@@ -13,6 +14,8 @@ import {
   readOpenSidebarDropdown,
   writeOpenSidebarDropdown,
 } from "@/lib/navigation/sidebar-state";
+import { useCapabilities } from "@/lib/auth/use-capabilities";
+import { filterNavigation } from "@/lib/navigation/filter-navigation";
 import { navigation, type NavDropdown, type NavLink } from "@/lib/tokens/navigation";
 import { cn } from "@/lib/utils";
 import { ChevronDown, Truck } from "lucide-react";
@@ -29,6 +32,7 @@ function NavLinkItem({ item, pathname }: { item: NavLink; pathname: string }) {
     <li>
       <Link
         href={item.href}
+        prefetch={false}
         className={cn(
           "flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors",
           isActive
@@ -95,6 +99,8 @@ function NavDropdownSection({
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { capabilities } = useCapabilities();
+  const visibleNav = filterNavigation(navigation, capabilities);
   const { settings, isReady } = useSettings();
   const { branding } = settings;
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
@@ -160,7 +166,7 @@ export function Sidebar() {
             <Truck className="h-5 w-5 text-white" />
           )}
         </div>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-white">
             {isReady ? branding.companyName : "Jonah's Movers"}
           </p>
@@ -169,10 +175,13 @@ export function Sidebar() {
           </p>
         </div>
       </div>
+      <div className="border-b border-white/10 px-3 pb-3">
+        <LocationSwitcher />
+      </div>
 
       <nav className="flex-1 overflow-y-auto px-3 py-4">
         <ul className="space-y-0.5">
-          {navigation.map((entry) =>
+          {visibleNav.map((entry) =>
             entry.type === "link" ? (
               entry.href === "/inbox" ? (
                 <SidebarInboxNav key={entry.href} item={entry} />

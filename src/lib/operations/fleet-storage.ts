@@ -4,6 +4,20 @@ import type { FleetStore } from "./fleet-types";
 
 const STORAGE_KEY = "jm-fleet-store-v1";
 
+const CREW_ROLE_PATCH_IDS = new Set(["crew-marcus", "crew-devon"]);
+
+function patchCrewRolesFromDefaults(
+  crew: FleetStore["crew"],
+  defaults: FleetStore["crew"],
+): FleetStore["crew"] {
+  const defaultById = new Map(defaults.map((c) => [c.id, c]));
+  return crew.map((member) => {
+    if (!CREW_ROLE_PATCH_IDS.has(member.id)) return member;
+    const fallback = defaultById.get(member.id);
+    return fallback ? { ...member, roles: fallback.roles } : member;
+  });
+}
+
 export function loadFleetStore(): FleetStore {
   if (typeof window === "undefined") return defaultFleetStore();
   try {
@@ -12,7 +26,10 @@ export function loadFleetStore(): FleetStore {
     const parsed = JSON.parse(raw) as Partial<FleetStore>;
     const defaults = defaultFleetStore();
     return {
-      crew: parsed.crew?.length ? parsed.crew : defaults.crew,
+      crew: patchCrewRolesFromDefaults(
+        parsed.crew?.length ? parsed.crew : defaults.crew,
+        defaults.crew,
+      ),
       trucks: parsed.trucks?.length
         ? parsed.trucks.map((t) =>
             normalizeFleetTruck(t as Parameters<typeof normalizeFleetTruck>[0]),

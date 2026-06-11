@@ -6,9 +6,13 @@ import {
   moveHasNoScheduledFollowUp,
   moveHasOpenFollowUp,
   moveHasOverdueFollowUp,
+  resolveFollowUpSource,
+  type FollowUpDueBucket,
 } from "./move-follow-ups";
 import { showOnPipelineBoard } from "./move-condition";
 import type { MoveFollowUp, MoveRecord } from "./types";
+
+export type { FollowUpDueBucket };
 
 export type FollowUpBucket = "overdue" | "today" | "upcoming";
 
@@ -52,7 +56,15 @@ export function followUpSummary(moves: MoveRecord[]) {
 }
 
 export function followUpSummaryForRep(moves: MoveRecord[], rep: string) {
-  return followUpSummary(moves.filter((m) => m.assignedRep === rep));
+  const list = rep === "all" ? moves : moves.filter((m) => m.assignedRep === rep);
+  return followUpSummary(list);
+}
+
+export function filterMovesForFollowUpScope(
+  moves: MoveRecord[],
+  rep: string,
+): MoveRecord[] {
+  return rep === "all" ? moves : moves.filter((m) => m.assignedRep === rep);
 }
 
 export type RepFollowUpCounts = {
@@ -61,16 +73,18 @@ export type RepFollowUpCounts = {
   overdue: number;
 };
 
-/** Open follow-up counts per assigned rep, sorted by overdue then total. */
+/** Open follow-up task counts per assigned rep, sorted by overdue then total. */
 export function followUpCountsByRep(moves: MoveRecord[]): RepFollowUpCounts[] {
   const map = new Map<string, RepFollowUpCounts>();
 
-  for (const move of getFollowUpMoves(moves)) {
-    const rep = move.assignedRep;
-    const entry = map.get(rep) ?? { rep, total: 0, overdue: 0 };
-    entry.total += 1;
-    if (getFollowUpBucket(move) === "overdue") entry.overdue += 1;
-    map.set(rep, entry);
+  for (const move of moves) {
+    for (const followUp of getOpenFollowUps(move)) {
+      const rep = move.assignedRep;
+      const entry = map.get(rep) ?? { rep, total: 0, overdue: 0 };
+      entry.total += 1;
+      if (getFollowUpDueBucket(followUp) === "overdue") entry.overdue += 1;
+      map.set(rep, entry);
+    }
   }
 
   return [...map.values()].sort((a, b) => {
@@ -103,4 +117,80 @@ export function filterMovesByQueue(moves: MoveRecord[], queue: MovesQueueFilter)
 
 export function formatFollowUpDue(followUp: MoveFollowUp): string {
   return followUp.dueAt.slice(0, 10);
+}
+
+export const FOLLOW_UP_TABS = [
+  { id: "follow_ups", label: "Follow-ups" },
+  { id: "automated", label: "Automated" },
+  { id: "scheduled", label: "Scheduled" },
+] as const;
+
+export type FollowUpTabId = (typeof FOLLOW_UP_TABS)[number]["id"];
+
+export type FollowUpQueueItem = {
+  followUp: MoveFollowUp;
+  move: MoveRecord;
+  bucket: FollowUpDueBucket;
+};
+
+export function followUpMatchesTab(followUp: MoveFollowUp, tab: FollowUpTabId): boolean {
+  const bucket = getFollowUpDueBucket(followUp);
+  const source = resolveFollowUpSource(followUp);
+  switch (tab) {
+    case "follow_ups":
+      return source === "manual" || bucket === "overdue" || bucket === "today";
+    case "automated":
+      return source === "automation";
+    case "scheduled":
+      return bucket === "upcoming" || source === "scheduled";
+  }
+}
+
+export function followUpQueueForRep(
+  moves: MoveRecord[],
+  rep: string,
+  tab: FollowUpTabId,
+): FollowUpQueueItem[] {
+  const items: FollowUpQueueItem[] = [];
+  for (const move of moves) {
+    if (move.assignedRep !== rep) continue;
+    for (const followUp of getOpenFollowUps(move)) {
+      if (!followUpMatchesTab(followUp, tab)) continue;
+      items.push({
+        followUp,
+        move,
+        bucket: getFollowUpDueBucket(followUp),
+      });
+    }
+  }
+  return items.sort(
+    (a, b) =>
+      a.followUp.dueAt.localeCompare(b.followUp.dueAt) ||
+      a.move.customerName.localeCompare(b.move.customerName),
+  );
+}
+
+export function followUpTabCountsForRep(
+  moves: MoveRecord[],
+  rep: string,
+): Record<FollowUpTabId, number> {
+  return {
+    follow_ups: followUpQueueForRep(moves, rep, "follow_ups").length,
+    automated: followUpQueueForRep(moves, rep, "automated").length,
+    scheduled: followUpQueueForRep(moves, rep, "scheduled").length,
+  };
+}
+
+export function groupFollowUpQueue(
+  items: FollowUpQueueItem[],
+): Record<FollowUpBucket, FollowUpQueueItem[]> {
+  const groups: Record<FollowUpBucket, FollowUpQueueItem[]> = {
+    overdue: [],
+    today: [],
+    upcoming: [],
+  };
+  for (const item of items) {
+    groups[item.bucket].push(item);
+  }
+  return groups;
 }

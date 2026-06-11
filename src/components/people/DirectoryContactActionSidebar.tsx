@@ -1,5 +1,11 @@
 "use client";
 
+import {
+  CallDialHeaderAction,
+  composerHeaderActionsClass,
+} from "@/components/communications/composer-header-actions";
+import { EmailDraftProvider } from "@/components/communications/EmailDraftProvider";
+import { EmailOpenMailHeaderButton } from "@/components/communications/EmailOpenMailHeaderButton";
 import { DirectoryContactComposer } from "@/components/people/DirectoryContactComposer";
 import { QuickActionHistoryFeed } from "@/components/moves/detail/quick-actions/QuickActionHistoryFeed";
 import { useMoves } from "@/components/moves/MovesProvider";
@@ -48,7 +54,30 @@ export function DirectoryContactActionSidebar({
   const title =
     action === "call" ? "Call" : action === "sms" ? "Text message" : "Email";
 
-  return (
+  const defaultSubject = target.moveIds?.length
+    ? `Following up`
+    : `Following up — ${target.name}`;
+
+  const headerActions = (
+    <div className={composerHeaderActionsClass()}>
+      {action === "call" && target.phone ? (
+        <CallDialHeaderAction phone={target.phone} />
+      ) : null}
+      {action === "email" ? <EmailOpenMailHeaderButton /> : null}
+      <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600">
+        {action === "call" ? (
+          <Phone className="h-3 w-3" />
+        ) : action === "email" ? (
+          <Mail className="h-3 w-3" />
+        ) : (
+          <MessageSquare className="h-3 w-3" />
+        )}
+        {target.name}
+      </span>
+    </div>
+  );
+
+  const sidebar = (
     <DetailSidebar
       open
       title={title}
@@ -56,18 +85,7 @@ export function DirectoryContactActionSidebar({
       onClose={onClose}
       widthClassName="max-w-lg"
       bodyClassName="flex min-h-0 flex-1 flex-col overflow-hidden p-0"
-      headerExtra={
-        <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600">
-          {action === "call" ? (
-            <Phone className="h-3 w-3" />
-          ) : action === "email" ? (
-            <Mail className="h-3 w-3" />
-          ) : (
-            <MessageSquare className="h-3 w-3" />
-          )}
-          {target.name}
-        </span>
-      }
+      headerExtra={headerActions}
       footer={
         <div className="border-t border-slate-200 bg-slate-50/90 px-4 py-4 shadow-[0_-4px_12px_rgba(15,23,42,0.06)]">
           <DirectoryContactComposer
@@ -82,6 +100,16 @@ export function DirectoryContactActionSidebar({
       <QuickActionHistoryFeed action={action} items={history} />
     </DetailSidebar>
   );
+
+  if (action === "email") {
+    return (
+      <EmailDraftProvider email={target.email} defaultSubject={defaultSubject}>
+        {sidebar}
+      </EmailDraftProvider>
+    );
+  }
+
+  return sidebar;
 }
 
 export function directoryActionAvailable(

@@ -4,6 +4,12 @@ export type FleetCrewMember = DispatchCrewMember & {
   active: boolean;
   /** Links to Settings → Team Members when set */
   teamMemberId?: string;
+  /** Customer-facing headshot for move-day portal & day-before messages */
+  headshotDataUrl?: string | null;
+  /** Short bio shown on the customer move-day portal */
+  bio?: string;
+  /** When false, hidden from customer move-day portal */
+  showOnCustomerPortal?: boolean;
 };
 
 export const TRUCK_VEHICLE_TYPES = [
@@ -38,6 +44,11 @@ export type FleetTruck = DispatchTruck & {
   /** Seating capacity in cab */
   cabSize?: number;
   hasLiftgate?: boolean;
+  make?: string;
+  model?: string;
+  year?: number;
+  vin?: string;
+  plate?: string;
 };
 
 export type TruckFormInput = {
@@ -47,6 +58,11 @@ export type TruckFormInput = {
   cabSize?: number;
   hasLiftgate?: boolean;
   active?: boolean;
+  make?: string;
+  model?: string;
+  year?: number;
+  vin?: string;
+  plate?: string;
 };
 
 export const RENTAL_VENDORS = ["U-Haul", "Penske", "Enterprise", "Budget", "Other"] as const;
@@ -237,6 +253,30 @@ export function buildTruckDispatchType(
   return typeLabel;
 }
 
+function optionalTrim(value: string | undefined): string | undefined {
+  const trimmed = value?.trim();
+  return trimmed || undefined;
+}
+
+function optionalYear(value: number | undefined): number | undefined {
+  if (value == null || !Number.isFinite(value)) return undefined;
+  const year = Math.trunc(value);
+  if (year < 1900 || year > 2100) return undefined;
+  return year;
+}
+
+function truckRegistrationFields(
+  raw: Pick<TruckFormInput, "make" | "model" | "year" | "vin" | "plate">,
+): Pick<FleetTruck, "make" | "model" | "year" | "vin" | "plate"> {
+  return {
+    make: optionalTrim(raw.make),
+    model: optionalTrim(raw.model),
+    year: optionalYear(raw.year),
+    vin: optionalTrim(raw.vin)?.toUpperCase(),
+    plate: optionalTrim(raw.plate)?.toUpperCase(),
+  };
+}
+
 export function normalizeFleetTruck(raw: Partial<FleetTruck> & Pick<FleetTruck, "id" | "label">): FleetTruck {
   const legacyType = raw.type ?? "";
   const vehicleType =
@@ -261,6 +301,7 @@ export function normalizeFleetTruck(raw: Partial<FleetTruck> & Pick<FleetTruck, 
     lengthFt,
     cabSize: raw.cabSize,
     hasLiftgate: raw.hasLiftgate,
+    ...truckRegistrationFields(raw),
     type: buildTruckDispatchType({ vehicleType, lengthFt }),
   };
 
@@ -285,6 +326,7 @@ export function truckFromFormInput(
     lengthFt,
     cabSize: input.cabSize,
     hasLiftgate: truckSupportsLiftgate(vehicleType) ? Boolean(input.hasLiftgate) : undefined,
+    ...truckRegistrationFields(input),
     type: buildTruckDispatchType({ vehicleType, lengthFt }),
   };
 }

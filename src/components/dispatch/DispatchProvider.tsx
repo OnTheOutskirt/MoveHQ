@@ -1,5 +1,6 @@
 "use client";
 
+import { useCalendarSettings } from "@/components/providers/CalendarSettingsProvider";
 import { collectDispatchDay } from "@/lib/dispatch/collect-day-jobs";
 import { crewOffIdsFromCalendarNames } from "@/lib/dispatch/mock-roster";
 import { useFleet } from "@/components/providers/FleetProvider";
@@ -8,6 +9,7 @@ import { parseDateKey } from "@/lib/calendar/date-utils";
 import {
   ensureDriverMoverLengths,
   setSlotCrew,
+  shouldCombineSkipperDriver,
   type CrewSlotRef,
 } from "@/lib/dispatch/crew-slots";
 import {
@@ -20,6 +22,7 @@ import {
 import {
   getJobAssignment,
   readDispatchAssignments,
+  resetDayScheduleInStore,
   setJobAssignment,
   writeDispatchAssignments,
   type DispatchAssignmentStore,
@@ -34,12 +37,21 @@ import {
   type DispatchScheduleStatus,
 } from "@/lib/dispatch/schedule-status";
 import {
+  buildDispatchPublishSnapshot,
+  dispatchMatchesPublishSnapshot,
+} from "@/lib/dispatch/publish-snapshot";
+import {
+  clearPublishRecord,
   getPublishRecord,
   readDispatchPublishStore,
   setPublishRecord,
   writeDispatchPublishStore,
   type DispatchPublishRecord,
 } from "@/lib/dispatch/publish-storage";
+import {
+  assignmentHasDispatchChanges,
+  emptyJobResourcesPatch,
+} from "@/lib/dispatch/assignment-utils";
 import type { DispatchDaySnapshot, DispatchJob, DispatchJobAssignment } from "@/lib/dispatch/types";
 import { useMoves } from "@/components/moves/MovesProvider";
 import {
@@ -60,6 +72,7 @@ type DispatchContextValue = {
   getAssignment: (jobId: string) => DispatchJobAssignment;
   getAssignmentForJob: (job: DispatchJob) => DispatchJobAssignment;
   assignCrewSlot: (jobId: string, slot: CrewSlotRef, crewId: string | null) => void;
+  patchJob: (jobId: string, patch: Partial<DispatchJobAssignment>) => void;
   setTrucks: (jobId: string, truckIds: string[]) => void;
   assignTruck: (jobId: string, truckId: string) => void;
   unassignTruck: (jobId: string, truckId: string) => void;
@@ -76,7 +89,15 @@ type DispatchContextValue = {
   scheduleStatus: DispatchScheduleStatus;
   dayRequirements: DispatchDayRequirements;
   publishRecord: DispatchPublishRecord | null;
+  hasUnpublishedChanges: boolean;
   publishToCrewApp: () => void;
+  unpublishFromCrewApp: () => void;
+  pairWithJob: (anchorJobId: string, partnerJobId: string) => void;
+  pairWithJobClearingPartner: (anchorJobId: string, partnerJobId: string) => void;
+  unpairJob: (anchorJobId: string, partnerJobId: string) => void;
+  setScheduleStart: (jobId: string, minutes: number | null) => void;
+  hasCustomSchedule: boolean;
+  resetDaySchedule: () => void;
 };
 
 const DispatchContext = createContext<DispatchContextValue | null>(null);
@@ -89,6 +110,7 @@ type DispatchProviderProps = {
 export function DispatchProvider({ children, initialDateKey }: DispatchProviderProps) {
   const { moves } = useMoves();
   const { activeCrewForDispatch } = useFleet();
+  const { dayShareSettings } = useCalendarSettings();
   const [dateKey, setDateKey] = useState(initialDateKey);
   const [assignments, setAssignments] = useState<DispatchAssignmentStore>({});
   const [publishStore, setPublishStore] = useState(() => readDispatchPublishStore());
@@ -99,7 +121,7 @@ export function DispatchProvider({ children, initialDateKey }: DispatchProviderP
   }, []);
 
   const day = useMemo(() => {
-    const snapshot = collectDispatchDay(moves, dateKey);
+    const snapshot = collectDispatchDay(moves, dateKey, new Date(), dayShareSettings);
     const calendarDay = buildMockDay(parseDateKey(dateKey));
     const crewOffIds = crewOffIdsFromCalendarNames(
       calendarDay.crewOff,
@@ -110,7 +132,7 @@ export function DispatchProvider({ children, initialDateKey }: DispatchProviderP
       crewOffIds,
       crewOff: calendarDay.crewOff,
     };
-  }, [moves, dateKey, activeCrewForDispatch]);
+  }, [moves, dateKey, activeCrewForDispatch, dayShareSettings]);
 
   const persist = useCallback((next: DispatchAssignmentStore) => {
     setAssignments(next);
@@ -191,15 +213,27 @@ export function DispatchProvider({ children, initialDateKey }: DispatchProviderP
       if (!job) return;
       const raw = getAssignmentRaw(jobId);
       const effective = effectiveDispatchJob(job, raw);
+      const roster = activeCrewForDispatch();
+      const member = crewId ? roster.find((c) => c.id === crewId) : undefined;
       const current = ensureDriverMoverLengths(effective, raw);
-      const next = setSlotCrew(effective, current, slot, crewId);
+      const combine = crewId
+        ? shouldCombineSkipperDriver(member, slot, current)
+        : false;
+      const targetSlot: CrewSlotRef = combine ? { kind: "skipper" } : slot;
+
+      const working = ensureDriverMoverLengths(effective, {
+        ...current,
+        skipperAlsoDriver: combine ? true : current.skipperAlsoDriver,
+      });
+      const next = setSlotCrew(effective, working, targetSlot, crewId);
       patchJob(jobId, {
         skipperId: next.skipperId,
         driverIds: next.driverIds,
         moverIds: next.moverIds,
+        ...(combine ? { skipperAlsoDriver: true } : {}),
       });
     },
-    [findJob, getAssignmentRaw, patchJob],
+    [activeCrewForDispatch, findJob, getAssignmentRaw, patchJob],
   );
 
   const setTrucks = useCallback(
@@ -301,11 +335,83 @@ export function DispatchProvider({ children, initialDateKey }: DispatchProviderP
     [publishStore, dateKey],
   );
 
+  const hasUnpublishedChanges = useMemo(() => {
+    if (!publishRecord) return true;
+    return !dispatchMatchesPublishSnapshot(
+      publishRecord.snapshot,
+      dateKey,
+      day.jobs,
+      assignments,
+    );
+  }, [publishRecord, dateKey, day.jobs, assignments]);
+
   const publishToCrewApp = useCallback(() => {
-    const next = setPublishRecord(publishStore, dateKey, day.jobs.length);
+    const snapshot = buildDispatchPublishSnapshot(dateKey, day.jobs, assignments);
+    const next = setPublishRecord(publishStore, dateKey, day.jobs.length, snapshot);
     setPublishStore(next);
     writeDispatchPublishStore(next);
-  }, [publishStore, dateKey, day.jobs.length]);
+  }, [publishStore, dateKey, day.jobs, assignments]);
+
+  const unpublishFromCrewApp = useCallback(() => {
+    const next = clearPublishRecord(publishStore, dateKey);
+    setPublishStore(next);
+    writeDispatchPublishStore(next);
+  }, [publishStore, dateKey]);
+
+  const pairWithJob = useCallback(
+    (anchorJobId: string, partnerJobId: string) => {
+      const current = getAssignmentRaw(anchorJobId);
+      const existing = current.pairedJobIds ?? [];
+      if (existing.includes(partnerJobId)) return;
+      patchJob(anchorJobId, { pairedJobIds: [...existing, partnerJobId] });
+    },
+    [getAssignmentRaw, patchJob],
+  );
+
+  const pairWithJobClearingPartner = useCallback(
+    (anchorJobId: string, partnerJobId: string) => {
+      patchJob(partnerJobId, {
+        ...emptyJobResourcesPatch(),
+        scheduleStartOverrideMinutes: null,
+      });
+      pairWithJob(anchorJobId, partnerJobId);
+    },
+    [patchJob, pairWithJob],
+  );
+
+  const setScheduleStart = useCallback(
+    (jobId: string, minutes: number | null) => {
+      patchJob(jobId, { scheduleStartOverrideMinutes: minutes });
+    },
+    [patchJob],
+  );
+
+  const unpairJob = useCallback(
+    (anchorJobId: string, partnerJobId: string) => {
+      const current = getAssignmentRaw(anchorJobId);
+      patchJob(anchorJobId, {
+        pairedJobIds: (current.pairedJobIds ?? []).filter((id) => id !== partnerJobId),
+      });
+    },
+    [getAssignmentRaw, patchJob],
+  );
+
+  const hasCustomSchedule = useMemo(() => {
+    for (const job of day.jobs) {
+      const assignment = getJobAssignment(assignments, dateKey, job.id);
+      if (assignmentHasDispatchChanges(job, assignment)) return true;
+    }
+    return false;
+  }, [day.jobs, assignments, dateKey]);
+
+  const resetDaySchedule = useCallback(() => {
+    const next = resetDayScheduleInStore(
+      assignments,
+      dateKey,
+      day.jobs.map((j) => j.id),
+    );
+    persist(next);
+  }, [assignments, dateKey, day.jobs, persist]);
 
   const value = useMemo(
     () => ({
@@ -316,6 +422,7 @@ export function DispatchProvider({ children, initialDateKey }: DispatchProviderP
       getAssignment,
       getAssignmentForJob,
       assignCrewSlot,
+      patchJob,
       setTrucks,
       assignTruck,
       unassignTruck,
@@ -332,7 +439,15 @@ export function DispatchProvider({ children, initialDateKey }: DispatchProviderP
       scheduleStatus,
       dayRequirements,
       publishRecord,
+      hasUnpublishedChanges,
       publishToCrewApp,
+      unpublishFromCrewApp,
+      pairWithJob,
+      pairWithJobClearingPartner,
+      unpairJob,
+      setScheduleStart,
+      hasCustomSchedule,
+      resetDaySchedule,
     }),
     [
       dateKey,
@@ -341,6 +456,7 @@ export function DispatchProvider({ children, initialDateKey }: DispatchProviderP
       getAssignment,
       getAssignmentForJob,
       assignCrewSlot,
+      patchJob,
       setTrucks,
       assignTruck,
       unassignTruck,
@@ -355,7 +471,15 @@ export function DispatchProvider({ children, initialDateKey }: DispatchProviderP
       scheduleStatus,
       dayRequirements,
       publishRecord,
+      hasUnpublishedChanges,
       publishToCrewApp,
+      unpublishFromCrewApp,
+      pairWithJob,
+      pairWithJobClearingPartner,
+      unpairJob,
+      setScheduleStart,
+      hasCustomSchedule,
+      resetDaySchedule,
     ],
   );
 

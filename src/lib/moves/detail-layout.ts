@@ -2,7 +2,9 @@
 
 export const MOVE_DETAIL_MAIN_TABS = [
   { id: "move-plan", label: "Move Scope" },
+  { id: "equipment-supplies", label: "Equipment & supplies" },
   { id: "quote-contract", label: "Quote & Contract" },
+  { id: "payment", label: "Payment" },
   { id: "operations", label: "Operations" },
   { id: "profitability", label: "Profitability" },
   { id: "activity", label: "Activity" },

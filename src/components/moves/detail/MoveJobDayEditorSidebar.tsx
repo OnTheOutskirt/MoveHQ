@@ -1,26 +1,46 @@
 "use client";
 
+import { JobDayEditorCalendarPeek } from "@/components/moves/detail/JobDayEditorCalendarPeek";
 import { JobDayEditorSwitcher } from "@/components/moves/detail/JobDayEditorSwitcher";
 import { JobDayLocationsEditor } from "@/components/moves/detail/JobDayLocationsEditor";
 import { useMoves } from "@/components/moves/MovesProvider";
+import { useSettings } from "@/components/providers/SettingsProvider";
+import { useWorkspace } from "@/components/providers/WorkspaceProvider";
 import { Button } from "@/components/ui/Button";
 import { DetailSidebar } from "@/components/ui/DetailSidebar";
+import { DAY_SHARE_COMBINATION_HINT } from "@/lib/day-share/units";
 import {
+  defaultCrewDepartureLabel,
+  formatCrewDepartureLabel,
+  parseCrewDepartureToTime24,
+} from "@/lib/moves/crew-departure";
+import {
+  estimateDepotToOriginDriveMinutes,
+  resolveArrivalWindowMinutes,
+  resolveDepotDriveMinutes,
+} from "@/lib/moves/job-day-arrival";
+import {
+  DEFAULT_FOLLOW_ON_DAY_FRACTION,
   JOB_DAY_SERVICE_OPTIONS,
+  jobDayFractionOptionsForSchedule,
   MAX_JOB_DAYS_PER_MOVE,
+  buildJobDaySwitcherLabels,
   createDefaultJobDayFormValues,
   createNewJobDayKey,
   duplicateJobDayFormValues,
   formValuesToJobDay,
   generateJobDayLabel,
   getSortedJobDays,
+  jobDayIndexAmongEditorEntries,
   isNewJobDayKey,
-  jobDayIndexForDate,
   jobDayToFormValues,
+  resolveComputedArrivalWindow,
+  type JobDayFormContext,
   type JobDayFormValues,
 } from "@/lib/moves/job-day-form";
 import type { MoveRecord } from "@/lib/moves/types";
 import { cn } from "@/lib/utils";
+import { Calendar } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 type MoveJobDayEditorSidebarProps = {
@@ -56,6 +76,18 @@ function pendingDatesFromDrafts(
   return newDayKeys.map((k) => drafts[k]?.date ?? "").filter((d) => d.trim().length > 0);
 }
 
+function withAutoArrival(
+  base: JobDayFormValues,
+  move: MoveRecord,
+  formContext: JobDayFormContext,
+): JobDayFormValues {
+  if (base.arrivalWindowManual) return base;
+  return {
+    ...base,
+    arrivalWindow: resolveComputedArrivalWindow(base, move, formContext),
+  };
+}
+
 export function MoveJobDayEditorSidebar({
   move,
   dayId,
@@ -64,12 +96,31 @@ export function MoveJobDayEditorSidebar({
   onClose,
 }: MoveJobDayEditorSidebarProps) {
   const { addJobDay, updateJobDay, removeJobDay } = useMoves();
+  const { settings } = useSettings();
+  const { getLocationById } = useWorkspace();
   const sortedDays = getSortedJobDays(move);
+
+  const formContext = useMemo((): JobDayFormContext => {
+    const depot = getLocationById(move.locationId);
+    return {
+      move,
+      defaults: settings.defaults,
+      depot: depot
+        ? {
+            addressLine1: depot.addressLine1,
+            city: depot.city,
+            state: depot.state,
+            zip: depot.zip,
+          }
+        : undefined,
+    };
+  }, [move, settings.defaults, getLocationById]);
 
   const [activeKey, setActiveKey] = useState<string>(dayId ?? createNewJobDayKey());
   const [newDayKeys, setNewDayKeys] = useState<string[]>([]);
   const [drafts, setDrafts] = useState<Record<string, JobDayFormValues>>({});
   const [dirtyKeys, setDirtyKeys] = useState<Set<string>>(() => new Set());
+  const [calendarPeekOpen, setCalendarPeekOpen] = useState(false);
 
   const totalDayCount = sortedDays.length + newDayKeys.length;
   const atDayCap = totalDayCount >= MAX_JOB_DAYS_PER_MOVE;
@@ -89,15 +140,17 @@ export function MoveJobDayEditorSidebar({
       if (isNewJobDayKey(key)) {
         if (key === newDayKeys[0] && duplicateFromDayId) {
           const source = move.jobDays.find((d) => d.id === duplicateFromDayId);
-          if (source) return duplicateJobDayFormValues(source);
+          if (source) return duplicateJobDayFormValues(source, formContext);
         }
         const others = pendingDatesFromDrafts(drafts, newDayKeys.filter((k) => k !== key));
-        return createDefaultJobDayFormValues(move, others);
+        return createDefaultJobDayFormValues(move, others, formContext);
       }
       const day = move.jobDays.find((d) => d.id === key);
-      return day ? jobDayToFormValues(day) : createDefaultJobDayFormValues(move);
+      return day
+        ? jobDayToFormValues(day, formContext)
+        : createDefaultJobDayFormValues(move, [], formContext);
     },
-    [drafts, move, newDayKeys, duplicateFromDayId],
+    [drafts, move, newDayKeys, duplicateFromDayId, formContext],
   );
 
   const values = useMemo(() => {
@@ -105,11 +158,30 @@ export function MoveJobDayEditorSidebar({
     return resolveCardValues(activeKey);
   }, [activeKey, drafts, resolveCardValues]);
 
+  const computedArrival = useMemo(
+    () => resolveComputedArrivalWindow(values, move, formContext),
+    [values, move, formContext],
+  );
+
+  const driveMinutes = useMemo(
+    () =>
+      estimateDepotToOriginDriveMinutes({
+        move,
+        locations: values.locations,
+        depot: formContext.depot,
+        fallbackMinutes: resolveDepotDriveMinutes(formContext.defaults),
+      }),
+    [move, values.locations, formContext],
+  );
+
+  const showMorningDriveHint = values.isFirstJobOfDay;
+
   useEffect(() => {
     if (!open) {
       setDrafts({});
       setDirtyKeys(new Set());
       setNewDayKeys([]);
+      setCalendarPeekOpen(false);
       return;
     }
 
@@ -125,21 +197,52 @@ export function MoveJobDayEditorSidebar({
     const initialDrafts: Record<string, JobDayFormValues> = {};
     if (duplicateFromDayId) {
       const source = move.jobDays.find((d) => d.id === duplicateFromDayId);
-      if (source) initialDrafts[firstNew] = duplicateJobDayFormValues(source);
+      if (source) initialDrafts[firstNew] = duplicateJobDayFormValues(source, formContext);
     }
     if (!initialDrafts[firstNew]) {
-      initialDrafts[firstNew] = createDefaultJobDayFormValues(move);
+      initialDrafts[firstNew] = createDefaultJobDayFormValues(move, [], formContext);
     }
 
     setActiveKey(firstNew);
     setNewDayKeys([firstNew]);
     setDrafts(initialDrafts);
     setDirtyKeys(new Set([firstNew]));
-  }, [open, dayId, duplicateFromDayId, move.id]);
+  }, [open, dayId, duplicateFromDayId, move.id, formContext]);
+
+  const editorDateEntries = useMemo(() => {
+    const entries: { key: string; date: string }[] = [];
+    for (const day of sortedDays) {
+      const card =
+        day.id === activeKey ? values : (drafts[day.id] ?? resolveCardValues(day.id));
+      entries.push({ key: day.id, date: card.date });
+    }
+    for (const key of newDayKeys) {
+      const card = key === activeKey ? values : (drafts[key] ?? resolveCardValues(key));
+      entries.push({ key, date: card.date });
+    }
+    return entries;
+  }, [sortedDays, newDayKeys, activeKey, values, drafts, resolveCardValues]);
+
+  const switcherLabels = useMemo(
+    () => buildJobDaySwitcherLabels(editorDateEntries),
+    [editorDateEntries],
+  );
 
   const dayTitle = useMemo(
-    () => generateJobDayLabel(jobDayIndexForDate(move, values.date, isEdit ? activeKey : undefined)),
-    [move, values.date, isEdit, activeKey],
+    () =>
+      generateJobDayLabel(jobDayIndexAmongEditorEntries(activeKey, editorDateEntries)),
+    [activeKey, editorDateEntries],
+  );
+
+  const resolveSwitcherLabel = useCallback(
+    (key: string) => {
+      const label = switcherLabels.get(key) ?? "Day —";
+      if (duplicateFromDayId && key === newDayKeys[0] && isNewJobDayKey(key)) {
+        return duplicateSource ? `Copy · ${label}` : label;
+      }
+      return label;
+    },
+    [switcherLabels, duplicateFromDayId, newDayKeys, duplicateSource],
   );
 
   const canDelete =
@@ -157,12 +260,58 @@ export function MoveJobDayEditorSidebar({
     });
   }, []);
 
-  function patch<K extends keyof JobDayFormValues>(key: K, value: JobDayFormValues[K]) {
-    setDrafts((prev) => ({
-      ...prev,
-      [activeKey]: { ...(prev[activeKey] ?? values), [key]: value },
-    }));
+  function patchValues(next: JobDayFormValues) {
+    setDrafts((prev) => ({ ...prev, [activeKey]: next }));
     markDirty(activeKey);
+  }
+
+  function patch<K extends keyof JobDayFormValues>(key: K, value: JobDayFormValues[K]) {
+    const base = drafts[activeKey] ?? values;
+    let next: JobDayFormValues = { ...base, [key]: value };
+
+    if (key === "isFirstJobOfDay") {
+      if (!value) {
+        next = {
+          ...next,
+          departureWindow: "",
+          arrivalWindowManual: false,
+          dayFraction:
+            next.dayFraction === "long" ? DEFAULT_FOLLOW_ON_DAY_FRACTION : next.dayFraction,
+        };
+      } else if (!next.departureWindow.trim()) {
+        next = {
+          ...next,
+          departureWindow: defaultCrewDepartureLabel(formContext.defaults),
+        };
+      }
+    }
+
+    if (
+      !next.arrivalWindowManual &&
+      (key === "departureWindow" ||
+        key === "isFirstJobOfDay" ||
+        key === "dayFraction" ||
+        key === "locations")
+    ) {
+      next = withAutoArrival(next, move, formContext);
+    }
+
+    patchValues(next);
+  }
+
+  function setArrivalManual(manual: boolean) {
+    const base = drafts[activeKey] ?? values;
+    if (!manual) {
+      patchValues(
+        withAutoArrival({ ...base, arrivalWindowManual: false }, move, formContext),
+      );
+      return;
+    }
+    patchValues({
+      ...base,
+      arrivalWindowManual: true,
+      arrivalWindow: base.arrivalWindow || computedArrival,
+    });
   }
 
   function toggleService(id: JobDayFormValues["services"][number]) {
@@ -191,7 +340,7 @@ export function MoveJobDayEditorSidebar({
     setNewDayKeys((prev) => [...prev, key]);
     setDrafts((prev) => ({
       ...prev,
-      [key]: createDefaultJobDayFormValues(move, extraDates),
+      [key]: createDefaultJobDayFormValues(move, extraDates, formContext),
     }));
     setActiveKey(key);
     markDirty(key);
@@ -242,13 +391,7 @@ export function MoveJobDayEditorSidebar({
     }
   }
 
-  function newDayLabel(key: string, index: number): string {
-    if (duplicateFromDayId && key === newDayKeys[0]) {
-      return duplicateSource ? `Copy · ${duplicateSource.label}` : "Copy";
-    }
-    if (newDayKeys.length === 1) return "New day";
-    return `New day ${index + 1}`;
-  }
+  const arrivalWindowMinutes = resolveArrivalWindowMinutes(formContext.defaults);
 
   const footer = (
     <div className="flex flex-wrap gap-2">
@@ -278,9 +421,17 @@ export function MoveJobDayEditorSidebar({
   );
 
   return (
+    <>
+    <JobDayEditorCalendarPeek
+      open={calendarPeekOpen}
+      onClose={() => setCalendarPeekOpen(false)}
+      jobDayDate={values.date}
+      onPickDate={(dateKey) => patch("date", dateKey)}
+    />
     <DetailSidebar
       open={open}
       onClose={onClose}
+      showBackdrop={!calendarPeekOpen}
       title={
         isNewMode
           ? isDuplicate && duplicateSource
@@ -302,7 +453,7 @@ export function MoveJobDayEditorSidebar({
         activeKey={activeKey}
         activeValues={values}
         resolveCardValues={resolveCardValues}
-        newDayLabel={newDayLabel}
+        resolveDayLabel={resolveSwitcherLabel}
         onSelect={selectDay}
         onAddAnother={startAddAnother}
         atDayCap={atDayCap}
@@ -327,6 +478,14 @@ export function MoveJobDayEditorSidebar({
               Pre-filled to the day after the source — change if needed.
             </p>
           ) : null}
+          <button
+            type="button"
+            onClick={() => setCalendarPeekOpen(true)}
+            className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-brand-700 hover:text-brand-800"
+          >
+            <Calendar className="h-3.5 w-3.5" />
+            View move calendar
+          </button>
         </label>
 
         <fieldset>
@@ -391,6 +550,113 @@ export function MoveJobDayEditorSidebar({
           </label>
         </div>
 
+        <fieldset className="space-y-2 rounded-lg border border-slate-100 bg-slate-50/50 p-2.5">
+          <legend className="px-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+            Schedule
+          </legend>
+
+          <label
+            className="flex items-center gap-2 rounded-md border border-slate-200 bg-white px-2 py-1.5"
+            title="11 AM–4 PM arrival on the calendar; no shop departure time"
+          >
+            <input
+              type="checkbox"
+              checked={!values.isFirstJobOfDay}
+              onChange={(e) => patch("isFirstJobOfDay", !e.target.checked)}
+              className="rounded border-slate-300"
+            />
+            <span className="text-[11px] font-medium text-slate-700">
+              Follow-on job
+            </span>
+          </label>
+
+          <div
+            className={cn(
+              "grid gap-2",
+              values.isFirstJobOfDay ? "grid-cols-2" : "grid-cols-1",
+            )}
+          >
+            {values.isFirstJobOfDay ? (
+              <label className="block">
+                <FieldLabel>Crew departure</FieldLabel>
+                <input
+                  type="time"
+                  value={parseCrewDepartureToTime24(values.departureWindow)}
+                  onChange={(e) =>
+                    patch("departureWindow", formatCrewDepartureLabel(e.target.value))
+                  }
+                  className="mt-0.5 w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm"
+                />
+              </label>
+            ) : null}
+            <label className="block">
+              <FieldLabel>Day length</FieldLabel>
+              <select
+                value={values.dayFraction}
+                onChange={(e) =>
+                  patch("dayFraction", e.target.value as JobDayFormValues["dayFraction"])
+                }
+                className="mt-0.5 w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm"
+              >
+                {jobDayFractionOptionsForSchedule(values.isFirstJobOfDay).map((opt) => (
+                  <option key={opt.id} value={opt.id}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          {values.dayFraction !== "long" ? (
+            <p className="text-[10px] leading-snug text-slate-500">{DAY_SHARE_COMBINATION_HINT}</p>
+          ) : null}
+
+          <div className="rounded-md border border-slate-200 bg-white px-2.5 py-2">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                  <FieldLabel>Arrival window</FieldLabel>
+                  {showMorningDriveHint ? (
+                    <span className="text-[10px] text-slate-400">
+                      ~{driveMinutes} min drive · {arrivalWindowMinutes}-min window
+                    </span>
+                  ) : null}
+                </div>
+                {values.arrivalWindowManual ? (
+                  <input
+                    type="text"
+                    value={values.arrivalWindow}
+                    onChange={(e) => patch("arrivalWindow", e.target.value)}
+                    placeholder="e.g. 8:00 – 8:30 AM"
+                    className="mt-0.5 w-full rounded-md border border-slate-200 px-2 py-1.5 text-sm"
+                  />
+                ) : (
+                  <p className="mt-0.5 text-sm font-medium leading-snug text-slate-900">
+                    {values.arrivalWindow}
+                  </p>
+                )}
+              </div>
+              <label className="flex shrink-0 items-center gap-1 pt-0.5 text-[10px] text-slate-600">
+                <input
+                  type="checkbox"
+                  checked={values.arrivalWindowManual}
+                  onChange={(e) => setArrivalManual(e.target.checked)}
+                  className="rounded border-slate-300"
+                />
+                Custom
+              </label>
+            </div>
+            {values.arrivalWindowManual ? (
+              <button
+                type="button"
+                onClick={() => setArrivalManual(false)}
+                className="mt-1 text-[10px] font-semibold text-brand-700 hover:underline"
+              >
+                Reset to calculated
+              </button>
+            ) : null}
+          </div>
+        </fieldset>
+
         <JobDayLocationsEditor
           move={move}
           locations={values.locations}
@@ -398,5 +664,6 @@ export function MoveJobDayEditorSidebar({
         />
       </div>
     </DetailSidebar>
+    </>
   );
 }

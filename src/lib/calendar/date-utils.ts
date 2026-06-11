@@ -1,3 +1,8 @@
+import {
+  DEFAULT_COMPANY_OPEN_DAYS,
+  getMonthGridCells,
+} from "@/lib/settings/business-calendar";
+
 export function toDateKey(date: Date): string {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, "0");
@@ -34,6 +39,7 @@ export function addDays(date: Date, days: number): Date {
   return next;
 }
 
+/** @deprecated Use startOfWeek from business-calendar */
 export function startOfWeekSunday(date: Date): Date {
   const d = new Date(date);
   d.setDate(d.getDate() - d.getDay());
@@ -91,38 +97,7 @@ export function formatDayLong(date: Date): string {
   });
 }
 
-/** Monday = 0 … Saturday = 5 (Sundays excluded from the work-week grid). */
-export function workWeekColumnIndex(date: Date): number {
-  return (date.getDay() + 6) % 7;
-}
-
-export function isSunday(date: Date): boolean {
-  return date.getDay() === 0;
-}
-
-/**
- * Current month, Mon–Sat only — leading/trailing padding cells are null.
- */
+/** @deprecated Use getMonthGridCells from business-calendar with company open days */
 export function getMonthOnlyGridCells(anchor: Date): (Date | null)[] {
-  const year = anchor.getFullYear();
-  const month = anchor.getMonth();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const cells: (Date | null)[] = [];
-
-  for (let d = 1; d <= daysInMonth; d++) {
-    const date = new Date(year, month, d);
-    if (isSunday(date)) continue;
-
-    if (cells.length === 0) {
-      const leading = workWeekColumnIndex(date);
-      for (let i = 0; i < leading; i++) cells.push(null);
-    }
-    cells.push(date);
-  }
-
-  while (cells.length % 6 !== 0) {
-    cells.push(null);
-  }
-
-  return cells;
+  return getMonthGridCells(anchor, DEFAULT_COMPANY_OPEN_DAYS, "monday");
 }

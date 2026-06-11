@@ -1,6 +1,7 @@
 import { syncFollowUpDue } from "./move-follow-ups";
 import type {
   FollowUpChannel,
+  FollowUpSource,
   FollowUpType,
   MoveFollowUp,
   MoveRecord,
@@ -14,6 +15,7 @@ type SeedFollowUp = {
   channel: FollowUpChannel;
   linkedStage: PipelineStageId;
   status?: MoveFollowUp["status"];
+  source?: FollowUpSource;
 };
 
 export function seedFollowUps(
@@ -31,6 +33,7 @@ export function seedFollowUps(
     dueAt: item.dueAt,
     channel: item.channel,
     linkedStage: item.linkedStage,
+    source: item.source ?? "automation",
   }));
 }
 

@@ -1,3 +1,5 @@
+import type { MoveQuoteDiscount } from "./quote-discount";
+
 /** @deprecated Legacy CRM status — use `conditionStatus` + `pipelineStage`. */
 export const MOVE_STATUSES = [
   "new_request",
@@ -136,6 +138,10 @@ export const FOLLOW_UP_STATUSES = ["open", "completed", "skipped"] as const;
 
 export type FollowUpStatus = (typeof FOLLOW_UP_STATUSES)[number];
 
+export const FOLLOW_UP_SOURCES = ["manual", "automation", "scheduled"] as const;
+
+export type FollowUpSource = (typeof FOLLOW_UP_SOURCES)[number];
+
 /** Follow-up tasks — separate from pipeline stage and move notes. */
 export type MoveFollowUp = {
   id: string;
@@ -147,6 +153,10 @@ export type MoveFollowUp = {
   channel: FollowUpChannel;
   status: FollowUpStatus;
   linkedStage: PipelineStageId;
+  /** How the task was created — defaults inferred for legacy rows. */
+  source?: FollowUpSource;
+  /** Pipeline automation rule that created this row — used to avoid duplicates. */
+  automationRuleId?: string;
   notes?: string;
   result?: string;
 };
@@ -159,12 +169,18 @@ export type MoveActivityType =
   | "document"
   | "follow_up";
 
+export type MoveActivityDocumentMeta = {
+  kind: "quote" | "contract";
+  event: "sent" | "resent" | "viewed" | "booking_requested" | "signed" | "deposit_paid";
+};
+
 export type MoveActivity = {
   id: string;
   type: MoveActivityType;
   at: string;
   summary: string;
   actor?: string;
+  document?: MoveActivityDocumentMeta;
 };
 
 export const JOB_DAY_STATUSES = [
@@ -209,16 +225,31 @@ export type JobDayLocation = {
   accessNotes?: string;
 };
 
+/** Partial-day fraction for day-share scheduling. */
+export const JOB_DAY_FRACTIONS = ["brief", "short", "medium", "long"] as const;
+export type JobDayFraction = (typeof JOB_DAY_FRACTIONS)[number];
+
+export const JOB_DAY_PERIODS = ["morning", "afternoon"] as const;
+export type JobDayPeriod = (typeof JOB_DAY_PERIODS)[number];
+
 export type MoveJobDay = {
   id: string;
   label: string;
   date: string;
   status: JobDayStatus;
+  /** Partial-day length — `long` is a full crew-day (default). */
+  dayFraction?: JobDayFraction;
+  /** Morning = tight arrival window; afternoon = flexible 11–4. @deprecated Prefer isFirstJobOfDay */
+  dayPeriod?: JobDayPeriod;
+  /** When false, crew is already on the road — flexible 11 AM–4 PM arrival, no shop departure. */
+  isFirstJobOfDay?: boolean;
   arrivalWindow?: string;
   /** When crew leaves the shop / yard */
   departureWindow?: string;
   durationLabel?: string;
   crewSize?: number;
+  /** Movers who actually worked the day (ops post-job correction). */
+  crewSizeActual?: number;
   crewSummary?: string;
   /** @deprecated Prefer truckCount — kept for mock/display fallback */
   truckSummary?: string;
@@ -230,6 +261,8 @@ export type MoveJobDay = {
   services?: JobDayService[];
   hoursEstimated?: number;
   hoursActual?: number;
+  /** Crew travel hours recorded by ops (shop ↔ job). */
+  actualDriveHours?: number | null;
   laborCostEstimated?: number;
   dispatchNotes?: string;
   customerNotes?: string;
@@ -264,9 +297,55 @@ export type MoveLinkedPerson = {
 import type { FlatRateIntake, IntakeLocationType } from "./flat-rate-intake";
 import type { LostQualification } from "./lost-reasons";
 
+export type MoveSentDocument = {
+  sentAt: string;
+  portalUrl: string;
+  firstViewedAt?: string | null;
+  lastViewedAt?: string | null;
+  viewCount?: number;
+  bookingRequestedAt?: string | null;
+  signedAt?: string | null;
+  depositPaidAt?: string | null;
+  depositAmount?: number | null;
+};
+
+export type WalkthroughMode = "in_person" | "virtual";
+export type WalkthroughStatus = "scheduled" | "completed" | "cancelled";
+
+export type MoveWalkthrough = {
+  id: string;
+  scheduledDate: string;
+  startTime: string;
+  assignedTo: string;
+  mode: WalkthroughMode;
+  status: WalkthroughStatus;
+  location?: string;
+  bookedAt: string;
+};
+
+/** Post-move crew rating from the customer feedback portal. */
+export type MoveCrewFeedback = {
+  rating: number;
+  comment: string;
+  submittedAt: string;
+  /** Customer was shown the Google review link after submitting. */
+  googleReviewOffered: boolean;
+};
+
+export type WalkthroughScheduleDraft = {
+  scheduledDate: string;
+  startTime: string;
+  assignedTo: string;
+  mode: WalkthroughMode;
+};
+
 export type MoveRecord = {
   id: string;
   reference: string;
+  /** SaaS tenant — moving company workspace. */
+  companyId: string;
+  /** Branch that owns / services this move. */
+  locationId: string;
   customerName: string;
   customerPhone: string;
   customerEmail: string;
@@ -304,6 +383,10 @@ export type MoveRecord = {
   preferredDate: string;
   quoteAmount: number | null;
   quoteType: "hourly" | "flat" | null;
+  /** Optional sales discount applied on the quote tab. */
+  quoteDiscount: MoveQuoteDiscount | null;
+  sentQuote: MoveSentDocument | null;
+  sentContract: MoveSentDocument | null;
   bedrooms: number | null;
   createdAt: string;
   updatedAt: string;
@@ -311,4 +394,7 @@ export type MoveRecord = {
   jobDays: MoveJobDay[];
   linkedPeople: MoveLinkedPerson[];
   intake: FlatRateIntake;
+  scheduledWalkthrough?: MoveWalkthrough | null;
+  /** Customer crew rating from post-move feedback portal. */
+  crewFeedback?: MoveCrewFeedback | null;
 };

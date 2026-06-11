@@ -26,19 +26,35 @@ export function emptyCrewAssignment(): Pick<
   return { skipperId: null, driverIds: [], moverIds: [] };
 }
 
+export type JobCrewSlotsOptions = {
+  skipperAlsoDriver?: boolean;
+};
+
+/** Separate driver slots shown in the UI (skipper-as-driver uses one truck). */
+export function separateDriverSlotCount(
+  job: DispatchJob,
+  skipperAlsoDriver?: boolean,
+): number {
+  const base = Math.min(job.trucksNeeded, Math.max(0, job.crewSizeNeeded - 1));
+  return skipperAlsoDriver ? Math.max(0, base - 1) : base;
+}
+
 export function jobCrewSlots(
   job: DispatchJob,
   terms: TerminologySettings = DEFAULT_TERMINOLOGY,
+  options?: JobCrewSlotsOptions,
 ): CrewSlotDefinition[] {
   const slots: CrewSlotDefinition[] = [];
   if (job.crewSizeNeeded < 1) return slots;
 
+  const combined = options?.skipperAlsoDriver === true;
+
   slots.push({
     kind: "skipper",
-    label: roleSlotLabel(terms, "skipper", 0, 1),
+    label: combined ? "S/D" : roleSlotLabel(terms, "skipper", 0, 1),
   });
 
-  const driverCount = Math.min(job.trucksNeeded, Math.max(0, job.crewSizeNeeded - 1));
+  const driverCount = separateDriverSlotCount(job, combined);
   for (let i = 0; i < driverCount; i++) {
     slots.push({
       kind: "driver",
@@ -63,7 +79,8 @@ export function ensureDriverMoverLengths(
   job: DispatchJob,
   assignment: DispatchJobAssignment,
 ): DispatchJobAssignment {
-  const driverCount = Math.min(job.trucksNeeded, Math.max(0, job.crewSizeNeeded - 1));
+  const combined = assignment.skipperAlsoDriver === true;
+  const driverCount = separateDriverSlotCount(job, combined);
   const moverCount = Math.max(0, job.crewSizeNeeded - 1 - driverCount);
 
   const driverIds = [...assignment.driverIds];
@@ -142,7 +159,9 @@ export function countFilledCrewSlots(
   job: DispatchJob,
   assignment: DispatchJobAssignment,
 ): { filled: number; required: number } {
-  const slots = jobCrewSlots(job);
+  const slots = jobCrewSlots(job, DEFAULT_TERMINOLOGY, {
+    skipperAlsoDriver: assignment.skipperAlsoDriver,
+  });
   const normalized = ensureDriverMoverLengths(job, assignment);
   let filled = 0;
   for (const slot of slots) {
@@ -166,6 +185,36 @@ export function crewMemberHasRole(member: DispatchCrewMember, role: CrewRole): b
   return member.roles.includes(role);
 }
 
+/** Can fill combined skipper + driver slot (S/D/M or S/D). */
+export function crewMemberCanSkipperDrive(member: DispatchCrewMember): boolean {
+  return crewMemberHasRole(member, "skipper") && crewMemberHasRole(member, "driver");
+}
+
+export function assignmentHasFilledDriver(assignment: DispatchJobAssignment): boolean {
+  return assignment.driverIds.some((id) => Boolean(id));
+}
+
+export function filledDriverNamesFromAssignment(
+  assignment: DispatchJobAssignment,
+  roster: DispatchCrewMember[],
+): string[] {
+  return assignment.driverIds
+    .filter((id): id is string => Boolean(id))
+    .map((id) => roster.find((member) => member.id === id)?.name)
+    .filter((name): name is string => Boolean(name));
+}
+
+export function shouldCombineSkipperDriver(
+  member: DispatchCrewMember | undefined,
+  slot: CrewSlotRef,
+  assignment: DispatchJobAssignment,
+): boolean {
+  if (!member || !crewMemberCanSkipperDrive(member)) return false;
+  if (slot.kind !== "skipper" && slot.kind !== "driver") return false;
+  if (assignmentHasFilledDriver(assignment)) return false;
+  return true;
+}
+
 export function crewFitsSlot(member: DispatchCrewMember, slot: CrewSlotRef): boolean {
   const role = requiredRoleForSlot(slot);
   if (!role) return true;
@@ -176,7 +225,15 @@ export function skippersNeededForJob(job: DispatchJob): number {
   return job.crewSizeNeeded >= 1 ? 1 : 0;
 }
 
-export function driversNeededForJob(job: DispatchJob): number {
+export function driversNeededForJob(
+  job: DispatchJob,
+  assignment?: Pick<DispatchJobAssignment, "skipperAlsoDriver">,
+): number {
+  return separateDriverSlotCount(job, assignment?.skipperAlsoDriver === true);
+}
+
+/** Day totals — S/D does not reduce driver roles needed; fill still counts skipper-as-driver. */
+export function driverRolesNeededForDayTotals(job: DispatchJob): number {
   return Math.min(job.trucksNeeded, Math.max(0, job.crewSizeNeeded - 1));
 }
 
@@ -185,9 +242,11 @@ export function countFilledRoleSlots(
   assignment: DispatchJobAssignment,
 ): { skippers: number; drivers: number } {
   const normalized = ensureDriverMoverLengths(job, assignment);
-  const drivers = normalized.driverIds.filter((id): id is string => Boolean(id)).length;
+  const separateDrivers = normalized.driverIds.filter((id): id is string => Boolean(id)).length;
+  const skipperDriving =
+    normalized.skipperAlsoDriver && normalized.skipperId ? 1 : 0;
   return {
     skippers: normalized.skipperId ? 1 : 0,
-    drivers,
+    drivers: separateDrivers + skipperDriving,
   };
 }

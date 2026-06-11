@@ -10,7 +10,6 @@ import {
 } from "@/components/moves/detail/MoveJobDaysHorizontalTimeline";
 import { ScopeLocationsSummary } from "@/components/moves/detail/scope/ScopeLocationsSummary";
 import {
-  ScopeEquipmentSection,
   ScopeInventorySection,
   ScopeServicesSection,
   ScopeSpecialtySection,
@@ -47,7 +46,6 @@ export function MoveDetailMovePlanTab({ move }: MoveDetailMovePlanTabProps) {
       <ScopeServicesSection move={move} />
       <ScopeSpecialtySection move={move} />
       <ScopeInventorySection move={move} />
-      <ScopeEquipmentSection move={move} />
       <ScopeLocationsSummary move={move} onEditJobDay={openJobDay} />
     </MoveDetailTabSections>
   );

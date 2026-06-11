@@ -12,6 +12,9 @@ type ConfirmDialogProps = {
   confirmLabel?: string;
   cancelLabel?: string;
   variant?: "danger" | "default";
+  /** When true, only the confirm button is shown (informational alerts). */
+  alertOnly?: boolean;
+  zIndexClassName?: string;
 };
 
 export function ConfirmDialog({
@@ -23,6 +26,8 @@ export function ConfirmDialog({
   confirmLabel = "Confirm",
   cancelLabel = "Cancel",
   variant = "default",
+  alertOnly = false,
+  zIndexClassName = "z-[60]",
 }: ConfirmDialogProps) {
   useEffect(() => {
     if (!open) return;
@@ -41,7 +46,7 @@ export function ConfirmDialog({
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+      className={`fixed inset-0 flex items-center justify-center p-4 ${zIndexClassName}`}
       role="alertdialog"
       aria-modal="true"
       aria-labelledby="confirm-dialog-title"
@@ -58,9 +63,11 @@ export function ConfirmDialog({
         </h2>
         <p className="mt-2 text-sm text-slate-600">{description}</p>
         <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            {cancelLabel}
-          </Button>
+          {!alertOnly ? (
+            <Button type="button" variant="secondary" onClick={onClose}>
+              {cancelLabel}
+            </Button>
+          ) : null}
           <Button
             type="button"
             variant={variant === "danger" ? "danger" : "primary"}

@@ -2,8 +2,8 @@ import {
   allCrewIdsFromAssignment,
   countFilledCrewSlots,
   ensureDriverMoverLengths,
-  isJobCrewComplete,
 } from "./crew-slots";
+import { evaluateDayRequirements, pairedPartnerJobIds } from "./day-requirements";
 import { effectiveDispatchJob } from "./job-requirements";
 import type { DispatchDaySnapshot, DispatchJob, DispatchJobAssignment } from "./types";
 
@@ -43,10 +43,13 @@ export function evaluateDispatchSchedule(
   day: DispatchDaySnapshot,
   getAssignment: (jobId: string) => DispatchJobAssignment,
 ): DispatchScheduleStatus {
-  const { crewIds, truckIds } = collectAssignedIds(day.jobs, getAssignment);
+  const dayRequirements = evaluateDayRequirements(day, getAssignment);
+  const partnerIds = pairedPartnerJobIds(day.jobs, getAssignment);
+  const staffingJobs = day.jobs.filter((job) => !partnerIds.has(job.id));
+  const { crewIds, truckIds } = collectAssignedIds(staffingJobs, getAssignment);
   const gaps: ScheduleGap[] = [];
 
-  for (const job of day.jobs) {
+  for (const job of staffingJobs) {
     const raw = getAssignment(job.id);
     const effective = effectiveDispatchJob(job, raw);
     const a = ensureDriverMoverLengths(effective, raw);
@@ -64,20 +67,9 @@ export function evaluateDispatchSchedule(
     }
   }
 
-  const allCrewOk = day.jobs.every((job) => {
-    const raw = getAssignment(job.id);
-    const effective = effectiveDispatchJob(job, raw);
-    return isJobCrewComplete(effective, ensureDriverMoverLengths(effective, raw));
-  });
-  const allTrucksOk = day.jobs.every((job) => {
-    const raw = getAssignment(job.id);
-    const effective = effectiveDispatchJob(job, raw);
-    return raw.truckIds.length >= effective.trucksNeeded;
-  });
-
   return {
     jobCount: day.jobs.length,
-    complete: day.jobs.length > 0 && gaps.length === 0 && allCrewOk && allTrucksOk,
+    complete: dayRequirements.jobCount > 0 && !dayRequirements.hasShortfall,
     gaps,
     assignedCrewCount: crewIds.size,
     assignedTruckCount: truckIds.size,

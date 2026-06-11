@@ -1,4 +1,14 @@
 import { applyAcquisitionFields } from "./acquisition";
+import type { MoveCore } from "./move-core";
+import {
+  DEFAULT_COMPANY_ID,
+  DEFAULT_PRIMARY_LOCATION_ID,
+} from "@/lib/workspace/constants";
+import { ensureMoveWorkspaceFields } from "@/lib/workspace/move-scope";
+import {
+  inferSentContractFromPipeline,
+  inferSentQuoteFromPipeline,
+} from "./move-document-send";
 import { buildIntakeForMove } from "./intake-mock";
 import {
   createInitialJobDayFromIntake,
@@ -8,36 +18,12 @@ import {
   defaultLocationsForNewDay,
   syncLegacyLocationNotes,
 } from "./job-day-locations";
-import type {
-  IntakeProgress,
-  MoveJobDay,
-  MoveLinkedPerson,
-  MoveRecord,
-  QuoteChannel,
-  WebsiteIntakeMeta,
-} from "./types";
-
-type MoveCore = Omit<
-  MoveRecord,
-  | "jobDays"
-  | "linkedPeople"
-  | "intake"
-  | "followUps"
-  | "followUpDue"
-  | "quoteChannel"
-  | "intakeProgress"
-  | "websiteIntake"
-  | "lostQualification"
-  | "lostReasonId"
-  | "lostNotes"
-> & {
-  quoteChannel?: QuoteChannel;
-  intakeProgress?: IntakeProgress;
-  websiteIntake?: WebsiteIntakeMeta | null;
-  lostQualification?: MoveRecord["lostQualification"];
-  lostReasonId?: string | null;
-  lostNotes?: string | null;
-};
+import {
+  DISPATCH_DEMO_DATE_SENTINEL,
+  isDispatchDemoMoveId,
+  resolveDispatchDemoDate,
+} from "@/lib/dispatch/demo-date";
+import type { MoveCrewFeedback, MoveJobDay, MoveLinkedPerson, MoveRecord } from "./types";
 
 function customerPerson(move: MoveCore): MoveLinkedPerson {
   return {
@@ -63,7 +49,14 @@ function finalizeJobDays(move: MoveRecord, days: MoveJobDay[]): MoveJobDay[] {
 }
 
 const EXTRAS: Partial<
-  Record<string, { linkedPeople?: MoveLinkedPerson[]; jobDays?: MoveJobDay[] }>
+  Record<
+    string,
+    {
+      linkedPeople?: MoveLinkedPerson[];
+      jobDays?: MoveJobDay[];
+      crewFeedback?: MoveCrewFeedback;
+    }
+  >
 > = {
   "mv-quote-sent": {
     linkedPeople: [
@@ -90,9 +83,11 @@ const EXTRAS: Partial<
         label: "Day 1",
         date: "2026-06-13",
         status: "scheduled",
+        dayFraction: "short",
+        dayPeriod: "afternoon",
         departureWindow: "7:15 AM",
-        arrivalWindow: "8:00 – 10:00 AM",
-        durationLabel: "~6 hrs",
+        arrivalWindow: "11:00 AM – 4:00 PM (crew calls ≥30 min ahead)",
+        durationLabel: "Short (½ day)",
         crewSize: 2,
         crewSummary: "2 packers",
         truckCount: 1,
@@ -182,6 +177,12 @@ const EXTRAS: Partial<
     ],
   },
   "mv-complete": {
+    crewFeedback: {
+      rating: 5,
+      comment: "Crew was careful, fast, and super friendly. Would recommend to anyone!",
+      submittedAt: "2026-05-18T19:15:00Z",
+      googleReviewOffered: true,
+    },
     jobDays: [
       {
         id: "mv-complete-jd1",
@@ -195,6 +196,7 @@ const EXTRAS: Partial<
         services: ["moving", "unloading"],
         hoursEstimated: 4.5,
         hoursActual: 5,
+        actualDriveHours: 1.25,
       },
     ],
   },
@@ -225,6 +227,7 @@ const EXTRAS: Partial<
         services: ["packing", "loading"],
         hoursEstimated: 7,
         hoursActual: 7.5,
+        actualDriveHours: 0.75,
         accessNotes: "2-story origin · 80 ft walk to truck",
         dispatchNotes: "Finished 7:42 PM — 0.5 hr over on fragile wrap",
       },
@@ -247,6 +250,96 @@ const EXTRAS: Partial<
       },
     ],
   },
+  "mv-ds-long": {
+    jobDays: [
+      {
+        id: "mv-ds-long-jd1",
+        label: "Day 1",
+        date: DISPATCH_DEMO_DATE_SENTINEL,
+        status: "scheduled",
+        dayFraction: "long",
+        dayPeriod: "morning",
+        arrivalWindow: "8:00 – 8:30 AM",
+        durationLabel: "Long (full day)",
+        crewSize: 4,
+        truckCount: 2,
+        services: ["loading", "moving", "unloading"],
+        hoursEstimated: 8,
+      },
+    ],
+  },
+  "mv-ds-medium": {
+    jobDays: [
+      {
+        id: "mv-ds-medium-jd1",
+        label: "Day 1",
+        date: DISPATCH_DEMO_DATE_SENTINEL,
+        status: "scheduled",
+        dayFraction: "medium",
+        dayPeriod: "morning",
+        arrivalWindow: "7:45 – 8:15 AM",
+        durationLabel: "Medium (⅔ day)",
+        crewSize: 4,
+        truckCount: 1,
+        services: ["loading", "moving"],
+        hoursEstimated: 5,
+      },
+    ],
+  },
+  "mv-ds-short-am": {
+    jobDays: [
+      {
+        id: "mv-ds-short-am-jd1",
+        label: "Day 1",
+        date: DISPATCH_DEMO_DATE_SENTINEL,
+        status: "scheduled",
+        dayFraction: "short",
+        dayPeriod: "morning",
+        arrivalWindow: "7:45 – 8:15 AM",
+        durationLabel: "Short (½ day)",
+        crewSize: 3,
+        truckCount: 1,
+        services: ["packing", "loading"],
+        hoursEstimated: 4,
+      },
+    ],
+  },
+  "mv-ds-short-pm": {
+    jobDays: [
+      {
+        id: "mv-ds-short-pm-jd1",
+        label: "Day 1",
+        date: DISPATCH_DEMO_DATE_SENTINEL,
+        status: "scheduled",
+        dayFraction: "short",
+        dayPeriod: "afternoon",
+        arrivalWindow: "11:00 AM – 4:00 PM (crew calls ≥30 min ahead)",
+        durationLabel: "Short (½ day)",
+        crewSize: 3,
+        truckCount: 1,
+        services: ["moving", "unloading"],
+        hoursEstimated: 4,
+      },
+    ],
+  },
+  "mv-ds-brief-pm": {
+    jobDays: [
+      {
+        id: "mv-ds-brief-pm-jd1",
+        label: "Day 1",
+        date: DISPATCH_DEMO_DATE_SENTINEL,
+        status: "scheduled",
+        dayFraction: "brief",
+        dayPeriod: "afternoon",
+        arrivalWindow: "11:00 AM – 4:00 PM (crew calls ≥30 min ahead)",
+        durationLabel: "Brief (⅓ day)",
+        crewSize: 2,
+        truckCount: 1,
+        services: ["moving"],
+        hoursEstimated: 3,
+      },
+    ],
+  },
 };
 
 export function enrichMockMove(move: MoveCore): MoveRecord {
@@ -266,6 +359,9 @@ export function enrichMockMove(move: MoveCore): MoveRecord {
     lostQualification: move.lostQualification ?? null,
     lostReasonId: move.lostReasonId ?? null,
     lostNotes: move.lostNotes ?? null,
+    sentQuote: null,
+    sentContract: null,
+    quoteDiscount: (move as MoveRecord).quoteDiscount ?? null,
   } as MoveRecord);
 
   const rawDays =
@@ -273,7 +369,27 @@ export function enrichMockMove(move: MoveCore): MoveRecord {
       ? extra.jobDays!
       : [createInitialJobDayFromIntake(base)];
 
-  const jobDays = finalizeJobDays(base, rawDays);
+  const withDemoDates = isDispatchDemoMoveId(move.id)
+    ? rawDays.map((day) => ({
+        ...day,
+        date: resolveDispatchDemoDate(day.date),
+      }))
+    : rawDays;
 
-  return { ...base, jobDays };
+  const jobDays = finalizeJobDays(base, withDemoDates);
+
+  const withJobDays = {
+    ...base,
+    jobDays,
+    preferredDate: isDispatchDemoMoveId(move.id)
+      ? resolveDispatchDemoDate(base.preferredDate)
+      : base.preferredDate,
+  };
+  const completed = {
+    ...withJobDays,
+    sentQuote: inferSentQuoteFromPipeline(withJobDays),
+    sentContract: inferSentContractFromPipeline(withJobDays),
+    ...(extra?.crewFeedback ? { crewFeedback: extra.crewFeedback } : {}),
+  };
+  return ensureMoveWorkspaceFields(completed, DEFAULT_COMPANY_ID, DEFAULT_PRIMARY_LOCATION_ID);
 }

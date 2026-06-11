@@ -3,7 +3,7 @@ export type FtaDuration = "brief" | "short" | "medium";
 
 export type FtaSlot = {
   count: number;
-  crewSize: 2 | 3;
+  crewSize: number;
   period: FtaPeriod;
   duration: FtaDuration;
 };

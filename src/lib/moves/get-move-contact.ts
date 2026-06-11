@@ -1,5 +1,6 @@
 import { personKindLabel } from "@/lib/people/display";
-import { MOCK_PEOPLE, getPersonById } from "@/lib/people/mock-data";
+import { getPersonById, MOCK_PEOPLE } from "@/lib/people/mock-data";
+import { getStoredPersonById, listAllPeople } from "@/lib/people/people-storage";
 import { linkedPersonRoleLabel, primaryCustomer } from "@/lib/moves/linked-people";
 import type { MoveRecord } from "./types";
 import type { PersonRecord } from "@/lib/people/types";
@@ -26,8 +27,11 @@ export function moveDisplayTitle(move: MoveRecord): string {
 
 export function getMoveContactPerson(move: MoveRecord): PersonRecord | undefined {
   if (move.contactId) {
-    const byId = getPersonById(move.contactId);
+    const byId = getStoredPersonById(move.contactId) ?? getPersonById(move.contactId);
     if (byId) return byId;
+  }
+  if (typeof window !== "undefined") {
+    return listAllPeople().find((p) => p.moveIds.includes(move.id));
   }
   return MOCK_PEOPLE.find((p) => p.moveIds.includes(move.id));
 }

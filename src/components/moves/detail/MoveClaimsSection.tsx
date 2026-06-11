@@ -12,6 +12,12 @@ import {
   claimsForMove,
   formatClaimMoney,
 } from "@/lib/operations/claims";
+import {
+  checklistProgress,
+  currentStepLabel,
+  isWaitingOnVendor,
+} from "@/lib/operations/claims-workflow";
+import { claimVendorLabel } from "@/lib/operations/claims-vendors";
 import type { MoveClaim } from "@/lib/operations/claims-types";
 import { formatMoveDate } from "@/lib/moves/format";
 import type { MoveRecord } from "@/lib/moves/types";
@@ -94,6 +100,9 @@ export function MoveClaimsSection({ move }: MoveClaimsSectionProps) {
 }
 
 function ClaimRowSummary({ claim }: { claim: MoveClaim }) {
+  const progress = checklistProgress(claim.checklist);
+  const waiting = isWaitingOnVendor(claim);
+
   return (
     <>
       <div className="min-w-0 flex-1">
@@ -102,12 +111,16 @@ function ClaimRowSummary({ claim }: { claim: MoveClaim }) {
           <Badge className={CLAIM_STATUS_BADGE[claim.status]}>
             {CLAIM_STATUS_LABELS[claim.status]}
           </Badge>
+          {waiting ? (
+            <Badge className="bg-amber-100 text-amber-900">Waiting on vendor</Badge>
+          ) : null}
           <span className="text-xs text-slate-500">{CLAIM_CATEGORY_LABELS[claim.category]}</span>
         </div>
         <p className="mt-0.5 truncate text-sm text-slate-700">{claim.title}</p>
-        {claim.jobDayLabel ? (
-          <p className="text-xs text-slate-500">{claim.jobDayLabel}</p>
-        ) : null}
+        <p className="mt-0.5 text-xs text-slate-500">
+          Step: {currentStepLabel(claim)} · {progress.done}/{progress.total} complete
+          {claim.vendorId ? ` · ${claimVendorLabel(claim.vendorId)}` : ""}
+        </p>
       </div>
       <div className="text-right text-sm">
         <p className="font-medium tabular-nums text-slate-900">

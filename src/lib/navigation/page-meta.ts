@@ -13,6 +13,11 @@ export const pageMeta: Record<string, PageMeta> = {
     description:
       "Shared calendar for availability, booked moves, Job Days, crew/truck capacity, and conflicts.",
   },
+  "/schedule": {
+    title: "Schedule",
+    description:
+      "Office staff calendars from Outlook — your schedule or company-wide, filtered by sales or operations.",
+  },
   "/inbox": {
     title: "Inbox",
     description:
@@ -32,6 +37,11 @@ export const pageMeta: Record<string, PageMeta> = {
     title: "Moves",
     description: "Pipeline and list — filter by follow-up queue and salesperson.",
   },
+  "/sales/walkthroughs": {
+    title: "Walkthroughs",
+    description:
+      "Schedule and track on-site and virtual walkthroughs before quoting.",
+  },
   "/sales/directory": {
     title: "Directory",
     description:
@@ -40,7 +50,7 @@ export const pageMeta: Record<string, PageMeta> = {
   "/sales/documents": {
     title: "Documents",
     description:
-      "Generated and signed documents for moves — proposals, contracts, confirmations, waivers, and PDFs.",
+      "Sent quotes and contracts — track views, booking requests, signatures, and deposits.",
   },
   "/operations/jobs": {
     title: "Jobs",
@@ -49,16 +59,17 @@ export const pageMeta: Record<string, PageMeta> = {
   },
   "/operations/dispatch": {
     title: "Dispatch",
-    description: "Daily board for assigning crews and trucks to Job Days.",
+    description: "",
   },
   "/operations/claims": {
     title: "Claims",
     description:
-      "Customer claims and damage resolution — track status, dollar amounts, and ties to moves.",
+      "Guided claim workflow — see where each file stands, complete steps in order, and close out with payout or denial.",
   },
   "/operations/crew": {
     title: "Crew",
-    description: "Movers, crew leads, availability, and performance.",
+    description:
+      "Movers, crew leads, availability, performance, write-ups, and discipline records.",
   },
   "/operations/payroll": {
     title: "Payroll & Time",
@@ -68,16 +79,21 @@ export const pageMeta: Record<string, PageMeta> = {
   "/admin/integrations": {
     title: "Integrations",
     description:
-      "Third-party services — Twilio, Outlook, Stripe, Rippling, maps, website tools, and V2 AI. Planned go-live order (not wired live yet).",
+      "V1 launch stack — Supabase, Twilio, Outlook, Resend, Stripe, Maps, AI, and monitoring. V2 adds Rippling API, fleet, Gmail, and marketing tags.",
   },
   "/operations/fleet": {
     title: "Fleet",
     description: "Trucks and vehicles — capacity, maintenance, and dispatch assignments.",
   },
+  "/operations/inventory": {
+    title: "Inventory",
+    description:
+      "Boxes, packing materials, blankets, and move-day supplies — simple on-hand counts for the ops team.",
+  },
   "/operations/reports": {
     title: "Reports",
     description:
-      "Day pipeline, sales scorecards (speed to lead, revenue, commission), operations actuals, AI quote accuracy, and dispatch change impact.",
+      "Day pipeline, sales scorecards, referral partner performance, operations actuals, inventory usage, AI quote accuracy, and dispatch change impact.",
   },
   "/planning": {
     title: "Planning",
@@ -96,7 +112,20 @@ export const pageMeta: Record<string, PageMeta> = {
   "/admin/setup": {
     title: "Setup",
     description:
-      "Operational configuration — pricing, statuses, terminology, document templates, automations, and follow-up rules.",
+      "Operational configuration — pricing, equipment & supplies catalog, statuses, terminology, document templates, automations, and follow-up rules.",
+  },
+  "/admin/import": {
+    title: "Import data",
+    description:
+      "One-time migration from your old system — upload CSVs for organizations, contacts, moves, job days, claims, and inventory with templates, column mapping, and error reports.",
+  },
+  "/account": {
+    title: "Account",
+    description: "Your profile, notifications, email signature, and security settings.",
+  },
+  "/sign-in": {
+    title: "Sign in",
+    description: "",
   },
 };
 

@@ -55,7 +55,8 @@ export function TrucksListTab() {
       {
         key: "cabSize",
         header: "Cab",
-        cell: (row) => (row.cabSize ? `${row.cabSize}-pass` : "—"),
+        cell: (row) =>
+          row.cabSize ? `${row.cabSize} ${row.cabSize === 1 ? "person" : "people"}` : "—",
       },
       {
         key: "liftgate",
@@ -160,6 +161,11 @@ function TruckForm({
   const [cabSize, setCabSize] = useState<number | "">(initial?.cabSize ?? 3);
   const [hasLiftgate, setHasLiftgate] = useState(initial?.hasLiftgate ?? true);
   const [active, setActive] = useState(initial?.active ?? true);
+  const [make, setMake] = useState(initial?.make ?? "");
+  const [model, setModel] = useState(initial?.model ?? "");
+  const [year, setYear] = useState(initial?.year != null ? String(initial.year) : "");
+  const [vin, setVin] = useState(initial?.vin ?? "");
+  const [plate, setPlate] = useState(initial?.plate ?? "");
 
   const showLength = truckSupportsLength(vehicleType);
   const showLiftgate = truckSupportsLiftgate(vehicleType);
@@ -177,6 +183,11 @@ function TruckForm({
           cabSize: cabSize === "" ? undefined : cabSize,
           hasLiftgate: showLiftgate ? hasLiftgate : undefined,
           active,
+          make: make.trim() || undefined,
+          model: model.trim() || undefined,
+          year: year.trim() ? Number.parseInt(year, 10) : undefined,
+          vin: vin.trim() || undefined,
+          plate: plate.trim() || undefined,
         });
       }}
     >
@@ -259,6 +270,71 @@ function TruckForm({
           Has liftgate
         </label>
       ) : null}
+
+      <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-3">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+          Vehicle details
+        </p>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Make
+            </label>
+            <input
+              value={make}
+              onChange={(e) => setMake(e.target.value)}
+              placeholder="Freightliner"
+              className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Model
+            </label>
+            <input
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+              placeholder="M2 106"
+              className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Year
+            </label>
+            <input
+              value={year}
+              onChange={(e) => setYear(e.target.value.replace(/[^\d]/g, "").slice(0, 4))}
+              placeholder="2019"
+              inputMode="numeric"
+              className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Plate
+            </label>
+            <input
+              value={plate}
+              onChange={(e) => setPlate(e.target.value)}
+              placeholder="ABC 1234"
+              className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm uppercase"
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+              VIN
+            </label>
+            <input
+              value={vin}
+              onChange={(e) => setVin(e.target.value.toUpperCase())}
+              placeholder="17-character VIN"
+              maxLength={17}
+              className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 font-mono text-sm uppercase"
+            />
+          </div>
+        </div>
+      </div>
 
       <label className="flex items-center gap-2 text-sm text-slate-800">
         <input

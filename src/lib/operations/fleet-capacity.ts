@@ -79,6 +79,62 @@ export type TruckCapacityBreakdown = {
   total: number;
 };
 
+export type TruckOffEntry = {
+  truck: FleetTruck;
+  label: string;
+  detail: string;
+};
+
+function truckOffLabelFromReason(reason: string): string {
+  const lower = reason.toLowerCase();
+  if (
+    lower.includes("maintenance") ||
+    lower.includes("repair") ||
+    lower.includes("shop") ||
+    lower.includes("inspection") ||
+    lower.includes("service")
+  ) {
+    return "Maintenance";
+  }
+  return "Out of service";
+}
+
+/** Active roster trucks out of service on a given day. */
+export function trucksOffOnDate(
+  trucks: FleetTruck[],
+  outages: TruckOutage[],
+  dateKey: string,
+): TruckOffEntry[] {
+  const seen = new Set<string>();
+  const entries: TruckOffEntry[] = [];
+
+  for (const truck of trucks) {
+    if (!truck.active) continue;
+    if (!isTruckOutOnDate(truck.id, dateKey, outages)) continue;
+    const outage = outages.find(
+      (o) => o.truckId === truck.id && isDateInRange(dateKey, o.startDate, o.endDate),
+    );
+    const detail = outage?.reason ?? "Unavailable for dispatch";
+    entries.push({
+      truck,
+      label: truckOffLabelFromReason(detail),
+      detail,
+    });
+    seen.add(truck.id);
+  }
+
+  for (const truck of trucks) {
+    if (truck.active || seen.has(truck.id)) continue;
+    entries.push({
+      truck,
+      label: "Inactive",
+      detail: "Removed from active fleet",
+    });
+  }
+
+  return entries.sort((a, b) => a.truck.label.localeCompare(b.truck.label));
+}
+
 export function truckCapacityBreakdownForDate(
   trucks: FleetTruck[],
   outages: TruckOutage[],

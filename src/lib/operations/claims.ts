@@ -1,6 +1,9 @@
+import { currentStepLabel, isWaitingOnVendor } from "./claims-workflow";
 import type {
   ClaimCategory,
   ClaimPendingReason,
+  ClaimPipelineColumn,
+  ClaimResolutionType,
   ClaimStatus,
   ClaimStatusTab,
   MoveClaim,
@@ -32,11 +35,16 @@ export const CLAIM_STATUS_BADGE: Record<ClaimStatus, string> = {
 
 export const CLAIM_CATEGORY_LABELS: Record<ClaimCategory, string> = {
   damage: "Damage",
-  billing: "Billing",
-  service: "Service",
   lost_item: "Lost item",
-  liability: "Liability",
   other: "Other",
+};
+
+export const CLAIM_RESOLUTION_LABELS: Record<ClaimResolutionType, string> = {
+  repair: "Repair completed",
+  credit: "Service credit",
+  payout: "Cash payout",
+  denied: "Denied",
+  insurance: "Insurance claim",
 };
 
 export const CLAIM_PENDING_LABELS: Record<ClaimPendingReason, string> = {
@@ -49,6 +57,8 @@ export const CLAIM_PENDING_LABELS: Record<ClaimPendingReason, string> = {
 
 export function claimMatchesStatusTab(claim: MoveClaim, tab: ClaimStatusTab): boolean {
   if (tab === "completed") return claim.status === "completed" || claim.status === "denied";
+  if (tab === "waiting_vendor") return isWaitingOnVendor(claim);
+  if (tab === "pending") return claim.status === "pending" && !isWaitingOnVendor(claim);
   return claim.status === tab;
 }
 
@@ -62,7 +72,8 @@ export function countClaimsByTab(claims: MoveClaim[]): Record<ClaimStatusTab, nu
   return {
     new: claims.filter((c) => c.status === "new").length,
     in_progress: claims.filter((c) => c.status === "in_progress").length,
-    pending: claims.filter((c) => c.status === "pending").length,
+    waiting_vendor: claims.filter((c) => isWaitingOnVendor(c)).length,
+    pending: claims.filter((c) => c.status === "pending" && !isWaitingOnVendor(c)).length,
     completed: claims.filter((c) => c.status === "completed" || c.status === "denied").length,
   };
 }
@@ -70,9 +81,7 @@ export function countClaimsByTab(claims: MoveClaim[]): Record<ClaimStatusTab, nu
 export type ClaimsSummary = {
   openCount: number;
   totalClaimed: number;
-  totalReserved: number;
   totalPaid: number;
-  outstandingReserve: number;
 };
 
 export function summarizeClaims(claims: MoveClaim[]): ClaimsSummary {
@@ -80,15 +89,47 @@ export function summarizeClaims(claims: MoveClaim[]): ClaimsSummary {
   return {
     openCount: open.length,
     totalClaimed: claims.reduce((s, c) => s + c.amountClaimed, 0),
-    totalReserved: claims.reduce((s, c) => s + c.amountReserved, 0),
     totalPaid: claims.reduce((s, c) => s + c.amountPaid, 0),
-    outstandingReserve: open.reduce(
-      (s, c) => s + Math.max(0, c.amountReserved - c.amountPaid),
-      0,
-    ),
   };
 }
 
 export function claimsForMove(claims: MoveClaim[], moveId: string): MoveClaim[] {
   return claims.filter((c) => c.moveId === moveId);
 }
+
+export function claimMatchesPipelineColumn(
+  claim: MoveClaim,
+  column: ClaimPipelineColumn,
+): boolean {
+  if (column === "waiting_vendor") return isWaitingOnVendor(claim);
+  if (column === "completed") return claim.status === "completed" || claim.status === "denied";
+  if (column === "pending") return claim.status === "pending" && !isWaitingOnVendor(claim);
+  return claim.status === column;
+}
+
+export function claimsForPipelineColumn(
+  claims: MoveClaim[],
+  column: ClaimPipelineColumn,
+): MoveClaim[] {
+  return claims
+    .filter((c) => claimMatchesPipelineColumn(c, column))
+    .sort((a, b) => b.reportedDate.localeCompare(a.reportedDate));
+}
+
+export const CLAIM_PIPELINE_LABELS: Record<ClaimPipelineColumn, string> = {
+  new: "New",
+  in_progress: "In progress",
+  waiting_vendor: "Waiting on vendor",
+  pending: "Pending (other)",
+  completed: "Resolved",
+};
+
+export { currentStepLabel };
+
+export const CLAIM_PIPELINE_COLUMN_CLASS: Record<ClaimPipelineColumn, string> = {
+  new: "border-violet-200 bg-violet-50/50",
+  in_progress: "border-sky-200 bg-sky-50/50",
+  waiting_vendor: "border-amber-200 bg-amber-50/50",
+  pending: "border-orange-200 bg-orange-50/40",
+  completed: "border-emerald-200 bg-emerald-50/40",
+};

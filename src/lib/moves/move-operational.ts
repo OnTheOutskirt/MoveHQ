@@ -1,5 +1,10 @@
 import { formatMoveDate, formatQuote } from "./format";
 import { packingDensityLabel, packingServiceLabel } from "./intake-display";
+import {
+  formatInventoryVolumeDisplay,
+  inventoryVolumeForMove,
+} from "./inventory-basis";
+import { defaultSettings } from "@/lib/settings/defaults";
 import type { MoveJobDay, MoveRecord } from "./types";
 
 export type MoveOperationalSummary = {
@@ -77,6 +82,11 @@ function buildInventorySummary(move: MoveRecord): string {
     intake.origin.access.elevator ? `elevator (${intake.origin.access.elevator})` : null,
   ].filter(Boolean);
   if (access.length) parts.push(access.join(", "));
+
+  if (move.quoteType === "flat" || move.quoteType == null) {
+    const volume = inventoryVolumeForMove(move, defaultSettings.defaults);
+    parts.push(formatInventoryVolumeDisplay(volume));
+  }
 
   return parts.join(" · ") + ".";
 }

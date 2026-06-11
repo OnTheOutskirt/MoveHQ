@@ -1,3 +1,4 @@
+import { resetDayAssignmentPatch } from "./assignment-utils";
 import { emptyCrewAssignment } from "./crew-slots";
 import type { DispatchJobAssignment } from "./types";
 
@@ -23,6 +24,9 @@ function normalizeAssignment(raw: Partial<LegacyAssignment>): DispatchJobAssignm
       jobNote: raw.jobNote ?? "",
       crewSizeOverride: raw.crewSizeOverride ?? null,
       trucksNeededOverride: raw.trucksNeededOverride ?? null,
+      skipperAlsoDriver: raw.skipperAlsoDriver ?? false,
+      pairedJobIds: raw.pairedJobIds ?? [],
+      scheduleStartOverrideMinutes: raw.scheduleStartOverrideMinutes ?? null,
     };
   }
   if (raw.crewIds?.length) {
@@ -34,6 +38,9 @@ function normalizeAssignment(raw: Partial<LegacyAssignment>): DispatchJobAssignm
       jobNote: raw.jobNote ?? "",
       crewSizeOverride: raw.crewSizeOverride ?? null,
       trucksNeededOverride: raw.trucksNeededOverride ?? null,
+      skipperAlsoDriver: raw.skipperAlsoDriver ?? false,
+      pairedJobIds: raw.pairedJobIds ?? [],
+      scheduleStartOverrideMinutes: raw.scheduleStartOverrideMinutes ?? null,
     };
   }
   return {
@@ -43,6 +50,9 @@ function normalizeAssignment(raw: Partial<LegacyAssignment>): DispatchJobAssignm
     jobNote: raw.jobNote ?? "",
     crewSizeOverride: raw.crewSizeOverride ?? null,
     trucksNeededOverride: raw.trucksNeededOverride ?? null,
+    skipperAlsoDriver: raw.skipperAlsoDriver ?? false,
+    pairedJobIds: raw.pairedJobIds ?? [],
+    scheduleStartOverrideMinutes: raw.scheduleStartOverrideMinutes ?? null,
   };
 }
 
@@ -65,6 +75,7 @@ export function readDispatchAssignments(): DispatchAssignmentStore {
 export function writeDispatchAssignments(store: DispatchAssignmentStore): void {
   if (typeof window === "undefined") return;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+  window.dispatchEvent(new CustomEvent("jm-dispatch-assignments"));
 }
 
 export function getJobAssignment(
@@ -88,4 +99,17 @@ export function setJobAssignment(
     ...store,
     [key]: { ...current, ...patch },
   };
+}
+
+/** Reset timeline, pairings, crew, trucks, and S/D for every job on a dispatch day. */
+export function resetDayScheduleInStore(
+  store: DispatchAssignmentStore,
+  dateKey: string,
+  jobIds: string[],
+): DispatchAssignmentStore {
+  let next = store;
+  for (const jobId of jobIds) {
+    next = setJobAssignment(next, dateKey, jobId, resetDayAssignmentPatch());
+  }
+  return next;
 }

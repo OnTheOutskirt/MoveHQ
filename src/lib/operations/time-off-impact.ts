@@ -1,5 +1,9 @@
 import { addDays, parseDateKey, toDateKey } from "@/lib/calendar/date-utils";
-import type { CrewWorkSchedule, FleetCrewMember, TimeOffRequest } from "./fleet-types";
+import {
+  DEFAULT_COMPANY_OPEN_DAYS,
+  isCompanyOpenDayKey,
+} from "@/lib/settings/business-calendar";
+import type { CrewWorkSchedule, FleetCrewMember, TimeOffRequest, WeekdayId } from "./fleet-types";
 import { DEFAULT_WORK_DAYS } from "./fleet-types";
 
 /** Minimum movers ops wants available before approving another mover off */
@@ -75,10 +79,13 @@ export function evaluateTimeOffImpact(
   crew: FleetCrewMember[],
   schedules: CrewWorkSchedule[],
   requests: TimeOffRequest[],
+  openDays: WeekdayId[] = DEFAULT_COMPANY_OPEN_DAYS,
 ): TimeOffImpactResult {
   const subject = crew.find((c) => c.id === request.crewId);
   const subjectIsMover = subject?.roles.includes("mover") ?? false;
-  const dateKeys = eachDateKeyInRange(request.startDate, request.endDate);
+  const dateKeys = eachDateKeyInRange(request.startDate, request.endDate).filter((dateKey) =>
+    isCompanyOpenDayKey(dateKey, openDays),
+  );
 
   const days: DayImpact[] = dateKeys.map((dateKey) => {
     const before = countMoversAvailable(dateKey, crew, schedules, requests, request.id);

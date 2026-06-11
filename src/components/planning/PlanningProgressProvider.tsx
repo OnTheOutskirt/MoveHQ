@@ -21,6 +21,7 @@ import { allV1ItemIds, allV2ItemIds } from "@/lib/planning/roadmap-data";
 type ProgressStats = { done: number; total: number; pct: number };
 
 type PlanningProgressContextValue = {
+  /** Raw checkbox state (for per-section stats). */
   progress: ProgressMap;
   toggle: (id: string) => void;
   setDone: (id: string, done: boolean) => void;

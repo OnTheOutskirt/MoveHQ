@@ -36,8 +36,7 @@ function MoveDetailViewBody({ move }: { move: MoveRecord }) {
   const [quickAction, setQuickAction] = useState<MoveQuickActionId | null>(null);
   const [mainTab, setMainTab] = useState<MoveDetailMainTabId>("move-plan");
 
-  function openMovePlan() {
-    setMainTab("move-plan");
+  function scrollToMainTabs() {
     requestAnimationFrame(() => {
       document.getElementById("move-detail-tabs")?.scrollIntoView({
         behavior: "smooth",
@@ -46,10 +45,19 @@ function MoveDetailViewBody({ move }: { move: MoveRecord }) {
     });
   }
 
+  function openMovePlan() {
+    setMainTab("move-plan");
+    scrollToMainTabs();
+  }
+
   function handleQuickAction(action: MoveQuickActionId) {
     if (action === "send-contract") {
       openSendContract();
       return;
+    }
+    if (action === "collect-payment") {
+      setMainTab("payment");
+      scrollToMainTabs();
     }
     setQuickAction(action);
   }

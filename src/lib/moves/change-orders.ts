@@ -2,9 +2,9 @@ import type { ChangeOrder, ChangeOrderKind, ChangeOrderStatus } from "./change-o
 
 export const CHANGE_ORDER_KIND_LABELS: Record<ChangeOrderKind, string> = {
   charge_order: "Charge order (AI)",
-  small_minor: "Small change order",
+  small_minor: "Small change order (AI)",
   small_inventory_labor: "Small CO — inventory / labor",
-  full_requote: "Full requote",
+  full_requote: "Full requote (AI)",
 };
 
 export const CHANGE_ORDER_KIND_DESCRIPTIONS: Record<ChangeOrderKind, string> = {

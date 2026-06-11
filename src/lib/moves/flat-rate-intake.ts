@@ -4,6 +4,9 @@
  */
 
 import type { IntakeServiceId } from "@/lib/moves/intake-services";
+import type { MovePricingRateSnapshot } from "@/lib/pricing/rate-history-types";
+import type { HourlyQuoteSettings } from "@/lib/moves/hourly-quote-settings";
+import type { FlatRateInventoryBasis } from "@/lib/settings/types";
 
 export const INTAKE_JOB_TYPES = [
   "standard",
@@ -63,7 +66,7 @@ export const PACKING_SERVICE = [
 
 export type PackingService = (typeof PACKING_SERVICE)[number];
 
-export const LIABILITY_COVERAGE = ["released", "full"] as const;
+export const LIABILITY_COVERAGE = ["released", "full", "unregulated"] as const;
 export type LiabilityCoverage = (typeof LIABILITY_COVERAGE)[number];
 
 export type IntakeAddress = {
@@ -117,6 +120,22 @@ export type IntakeMoveExtras = {
   other: IntakeExtraItem[];
 };
 
+/** Line on the Equipment & supplies tab — catalog-backed packing materials and gear. */
+export type IntakeEquipmentLine = {
+  id: string;
+  catalogId: string;
+  quantity: number;
+};
+
+export type IntakeThirdPartyService = {
+  id: string;
+  serviceTypeId: string;
+  customLabel?: string;
+  vendorDirectoryId?: string | null;
+  notes?: string;
+  estimatedCost?: number | null;
+};
+
 export type FlatRateIntake = {
   /** Stage 1 — Quick intake */
   clientName: string;
@@ -155,6 +174,10 @@ export type FlatRateIntake = {
   applianceDisconnectHandling?: "client" | "referral" | "";
   wardrobe: IntakeWardrobe;
   extras: IntakeMoveExtras;
+  /** Packing materials & move-day supplies — source of truth on Equipment & supplies tab. */
+  equipmentSupplies?: IntakeEquipmentLine[];
+  /** Subcontracted services — crating, specialty haul, etc. with directory vendor. */
+  thirdPartyServices?: IntakeThirdPartyService[];
   hasJunk: boolean;
   junkVolume?: string;
   junkItems?: string;
@@ -170,6 +193,11 @@ export type FlatRateIntake = {
   declaredValue: number | null;
   liabilityPremium: number | null;
 
+  /** Hourly quote line items — labor rate lives on move.quoteAmount */
+  hourlyQuote?: HourlyQuoteSettings;
+  /** Locked supply/hourly rates when move is contracted — survives admin rate changes. */
+  pricingRateSnapshot?: MovePricingRateSnapshot | null;
+
   manualReviewReasons: string[];
   manualReviewRequired: boolean;
 
@@ -177,6 +205,8 @@ export type FlatRateIntake = {
   submittedAt?: string;
   /** AI flat-rate estimate before formal quote — used for quadrant scoring. */
   estimatedMoveValue?: number | null;
+  /** Override company default for flat-rate inventory basis (cf vs weight). */
+  flatRateInventoryBasis?: FlatRateInventoryBasis | "";
 };
 
 export const INTAKE_JOB_TYPE_LABELS: Record<IntakeJobType, string> = {

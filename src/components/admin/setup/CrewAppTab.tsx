@@ -1,30 +1,70 @@
 "use client";
 
-import { TerminologyTab } from "@/components/admin/setup/TerminologyTab";
-import { useSettings } from "@/components/providers/SettingsProvider";
-import { DEMO_CREW_MEMBERS } from "@/lib/crew-app/session";
+import { CrewResourcesEditor } from "@/components/admin/setup/CrewResourcesEditor";
+import { CrewAppRoleMultiSwitcher } from "@/components/crew-app/CrewAppRoleMultiSwitcher";
+import { CrewPhoneFrame } from "@/components/crew-app/CrewPhoneFrame";
+import { CrewRoleSwitcher } from "@/components/crew-app/CrewRoleSwitcher";
+import { PREVIEW_CREW_MEMBER } from "@/lib/crew-app/session";
 import type { CrewAppRole } from "@/lib/crew-app/types";
-import { useTerminology } from "@/lib/terminology/use-terminology";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
-import { cn } from "@/lib/utils";
-import { ExternalLink, Smartphone } from "lucide-react";
-import Image from "next/image";
+import { useSettings } from "@/components/providers/SettingsProvider";
+import { ExternalLink, Smartphone, User } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
-
-const ROLES: CrewAppRole[] = ["skipper", "driver", "mover"];
+import { useEffect, useMemo, useRef, useState } from "react";
 
 export function CrewAppTab() {
   const { settings } = useSettings();
   const { branding } = settings;
-  const { label: roleLabel } = useTerminology();
-  const [crewId, setCrewId] = useState(DEMO_CREW_MEMBERS[0]!.id);
-  const [role, setRole] = useState<CrewAppRole>("skipper");
+  const [jobRole, setJobRole] = useState<CrewAppRole>("skipper");
+  const [appRoles, setAppRoles] = useState<CrewAppRole[]>(["skipper"]);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const scrollHostRef = useRef<HTMLDivElement>(null);
 
   const previewSrc = useMemo(() => {
-    const params = new URLSearchParams({ demoCrewId: crewId, demoRole: role });
+    const params = new URLSearchParams({
+      demoCrewId: PREVIEW_CREW_MEMBER.id,
+      demoJobRole: jobRole,
+      demoAppRoles: appRoles.join(","),
+      embed: "1",
+    });
     return `/crew/today?${params.toString()}`;
-  }, [crewId, role]);
+  }, [jobRole, appRoles]);
+
+  const fullScreenSrc = useMemo(() => {
+    const params = new URLSearchParams({
+      demoCrewId: PREVIEW_CREW_MEMBER.id,
+      demoJobRole: jobRole,
+      demoAppRoles: appRoles.join(","),
+      phoneFrame: "1",
+    });
+    return `/crew/today?${params.toString()}`;
+  }, [jobRole, appRoles]);
+
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    const host = scrollHostRef.current;
+    if (!iframe || !host) return;
+
+    function onWheel(e: WheelEvent) {
+      const frame = iframeRef.current;
+      const doc = frame?.contentDocument;
+      const main = doc?.querySelector("main.crew-app-scroll");
+      if (!main) return;
+      main.scrollTop += e.deltaY;
+      e.preventDefault();
+    }
+
+    function attach() {
+      host!.addEventListener("wheel", onWheel, { passive: false });
+    }
+
+    iframe!.addEventListener("load", attach);
+    attach();
+    return () => {
+      iframe!.removeEventListener("load", attach);
+      host!.removeEventListener("wheel", onWheel);
+    };
+  }, [previewSrc]);
 
   return (
     <div className="space-y-6">
@@ -51,48 +91,32 @@ export function CrewAppTab() {
           </p>
         </CardHeader>
         <CardContent className="space-y-5 pt-5">
-          <div className="flex flex-wrap items-end gap-4">
-            <label className="block min-w-[12rem]">
-              <span className="text-xs font-medium text-slate-600">Preview as</span>
-              <select
-                value={crewId}
-                onChange={(e) => setCrewId(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              >
-                {DEMO_CREW_MEMBERS.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <div>
-              <span className="text-xs font-medium text-slate-600">Role</span>
-              <div className="mt-1 flex flex-wrap gap-2">
-                {ROLES.map((r) => (
-                  <button
-                    key={r}
-                    type="button"
-                    onClick={() => setRole(r)}
-                    className={cn(
-                      "rounded-full border px-3 py-1 text-xs font-semibold transition-colors",
-                      role === r
-                        ? "border-transparent text-white shadow-sm"
-                        : "border-slate-200 text-slate-600 hover:border-slate-300",
-                    )}
-                    style={
-                      role === r
-                        ? { backgroundColor: branding.accentColor }
-                        : undefined
-                    }
-                  >
-                    {roleLabel(r)}
-                  </button>
-                ))}
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div className="flex flex-wrap items-end gap-6">
+              <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2">
+                <User className="h-4 w-4 text-slate-400" />
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                    Phone preview as
+                  </p>
+                  <p className="text-sm font-medium text-slate-900">{PREVIEW_CREW_MEMBER.name}</p>
+                </div>
               </div>
+              <CrewRoleSwitcher
+                label="Preview role for job"
+                role={jobRole}
+                onRoleChange={setJobRole}
+                className="min-w-[12rem]"
+              />
+              <CrewAppRoleMultiSwitcher
+                label="Preview roles for app"
+                roles={appRoles}
+                onRolesChange={setAppRoles}
+                className="min-w-[12rem]"
+              />
             </div>
             <Link
-              href={previewSrc}
+              href={fullScreenSrc}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-sm font-medium hover:opacity-80"
@@ -103,46 +127,30 @@ export function CrewAppTab() {
             </Link>
           </div>
 
-          <div className="mx-auto max-w-[420px]">
+          <CrewPhoneFrame className="!min-h-0 !bg-transparent !p-0" hideDemoControls>
             <div
-              className="rounded-[2.5rem] p-3 shadow-2xl"
-              style={{
-                background: `linear-gradient(160deg, ${branding.sidebarColor} 0%, color-mix(in srgb, ${branding.sidebarColor} 70%, ${branding.accentColor}) 100%)`,
-              }}
+              ref={scrollHostRef}
+              className="h-full overflow-hidden [&::-webkit-scrollbar]:hidden"
+              style={{ scrollbarWidth: "none" }}
             >
-              <div className="mb-2 flex items-center justify-center gap-2 px-2">
-                {branding.logoDataUrl ? (
-                  <div className="relative h-6 w-6 overflow-hidden rounded-md bg-white/10">
-                    <Image
-                      src={branding.logoDataUrl}
-                      alt=""
-                      fill
-                      className="object-contain p-0.5"
-                      unoptimized
-                    />
-                  </div>
-                ) : null}
-                <p className="text-[11px] font-semibold tracking-wide text-white/90">
-                  {branding.companyName} Crew
-                </p>
-              </div>
-              <div className="overflow-hidden rounded-[1.75rem] bg-slate-900 shadow-inner ring-1 ring-white/10">
-                <div className="relative mx-auto h-5 w-28 rounded-b-xl bg-slate-900" aria-hidden />
-                <iframe
-                  key={previewSrc}
-                  title="Crew app preview"
-                  src={previewSrc}
-                  className="h-[min(72vh,720px)] w-full border-0 bg-slate-100"
-                />
-              </div>
+              <iframe
+                ref={iframeRef}
+                key={previewSrc}
+                title="Crew app preview"
+                src={previewSrc}
+                className="h-full w-full border-0 bg-slate-100"
+              />
             </div>
-            <p className="mt-3 text-center text-xs text-slate-500">
-              Switch role above to preview mover, driver, or skipper job views — open a job for
-              full detail.
-            </p>
-          </div>
+          </CrewPhoneFrame>
+
+          <p className="text-center text-xs text-slate-500">
+            Job role controls workflow and job detail. App roles control stats and Today inventory
+            — select skipper and driver together to preview both performance sections.
+          </p>
         </CardContent>
       </Card>
+
+      <CrewResourcesEditor />
 
       <Card>
         <CardHeader>
@@ -150,16 +158,20 @@ export function CrewAppTab() {
         </CardHeader>
         <CardContent className="text-sm text-slate-600">
           <ul className="list-inside list-disc space-y-1">
-            <li>Today — two demo jobs with greeting and next-up summary</li>
-            <li>Role preview — mover, driver, or skipper job detail layouts</li>
-            <li>Skipper flow — time clock and customer sign-off on job detail</li>
-            <li>Stats — issues from Operations → Crew track record</li>
-            <li>Branding — accent and sidebar colors from MoveHQ settings</li>
+            <li>Today — combined load list + jobs (flat rate &amp; hourly demos)</li>
+            <li>
+              Schedule — upcoming days, history (past jobs &amp; hours), time off, message ops
+            </li>
+            <li>Stats — your issues log plus skipper or driver scores from operations</li>
+            <li>Inbox — notifications for time off, schedule publishes, and more</li>
+            <li>Resources — payroll &amp; benefits links (editable below)</li>
+            <li>Message ops, job media, take-home sign-off, depot time on clock</li>
+            <li>Skipper workflow — Prep · Clock · Start · Close out · Finish bottom nav</li>
+            <li>Driver / mover — load checklist, schedule, and team (no pricing or workflow tabs)</li>
+            <li>Mover route — ZIP codes only on cards and job detail</li>
           </ul>
         </CardContent>
       </Card>
-
-      <TerminologyTab />
     </div>
   );
 }

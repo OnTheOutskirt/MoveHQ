@@ -1,3 +1,7 @@
+import {
+  equipmentMaterialsCost,
+  normalizeEquipmentSupplies,
+} from "@/lib/moves/equipment-supplies";
 import type { MoveJobDay, MoveRecord } from "./types";
 
 /** Internal cost assumptions — replace with settings / payroll later. */
@@ -140,9 +144,14 @@ function estimateMaterialsCost(move: MoveRecord): number {
   let total = 0;
   if (intake.packingService === "full") total += 380;
   else if (intake.packingService === "partial") total += 195;
-  if (intake.wardrobe.jonahCount > 0) {
+
+  const equipmentCost = equipmentMaterialsCost(normalizeEquipmentSupplies(intake), move);
+  if (equipmentCost > 0) {
+    total += equipmentCost;
+  } else if (intake.wardrobe.jonahCount > 0) {
     total += intake.wardrobe.jonahCount * (intake.wardrobe.jonahType === "keep" ? 12 : 22);
   }
+
   if (intake.hasJunk) total += 85;
   if (intake.estimatedBoxCount != null && intake.estimatedBoxCount > 60) {
     total += 45;

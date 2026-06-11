@@ -1,16 +1,16 @@
 "use client";
 
-import { useMoves } from "@/components/moves/MovesProvider";
+import { useMovesData } from "@/components/moves/MovesProvider";
 import { buildInboxThreadsFromMoves } from "@/lib/inbox/build-threads";
 import { inboxSummaryForThreads } from "@/lib/inbox/inbox-summary";
 import type { InboxSummary } from "@/lib/inbox/inbox-summary";
 import type { InboxThread } from "@/lib/inbox/types";
-import { CURRENT_USER } from "@/lib/session/current-user";
+import { useSession } from "@/components/providers/SessionProvider";
+import { repFilterForPersona } from "@/lib/session/personas";
 import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -26,44 +26,44 @@ type InboxContextValue = {
 
 const InboxContext = createContext<InboxContextValue | null>(null);
 
-function markAllRead(thread: InboxThread): InboxThread {
-  const messages = thread.messages.map((m) => ({ ...m, read: true }));
-  return {
-    ...thread,
-    messages,
-    unreadCount: 0,
-    needsReply: thread.needsReply,
-  };
+function applyReadState(
+  built: InboxThread[],
+  readByMessage: Record<string, Record<string, boolean>>,
+): InboxThread[] {
+  return built.map((thread) => {
+    const saved = readByMessage[thread.id];
+    if (!saved) return thread;
+    const messages = thread.messages.map((m) =>
+      saved[m.id] === true ? { ...m, read: true } : m,
+    );
+    const unreadCount = messages.filter((m) => !m.read).length;
+    return { ...thread, messages, unreadCount };
+  });
 }
 
 export function InboxProvider({ children }: { children: ReactNode }) {
-  const { moves } = useMoves();
-  const [threads, setThreads] = useState<InboxThread[]>([]);
+  const { user } = useSession();
+  const { moves } = useMovesData();
+  const [readByMessage, setReadByMessage] = useState<Record<string, Record<string, boolean>>>(
+    {},
+  );
 
-  useEffect(() => {
-    setThreads((prev) => {
-      const built = buildInboxThreadsFromMoves(moves);
-      const readState = new Map(
-        prev.map((t) => [t.id, t.messages.map((m) => [m.id, m.read] as const)]),
-      );
-      return built.map((thread) => {
-        const saved = readState.get(thread.id);
-        if (!saved) return thread;
-        const messages = thread.messages.map((m) => {
-          const pair = saved.find(([id]) => id === m.id);
-          return pair ? { ...m, read: pair[1] } : m;
-        });
-        const unreadCount = messages.filter((m) => !m.read).length;
-        return { ...thread, messages, unreadCount };
-      });
-    });
-  }, [moves]);
+  const threads = useMemo(() => {
+    const built = buildInboxThreadsFromMoves(moves);
+    return applyReadState(built, readByMessage);
+  }, [moves, readByMessage]);
 
   const markThreadRead = useCallback((threadId: string) => {
-    setThreads((prev) =>
-      prev.map((t) => (t.id === threadId ? markAllRead(t) : t)),
-    );
-  }, []);
+    setReadByMessage((prev) => {
+      const thread = threads.find((t) => t.id === threadId);
+      if (!thread) return prev;
+      const nextThread: Record<string, boolean> = { ...prev[threadId] };
+      for (const message of thread.messages) {
+        nextThread[message.id] = true;
+      }
+      return { ...prev, [threadId]: nextThread };
+    });
+  }, [threads]);
 
   const getThread = useCallback(
     (threadId: string) => threads.find((t) => t.id === threadId),
@@ -76,8 +76,8 @@ export function InboxProvider({ children }: { children: ReactNode }) {
   );
 
   const mySummary = useMemo(
-    () => inboxSummaryForThreads(threads, CURRENT_USER.assignedRep),
-    [threads],
+    () => inboxSummaryForThreads(threads, repFilterForPersona(user)),
+    [threads, user.id, user.followUpScope, user.assignedRep],
   );
 
   const value = useMemo(

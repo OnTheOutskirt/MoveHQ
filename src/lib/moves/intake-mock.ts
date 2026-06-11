@@ -1,27 +1,5 @@
 import type { FlatRateIntake, IntakeRoomInventory } from "./flat-rate-intake";
-import type { IntakeProgress, MoveRecord, QuoteChannel, WebsiteIntakeMeta } from "./types";
-
-type MoveCore = Omit<
-  MoveRecord,
-  | "jobDays"
-  | "linkedPeople"
-  | "intake"
-  | "followUps"
-  | "followUpDue"
-  | "quoteChannel"
-  | "intakeProgress"
-  | "websiteIntake"
-  | "lostQualification"
-  | "lostReasonId"
-  | "lostNotes"
-> & {
-  quoteChannel?: QuoteChannel;
-  intakeProgress?: IntakeProgress;
-  websiteIntake?: WebsiteIntakeMeta | null;
-  lostQualification?: MoveRecord["lostQualification"];
-  lostReasonId?: string | null;
-  lostNotes?: string | null;
-};
+import type { MoveCore } from "./move-core";
 
 function defaultAccess(type: string): Record<string, string> {
   if (type === "2-story") {
@@ -121,6 +99,7 @@ export function buildDefaultIntake(move: MoveCore): FlatRateIntake {
     applianceDisconnectHandling: "client",
     wardrobe: { jonahCount: 0, jonahType: "rental", clientOwnedCount: 0 },
     extras: { tvBoxCount: 0, safeDolly: false, other: [] },
+    equipmentSupplies: [],
     hasJunk: false,
     hasSpecialtyItems: false,
     hasHighValueItems: false,
@@ -228,6 +207,21 @@ const INTAKE_BY_ID: Partial<Record<string, Partial<FlatRateIntake>>> = {
     partialPackRooms: ["kitchen", "fragile"],
     hasSpecialtyItems: true,
     specialtyNotes: "Baby grand piano — coordinate Shamrock crating",
+    thirdPartyServices: [
+      {
+        id: "tps-mv-nc-crating",
+        serviceTypeId: "crating",
+        vendorDirectoryId: "person:person-shamrock-dispatch",
+        notes: "Baby grand — crate at origin before load",
+        estimatedCost: 1850,
+      },
+      {
+        id: "tps-mv-nc-piano",
+        serviceTypeId: "piano",
+        vendorDirectoryId: "person:person-shamrock-dispatch",
+        notes: "Specialty haul on linehaul day if needed",
+      },
+    ],
     hasTimingComplexity: true,
     timingNotes: "Linehaul · book crew hotel near Charlotte between load and delivery days",
     moveDate: "2026-06-01",
@@ -451,6 +445,8 @@ export function buildIntakeForMove(move: MoveCore): FlatRateIntake {
       ...patch.extras,
       other: patch.extras?.other ?? base.extras.other,
     },
+    equipmentSupplies: patch.equipmentSupplies ?? base.equipmentSupplies,
+    thirdPartyServices: patch.thirdPartyServices ?? base.thirdPartyServices,
     manualReviewReasons: patch.manualReviewReasons ?? base.manualReviewReasons,
     manualReviewRequired:
       patch.manualReviewRequired ?? (patch.manualReviewReasons?.length ?? 0) > 0,

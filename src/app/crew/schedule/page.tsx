@@ -5,7 +5,7 @@ import { CrewScheduleScreen } from "@/components/crew-app/screens/CrewScheduleSc
 
 export default function CrewSchedulePage() {
   return (
-    <CrewAppShell title="Schedule" subtitle="Upcoming published days">
+    <CrewAppShell title="Schedule" subtitle="Upcoming days, history & time off">
       <CrewScheduleScreen />
     </CrewAppShell>
   );

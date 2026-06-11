@@ -2,10 +2,23 @@
 
 import { formatActivityTime } from "@/lib/moves/format";
 import { buildMoveActivityFeed } from "@/lib/moves/activity-feed";
+import { documentKindLabel } from "@/lib/moves/move-document-events";
 import type { MoveActivity, MoveRecord } from "@/lib/moves/types";
 
 type MoveDetailActivityTabProps = {
   move: MoveRecord;
+};
+
+const DOCUMENT_EVENT_LABELS: Record<
+  NonNullable<MoveActivity["document"]>["event"],
+  string
+> = {
+  sent: "Sent",
+  resent: "Resent",
+  viewed: "Viewed",
+  booking_requested: "Booking requested",
+  signed: "Signed",
+  deposit_paid: "Deposit paid",
 };
 
 const TYPE_LABELS: Record<MoveActivity["type"], string> = {
@@ -65,6 +78,12 @@ export function MoveDetailActivityTab({ move }: MoveDetailActivityTabProps) {
                   ) : item.activityType ? (
                     <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
                       {TYPE_LABELS[item.activityType]}
+                    </span>
+                  ) : null}
+                  {item.document ? (
+                    <span className="rounded bg-brand-50 px-1.5 py-0.5 text-[10px] font-medium text-brand-800">
+                      {documentKindLabel(item.document.kind)} ·{" "}
+                      {DOCUMENT_EVENT_LABELS[item.document.event]}
                     </span>
                   ) : null}
                 </div>

@@ -1,5 +1,7 @@
 "use client";
 
+import { LocationBadge } from "@/components/workspace/LocationBadge";
+import { useWorkspace } from "@/components/providers/WorkspaceProvider";
 import { QuadrantBadge, quadrantCardAccentClass } from "@/components/moves/shared/QuadrantBadge";
 import { WebPipelineBadge } from "@/components/moves/shared/WebPipelineBadge";
 import { formatMoveDate, formatQuote } from "@/lib/moves/format";
@@ -39,6 +41,7 @@ export function MoveCompactTile({
   dragHandleProps,
 }: MoveCompactTileProps) {
   const router = useRouter();
+  const { isAllLocationsView, hasMultipleLocations } = useWorkspace();
   const lost = isMoveLost(move);
   const overdue = !lost && moveHasOverdueFollowUp(move);
   return (
@@ -64,7 +67,14 @@ export function MoveCompactTile({
       )}
     >
       <div className="flex items-start justify-between gap-2">
-        <p className="truncate font-medium text-slate-900">{move.customerName}</p>
+        <div className="min-w-0">
+          <p className="truncate font-medium text-slate-900">{move.customerName}</p>
+          {hasMultipleLocations ? (
+            <div className="mt-1">
+              <LocationBadge locationId={move.locationId} />
+            </div>
+          ) : null}
+        </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
           <div className="flex items-center gap-1">
             <QuadrantBadge move={move} />

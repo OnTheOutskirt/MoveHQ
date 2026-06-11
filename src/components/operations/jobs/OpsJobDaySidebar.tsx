@@ -15,17 +15,34 @@ import {
   serviceLabel,
 } from "@/lib/moves/job-day-display";
 import { dayBeforeCallDueDateKey } from "@/lib/dispatch/day-before-confirmation";
-import type { OpsJobDayRow } from "@/lib/operations/ops-jobs";
+import {
+  findPersistedJobDayForOpsRow,
+  mergeOpsJobDayPatch,
+  resolveJobDayForOpsRow,
+  type OpsJobDayRow,
+} from "@/lib/operations/ops-jobs";
 import {
   readOpsConfirmationNote,
   subscribeOpsConfirmationNotes,
   writeOpsConfirmationNote,
 } from "@/lib/operations/ops-confirmation-notes";
-import type { MoveRecord } from "@/lib/moves/types";
+import type { MoveJobDay, MoveRecord } from "@/lib/moves/types";
 import { salesMovePath } from "@/lib/navigation/routes";
+import { CrewFeedbackDetailSection } from "@/components/operations/jobs/CrewFeedbackDisplay";
+import { OpsJobDayInfoPanel } from "@/components/operations/jobs/OpsJobDayInfoPanel";
+import { crewFeedbackForOpsJobRow } from "@/lib/moves/move-feedback-portal";
+import { TabBar } from "@/components/shared/TabBar";
+import { useMoves } from "@/components/moves/MovesProvider";
 import { ClipboardList, MapPin, Phone } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+
+const SIDEBAR_TABS = [
+  { id: "overview", label: "Overview" },
+  { id: "job-info", label: "Job Info" },
+] as const;
+
+type SidebarTab = (typeof SIDEBAR_TABS)[number]["id"];
 
 type OpsJobDaySidebarProps = {
   row: OpsJobDayRow | null;
@@ -34,11 +51,13 @@ type OpsJobDaySidebarProps = {
 };
 
 export function OpsJobDaySidebar({ row, move, onClose }: OpsJobDaySidebarProps) {
+  const { addJobDay, updateJobDay } = useMoves();
   const { confirmation } = useOpsJobDayConfirmation(row ?? undefined, move);
   const [callNotes, setCallNotes] = useState("");
+  const [activeTab, setActiveTab] = useState<SidebarTab>("overview");
 
   const jobDay = useMemo(
-    () => (row && move ? move.jobDays.find((d) => d.id === row.jobDayId) : undefined),
+    () => (row && move ? resolveJobDayForOpsRow(move, row) : undefined),
     [row, move],
   );
 
@@ -47,8 +66,14 @@ export function OpsJobDaySidebar({ row, move, onClose }: OpsJobDaySidebarProps) 
     [move, jobDay],
   );
 
+  const crewFeedback = useMemo(
+    () => (row && move ? crewFeedbackForOpsJobRow(move, row) : null),
+    [row, move],
+  );
+
   useEffect(() => {
     if (!row) return;
+    setActiveTab("overview");
     setCallNotes(readOpsConfirmationNote(row.id));
     return subscribeOpsConfirmationNotes(() => {
       setCallNotes(readOpsConfirmationNote(row.id));
@@ -60,6 +85,20 @@ export function OpsJobDaySidebar({ row, move, onClose }: OpsJobDaySidebarProps) 
   const callDueLabel = row
     ? formatMoveDate(dayBeforeCallDueDateKey(row.date))
     : null;
+
+  const onJobDayChange = useCallback(
+    (patch: Partial<MoveJobDay>) => {
+      if (!move || !row) return;
+      const merged = mergeOpsJobDayPatch(move, row, patch);
+      const persisted = findPersistedJobDayForOpsRow(move, row);
+      if (persisted) {
+        updateJobDay(move.id, merged);
+      } else {
+        addJobDay(move.id, merged);
+      }
+    },
+    [move, row, updateJobDay, addJobDay],
+  );
 
   return (
     <DetailSidebar
@@ -80,6 +119,12 @@ export function OpsJobDaySidebar({ row, move, onClose }: OpsJobDaySidebarProps) 
     >
       {row && move && jobDay ? (
         <div className="space-y-4">
+          <TabBar tabs={SIDEBAR_TABS} activeTab={activeTab} onChange={setActiveTab} />
+
+          {activeTab === "overview" ? (
+            <>
+          {crewFeedback ? <CrewFeedbackDetailSection feedback={crewFeedback} /> : null}
+
           {confirmation ? (
             <section className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-3">
               <div className="flex flex-wrap items-start justify-between gap-2">
@@ -177,6 +222,10 @@ export function OpsJobDaySidebar({ row, move, onClose }: OpsJobDaySidebarProps) 
           {jobDay.customerNotes ? (
             <StatCell label="Customer notes" value={jobDay.customerNotes} multiline />
           ) : null}
+            </>
+          ) : (
+            <OpsJobDayInfoPanel move={move} jobDay={jobDay} onJobDayChange={onJobDayChange} />
+          )}
 
           <Link
             href={salesMovePath(move.id)}

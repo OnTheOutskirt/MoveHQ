@@ -25,14 +25,14 @@ export const CALENDAR_PALETTE_FIELDS: {
   { key: "closed", label: "Closed day", hint: "Holidays and scheduled days off" },
   { key: "holds", label: "Holds", hint: "Hold pills, sidebar table, and lists" },
   { key: "waitlist", label: "Waitlist", hint: "Waitlist pills and sidebar table" },
-  { key: "fta", label: "FTAs available", hint: "FTA pills on cells and sidebar" },
+  { key: "fta", label: "Open slots", hint: "Partial-day open slot pills on cells and sidebar" },
   { key: "crewWarning", label: "Crew warning", hint: "Crew shortage indicator on cells" },
   { key: "notes", label: "Day notes", hint: "Notes icon on month cells" },
   { key: "bookedMark", label: "Mark day booked", hint: "Icon when day is marked booked" },
   {
     key: "bookingRate",
     label: "Booking rate",
-    hint: "Month cell (bottom right) and sales pipeline in day sidebar",
+    hint: "Month cell top row (50%+ booking rate) and sales pipeline in day sidebar",
   },
   { key: "today", label: "Today", hint: "Today badge and cell ring" },
 ];

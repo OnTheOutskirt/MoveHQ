@@ -7,6 +7,7 @@ import {
   ManualReviewBanner,
 } from "@/components/moves/detail/DetailSection";
 import type { MoveRecord } from "@/lib/moves/types";
+import { liabilityCoverageLabel, resolveValuationSelection } from "@/lib/settings/document-valuation";
 
 type MoveDetailSpecialTabProps = {
   move: MoveRecord;
@@ -16,12 +17,7 @@ type MoveDetailSpecialTabProps = {
 
 export function MoveDetailSpecialTab({ move, showLiability = true }: MoveDetailSpecialTabProps) {
   const { intake } = move;
-  const liabilityLabel =
-    intake.liabilityCoverage === "full"
-      ? "Full Value Protection"
-      : intake.liabilityCoverage === "released"
-        ? "Released Value ($0.60/lb)"
-        : "—";
+  const liabilityLabel = liabilityCoverageLabel(resolveValuationSelection(move));
 
   return (
     <div className="space-y-4">

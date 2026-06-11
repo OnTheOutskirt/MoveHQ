@@ -40,6 +40,10 @@ export function TerminologyTab() {
       <Card>
         <CardHeader>
           <CardTitle>Crew role labels</CardTitle>
+          <p className="text-sm text-slate-500">
+            Customize how skipper, driver, and mover appear across dispatch, operations, and the
+            crew app. More terminology settings will live here later.
+          </p>
         </CardHeader>
         <CardContent className="space-y-6">
           {ROLE_ORDER.map((role) => {

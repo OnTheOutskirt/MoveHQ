@@ -1,11 +1,18 @@
 "use client";
 
+import { LocationBadge } from "@/components/workspace/LocationBadge";
 import { MoveLifecycleStepper } from "@/components/moves/detail/MoveLifecycleStepper";
 import { PricingTypeBadge } from "@/components/moves/detail/PricingTypeBadge";
 import { QuoteChannelBadge } from "@/components/moves/shared/QuoteChannelBadge";
 import { QuadrantBadge } from "@/components/moves/shared/QuadrantBadge";
 import { MarkMoveLostAction } from "@/components/moves/detail/MarkMoveLostAction";
 import { useMoves } from "@/components/moves/MovesProvider";
+import { useSettings } from "@/components/providers/SettingsProvider";
+import {
+  formatInventoryBasisLabel,
+  formatInventoryVolumeDisplay,
+  inventoryVolumeForMove,
+} from "@/lib/moves/inventory-basis";
 import { Button } from "@/components/ui/Button";
 import { formatLostMoveSummary, lostQualificationBadgeClass } from "@/lib/moves/lost-reasons";
 import { formatQuote } from "@/lib/moves/format";
@@ -32,6 +39,8 @@ type MoveDetailSummaryHeaderProps = {
 
 export function MoveDetailSummaryHeader({ move, className }: MoveDetailSummaryHeaderProps) {
   const { reopenMove } = useMoves();
+  const { settings } = useSettings();
+  const inventoryVolume = inventoryVolumeForMove(move, settings.defaults);
   const lost = isMoveLost(move);
   const lostSummary = formatLostMoveSummary(move);
   const est = getMoveEstimatedValue(move);
@@ -79,6 +88,7 @@ export function MoveDetailSummaryHeader({ move, className }: MoveDetailSummaryHe
               {moveDisplayTitle(move)}
             </h1>
             <QuadrantBadge move={move} />
+            <LocationBadge locationId={move.locationId} />
             <QuoteChannelBadge move={move} showIntakeProgress />
             <span className={cn("rounded px-2 py-0.5 text-[10px] font-semibold", condCfg.badge)}>
               {condCfg.label}
@@ -94,6 +104,15 @@ export function MoveDetailSummaryHeader({ move, className }: MoveDetailSummaryHe
             <span>{move.moveType}</span>
             <span className="text-slate-300"> · </span>
             <PricingTypeBadge quoteType={move.quoteType} />
+            {move.quoteType === "flat" || move.quoteType == null ? (
+              <>
+                <span className="text-slate-300"> · </span>
+                <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-700">
+                  {formatInventoryBasisLabel(inventoryVolume.basis)}:{" "}
+                  {formatInventoryVolumeDisplay(inventoryVolume)}
+                </span>
+              </>
+            ) : null}
           </p>
 
           <p className="text-sm font-semibold tabular-nums text-slate-900">

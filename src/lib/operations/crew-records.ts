@@ -1,17 +1,29 @@
 import type { FleetCrewMember } from "./fleet-types";
 import type {
   CrewIssue,
-  CrewIssueType,
+  CrewIssueKind,
+  CrewIssueSubject,
   CrewRecordsStore,
+  DriverReview,
   SkipperRating,
 } from "./crew-records-types";
+import { CREW_ISSUE_KINDS } from "./crew-records-types";
+import { countSkipperCallbacks } from "./skipper-violations";
+import { averageViolationRating } from "./violation-rating";
 
-export const CREW_ISSUE_TYPE_LABELS: Record<CrewIssueType, string> = {
-  tardy: "Tardy",
-  driving: "Driving",
-  on_job: "On-the-job",
-  claim: "Claim",
-  callback: "Callback",
+export const CREW_ISSUE_KIND_LABELS: Record<CrewIssueKind, string> = {
+  mistake: "Mistake",
+  failure: "Failure",
+  violation: "Violation",
+};
+
+export const CREW_ISSUE_SUBJECT_LABELS: Record<CrewIssueSubject, string> = {
+  uniforms: "Uniforms",
+  attendance: "Attendance",
+  seat_belt: "Seat belt",
+  policy: "Policy",
+  customer_complaint: "Customer complaint",
+  work_rule: "Work rule",
 };
 
 export const CREW_ISSUE_STATUS_LABELS: Record<CrewIssue["status"], string> = {
@@ -19,6 +31,9 @@ export const CREW_ISSUE_STATUS_LABELS: Record<CrewIssue["status"], string> = {
   under_review: "Under review",
   resolved: "Resolved",
 };
+
+/** All issue kinds shown in the operations issues log. */
+export const ISSUES_LOG_KINDS = CREW_ISSUE_KINDS;
 
 export function isSkipper(crew: Pick<FleetCrewMember, "roles">): boolean {
   return crew.roles.includes("skipper");
@@ -28,11 +43,26 @@ export function isDriver(crew: Pick<FleetCrewMember, "roles">): boolean {
   return crew.roles.includes("driver");
 }
 
+export function isMover(crew: Pick<FleetCrewMember, "roles">): boolean {
+  return crew.roles.includes("mover");
+}
+
 export function averageSkipperRating(ratings: SkipperRating[], skipperId?: string): number | null {
   const list = skipperId ? ratings.filter((r) => r.skipperId === skipperId) : ratings;
-  if (list.length === 0) return null;
-  const sum = list.reduce((acc, r) => acc + r.rating, 0);
-  return Math.round((sum / list.length) * 10) / 10;
+  return averageViolationRating(list);
+}
+
+export function averageDriverRating(reviews: DriverReview[], driverId?: string): number | null {
+  const list = driverId ? reviews.filter((r) => r.driverId === driverId) : reviews;
+  return averageViolationRating(list);
+}
+
+export function issueKindBadgeVariant(
+  kind: CrewIssueKind,
+): "default" | "warning" | "danger" {
+  if (kind === "violation") return "danger";
+  if (kind === "failure") return "warning";
+  return "default";
 }
 
 export type CrewMemberPerformanceSummary = {
@@ -42,10 +72,10 @@ export type CrewMemberPerformanceSummary = {
   avgRating: number | null;
   ratingCount: number;
   openIssues: number;
-  tardies30d: number;
-  driving30d: number;
-  onJob30d: number;
-  claimsOpen: number;
+  attendance30d: number;
+  seatBelt30d: number;
+  customerComplaints30d: number;
+  openCustomerComplaints: number;
   callbacks30d: number;
   totalIssues30d: number;
 };
@@ -77,20 +107,27 @@ export function buildCrewPerformanceSummaries(
         avgRating: averageSkipperRating(skipperRatings),
         ratingCount: skipperRatings.length,
         openIssues: memberIssues.filter((i) => i.status !== "resolved").length,
-        tardies30d: recent.filter((i) => i.type === "tardy").length,
-        driving30d: recent.filter((i) => i.type === "driving").length,
-        onJob30d: recent.filter((i) => i.type === "on_job").length,
-        claimsOpen: memberIssues.filter((i) => i.type === "claim" && i.status !== "resolved")
-          .length,
-        callbacks30d: recent.filter((i) => i.type === "callback").length,
+        attendance30d: recent.filter((i) => i.subject === "attendance").length,
+        seatBelt30d: recent.filter((i) => i.subject === "seat_belt").length,
+        customerComplaints30d: recent.filter((i) => i.subject === "customer_complaint").length,
+        openCustomerComplaints: memberIssues.filter(
+          (i) => i.subject === "customer_complaint" && i.status !== "resolved",
+        ).length,
+        callbacks30d: isSkipper(c)
+          ? countSkipperCallbacks(skipperRatings, 30, today)
+          : 0,
         totalIssues30d: recent.length,
       };
     });
 }
 
-export function countIssuesByType(
+export function countIssuesByKind(issues: CrewIssue[], kind?: CrewIssueKind): number {
+  return issues.filter((i) => (kind ? i.kind === kind : true)).length;
+}
+
+export function countIssuesBySubject(
   issues: CrewIssue[],
-  type?: CrewIssueType,
+  subject?: CrewIssueSubject,
 ): number {
-  return issues.filter((i) => (type ? i.type === type : true)).length;
+  return issues.filter((i) => (subject ? i.subject === subject : true)).length;
 }

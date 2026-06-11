@@ -1,5 +1,11 @@
 "use client";
 
+import {
+  CallDialHeaderAction,
+  composerHeaderActionsClass,
+} from "@/components/communications/composer-header-actions";
+import { EmailDraftProvider } from "@/components/communications/EmailDraftProvider";
+import { EmailOpenMailHeaderButton } from "@/components/communications/EmailOpenMailHeaderButton";
 import { InboxComposer } from "@/components/inbox/InboxComposer";
 import { InboxMessageFeed } from "@/components/inbox/InboxMessageFeed";
 import { useMoves } from "@/components/moves/MovesProvider";
@@ -40,32 +46,43 @@ export function InboxConversation({ thread }: InboxConversationProps) {
     );
   }
 
+  const showDial = composerChannel === "call" && Boolean(move.customerPhone);
+  const showOpenMail = composerChannel === "email" && Boolean(move.customerEmail);
+
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="shrink-0 border-b border-slate-200 bg-white px-4 py-3">
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <div className="min-w-0">
-            <Link
-              href={salesMovePath(thread.moveId)}
-              className="group inline-flex items-center gap-1.5 text-base font-semibold text-slate-900 hover:text-brand-700"
-            >
-              {thread.customerName}
-              <ExternalLink className="h-3.5 w-3.5 opacity-0 transition-opacity group-hover:opacity-100" />
-            </Link>
-            <p className="mt-0.5 text-sm text-slate-600">
-              <span className="font-mono text-xs text-slate-500">{thread.moveReference}</span>
-              <span className="text-slate-300"> · </span>
-              {pipelineStageLabel(move.pipelineStage)}
-              <span className="text-slate-300"> · </span>
-              {thread.assignedRep}
-            </p>
+    <EmailDraftProvider
+      email={move.customerEmail}
+      defaultSubject={`Re: ${move.reference}`}
+    >
+      <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="shrink-0 border-b border-slate-200 bg-white px-4 py-3">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div className="min-w-0">
+              <Link
+                href={salesMovePath(thread.moveId)}
+                className="group inline-flex items-center gap-1.5 text-base font-semibold text-slate-900 hover:text-brand-700"
+              >
+                {thread.customerName}
+                <ExternalLink className="h-3.5 w-3.5 opacity-0 transition-opacity group-hover:opacity-100" />
+              </Link>
+              <p className="mt-0.5 text-sm text-slate-600">
+                <span className="font-mono text-xs text-slate-500">{thread.moveReference}</span>
+                <span className="text-slate-300"> · </span>
+                {pipelineStageLabel(move.pipelineStage)}
+                <span className="text-slate-300"> · </span>
+                {thread.assignedRep}
+              </p>
+            </div>
+            <div className={composerHeaderActionsClass()}>
+              {showDial ? <CallDialHeaderAction phone={move.customerPhone!} /> : null}
+              {showOpenMail ? <EmailOpenMailHeaderButton /> : null}
+              {thread.needsReply ? (
+                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-900">
+                  Needs reply
+                </span>
+              ) : null}
+            </div>
           </div>
-          {thread.needsReply ? (
-            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-900">
-              Needs reply
-            </span>
-          ) : null}
-        </div>
 
         <div className="mt-3 flex flex-wrap gap-1">
           {CHANNEL_TABS.map((tab) => {
@@ -93,9 +110,10 @@ export function InboxConversation({ thread }: InboxConversationProps) {
 
       <InboxMessageFeed messages={thread.messages} channelFilter={channelTab} />
 
-      <div className="shrink-0 border-t border-slate-200 bg-slate-50/90 px-4 py-3">
-        <InboxComposer channel={composerChannel} move={move} />
+        <div className="shrink-0 border-t border-slate-200 bg-slate-50/90 px-4 py-3">
+          <InboxComposer channel={composerChannel} move={move} />
+        </div>
       </div>
-    </div>
+    </EmailDraftProvider>
   );
 }

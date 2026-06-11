@@ -1,3 +1,5 @@
+import type { JobFieldMediaEntry } from "@/lib/crew-app/field-capture-types";
+import { countSyncedFieldMedia, readJobFieldState } from "@/lib/crew-app/job-field-storage";
 import type { OpsJobDayRow } from "@/lib/operations/ops-jobs";
 import type { MoveRecord } from "@/lib/moves/types";
 
@@ -50,6 +52,13 @@ export type JobFieldPacket = {
   timeEntries: JobFieldTimeEntry[];
   crewNotes: string;
   photoCount: number;
+  fieldMedia?: JobFieldMediaEntry[];
+  takeHomeSignOff?: {
+    description: string;
+    customerName: string;
+    reason: string;
+    signedAt: string;
+  } | null;
 };
 
 export type JobFieldDocumentPreview = {
@@ -332,7 +341,25 @@ function fallbackPacket(row: OpsJobDayRow, move?: MoveRecord): JobFieldPacket {
     ],
     crewNotes: "Submitted from the crew app — demo packet for this job day.",
     photoCount: 6,
+    takeHomeSignOff: null,
   };
+}
+
+function takeHomeFromFieldState(row: OpsJobDayRow): JobFieldPacket["takeHomeSignOff"] {
+  const field = readJobFieldState(row.jobDayId);
+  const th = field.takeHomeSignOff;
+  if (!th) return null;
+  return {
+    description: th.description,
+    customerName: th.customerName,
+    reason: th.reason.replace("_", " "),
+    signedAt: th.customerSignedAt,
+  };
+}
+
+function fieldMediaFromJobDay(row: OpsJobDayRow): JobFieldMediaEntry[] {
+  const field = readJobFieldState(row.jobDayId);
+  return field.jobMedia.filter((m) => m.syncStatus === "synced");
 }
 
 export function getJobFieldPacket(
@@ -341,7 +368,14 @@ export function getJobFieldPacket(
 ): JobFieldPacket | null {
   if (row.status !== "completed") return null;
   const key = packetKey(row.moveId, row.jobDayId);
-  return MOCK_PACKETS[key] ?? fallbackPacket(row, move);
+  const base = MOCK_PACKETS[key] ?? fallbackPacket(row, move);
+  const takeHome = takeHomeFromFieldState(row);
+  const fieldMedia = fieldMediaFromJobDay(row);
+  const photoCount =
+    fieldMedia.length > 0 ? fieldMedia.length : countSyncedFieldMedia(readJobFieldState(row.jobDayId)) || base.photoCount;
+  const withMedia = { ...base, photoCount, fieldMedia };
+  if (!takeHome) return withMedia;
+  return { ...withMedia, takeHomeSignOff: takeHome };
 }
 
 export function jobFieldPacketSummary(packet: JobFieldPacket): string {

@@ -4,8 +4,13 @@ export const SCOPE_SECTION_IDS = {
   services: "scope-services",
   locations: "scope-locations",
   inventory: "scope-inventory",
-  equipment: "scope-equipment",
   specialty: "scope-specialty",
+} as const;
+
+export const EQUIPMENT_SECTION_IDS = {
+  supplies: "equipment-supplies",
+  equipment: "equipment-gear",
+  thirdParty: "equipment-third-party",
 } as const;
 
 export const MOVE_PLAN_SECTION_IDS = {
@@ -19,24 +24,23 @@ export const MOVE_PLAN_SECTIONS = [
   { id: MOVE_PLAN_SECTION_IDS.services, label: "Services" },
   { id: MOVE_PLAN_SECTION_IDS.specialty, label: "Specialty & high-value" },
   { id: MOVE_PLAN_SECTION_IDS.inventory, label: "Inventory" },
-  { id: MOVE_PLAN_SECTION_IDS.equipment, label: "Equipment & supplies" },
   { id: MOVE_PLAN_SECTION_IDS.locations, label: "Locations" },
 ] as const;
 
+export const EQUIPMENT_SUPPLIES_SECTIONS = [
+  { id: EQUIPMENT_SECTION_IDS.supplies, label: "Supplies" },
+  { id: EQUIPMENT_SECTION_IDS.equipment, label: "Equipment" },
+  { id: EQUIPMENT_SECTION_IDS.thirdParty, label: "Third-party" },
+] as const;
+
 export const QUOTE_CONTRACT_SECTION_IDS = {
-  pricing: "qc-pricing",
-  changeOrders: "qc-change-orders",
+  quote: "qc-quote",
   liability: "qc-liability",
-  contracts: "qc-contracts",
-  payment: "qc-payment",
 } as const;
 
 export const QUOTE_CONTRACT_SECTIONS = [
-  { id: QUOTE_CONTRACT_SECTION_IDS.pricing, label: "Quote" },
-  { id: QUOTE_CONTRACT_SECTION_IDS.changeOrders, label: "Change orders" },
+  { id: QUOTE_CONTRACT_SECTION_IDS.quote, label: "Quote" },
   { id: QUOTE_CONTRACT_SECTION_IDS.liability, label: "Liability" },
-  { id: QUOTE_CONTRACT_SECTION_IDS.contracts, label: "Contracts" },
-  { id: QUOTE_CONTRACT_SECTION_IDS.payment, label: "Payment" },
 ] as const;
 
 export const OPERATIONS_SECTION_IDS = {

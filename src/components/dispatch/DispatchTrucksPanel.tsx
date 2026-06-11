@@ -1,11 +1,15 @@
 "use client";
 
+import { DispatchOffAccordion } from "@/components/dispatch/DispatchOffAccordion";
+import { DispatchResourceTooltip } from "@/components/dispatch/DispatchResourceTooltip";
 import { useDispatch } from "@/components/dispatch/DispatchProvider";
 import { useFleet } from "@/components/providers/FleetProvider";
 import { formatTruckInline } from "@/lib/operations/fleet";
+import { trucksOffOnDate, type TruckOffEntry } from "@/lib/operations/fleet-capacity";
 import type { DispatchTruck } from "@/lib/dispatch/types";
 import { cn } from "@/lib/utils";
-import { GripVertical, Truck } from "lucide-react";
+import { GripVertical, Truck, TruckIcon } from "lucide-react";
+import { useMemo } from "react";
 
 export const DISPATCH_TRUCK_DRAG_TYPE = "application/x-dispatch-truck";
 
@@ -28,10 +32,14 @@ type DispatchTrucksPanelProps = {
 
 export function DispatchTrucksPanel({ embedded }: DispatchTrucksPanelProps = {}) {
   const { dateKey, assignedTruckIds } = useDispatch();
-  const { activeTrucksForDispatch } = useFleet();
+  const { activeTrucksForDispatch, trucks, truckOutages } = useFleet();
   const fleet = activeTrucksForDispatch(dateKey);
 
   const available = fleet.filter((truck) => !assignedTruckIds.has(truck.id));
+  const trucksOff = useMemo(
+    () => trucksOffOnDate(trucks, truckOutages, dateKey),
+    [trucks, truckOutages, dateKey],
+  );
 
   return (
     <div>
@@ -54,7 +62,34 @@ export function DispatchTrucksPanel({ embedded }: DispatchTrucksPanelProps = {})
           </li>
         ) : null}
       </ul>
+
+      <DispatchOffAccordion
+        title="Trucks off"
+        count={trucksOff.length}
+        icon={TruckIcon}
+        emptyMessage="No trucks off this day"
+      >
+        <ul className="space-y-1">
+          {trucksOff.map((entry) => (
+            <TruckOffChip key={entry.truck.id} entry={entry} />
+          ))}
+        </ul>
+      </DispatchOffAccordion>
     </div>
+  );
+}
+
+function TruckOffChip({ entry }: { entry: TruckOffEntry }) {
+  return (
+    <li>
+      <DispatchResourceTooltip label={entry.label} detail={entry.detail}>
+        <div className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1">
+          <span className="block truncate text-xs font-medium text-slate-500">
+            {formatTruckInline(entry.truck)}
+          </span>
+        </div>
+      </DispatchResourceTooltip>
+    </li>
   );
 }
 

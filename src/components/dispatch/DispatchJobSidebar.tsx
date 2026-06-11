@@ -8,8 +8,7 @@ import { DispatchRequirementsEditor } from "@/components/dispatch/DispatchRequir
 import { findDispatchJob, useDispatch } from "@/components/dispatch/DispatchProvider";
 import { getSlotCrewId } from "@/lib/dispatch/crew-slots";
 import { useTerminology } from "@/lib/terminology/use-terminology";
-import { effectiveDispatchJob, effectiveRequirements } from "@/lib/dispatch/job-requirements";
-import { formatFtaBooking } from "@/lib/dispatch/fta";
+import { effectiveDispatchJob } from "@/lib/dispatch/job-requirements";
 import { useFleet } from "@/components/providers/FleetProvider";
 import { formatTruckInline } from "@/lib/operations/fleet";
 import { DetailSidebar } from "@/components/ui/DetailSidebar";
@@ -47,7 +46,6 @@ export function DispatchJobSidebar({ jobId, onClose }: DispatchJobSidebarProps) 
   const assignment = job ? getAssignmentForJob(job) : null;
   const rawAssignment = job ? getAssignment(job.id) : null;
   const effectiveJob = job && rawAssignment ? effectiveDispatchJob(job, rawAssignment) : null;
-  const requirements = job && rawAssignment ? effectiveRequirements(job, rawAssignment) : null;
   const move = job?.moveId ? getMoveById(job.moveId) : undefined;
   const jobDay = move?.jobDays.find((d) => d.id === job?.jobDayId);
 
@@ -98,26 +96,10 @@ export function DispatchJobSidebar({ jobId, onClose }: DispatchJobSidebarProps) 
           ) : null}
 
           <section className="rounded-lg border border-slate-200 bg-slate-50/60 p-3 space-y-3">
-            <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 lg:grid-cols-5">
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
               <StatCell label="Departure" value={job.departureWindow ?? "—"} />
               <StatCell label="Arrival" value={job.arrivalWindow ?? "—"} />
               <StatCell label="Duration" value={job.durationLabel ?? "—"} />
-              <StatCell
-                label="Crew"
-                value={
-                  requirements?.crewOverridden
-                    ? `${requirements.crewSizeNeeded} (planned ${job.crewSizeNeeded})`
-                    : String(job.crewSizeNeeded)
-                }
-              />
-              <StatCell
-                label="Trucks"
-                value={
-                  requirements?.trucksOverridden
-                    ? `${requirements.trucksNeeded} (planned ${job.trucksNeeded})`
-                    : String(job.trucksNeeded)
-                }
-              />
             </dl>
             {rawAssignment ? (
               <div>
@@ -194,15 +176,6 @@ export function DispatchJobSidebar({ jobId, onClose }: DispatchJobSidebarProps) 
               className="mt-1 w-full resize-y rounded-md border-0 bg-transparent px-0 py-0 text-sm leading-snug text-sky-950 placeholder:text-sky-800/40 focus:outline-none focus:ring-0"
             />
           </div>
-
-          {job.ftaBooking ? (
-            <div className="rounded-lg border border-emerald-200 bg-emerald-50/80 px-3 py-2">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-900">
-                FTA · {job.ftaLabel ?? "booking"}
-              </p>
-              <p className="mt-0.5 text-sm text-emerald-950">{formatFtaBooking(job.ftaBooking)}</p>
-            </div>
-          ) : null}
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>

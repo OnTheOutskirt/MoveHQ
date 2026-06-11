@@ -1,9 +1,13 @@
 "use client";
 
 import { CrewRoleBadges } from "@/components/dispatch/CrewRoleBadges";
+import { DispatchOffAccordion } from "@/components/dispatch/DispatchOffAccordion";
+import { DispatchResourceTooltip } from "@/components/dispatch/DispatchResourceTooltip";
 import { useDispatch } from "@/components/dispatch/DispatchProvider";
-import { resolveCrewOffDisplay } from "@/lib/dispatch/resolve-crew-off";
+import { resolveCrewOffDisplay, type CrewOffReason } from "@/lib/dispatch/resolve-crew-off";
 import { useFleet } from "@/components/providers/FleetProvider";
+import { formatHoursShort } from "@/lib/payroll/time-entry-utils";
+import { useCrewWeeklyHours } from "@/lib/payroll/use-crew-weekly-hours";
 import type { DispatchCrewMember } from "@/lib/dispatch/types";
 import { cn } from "@/lib/utils";
 import { GripVertical, UserX, Users } from "lucide-react";
@@ -29,11 +33,16 @@ type DispatchCrewPanelProps = {
 };
 
 export function DispatchCrewPanel({ embedded }: DispatchCrewPanelProps = {}) {
-  const { crewOffIds, crewOff, assignedCrewIds } = useDispatch();
-  const { activeCrewForDispatch } = useFleet();
+  const { dateKey, crewOffIds, crewOff, assignedCrewIds } = useDispatch();
+  const { activeCrewForDispatch, crew: fleetCrew, timeOffRequests } = useFleet();
   const roster = activeCrewForDispatch();
+  const weeklyHoursByCrewId = useCrewWeeklyHours(dateKey);
 
-  const offDisplays = resolveCrewOffDisplay(crewOff, crewOffIds, roster);
+  const offDisplays = resolveCrewOffDisplay(crewOff, crewOffIds, roster, {
+    dateKey,
+    timeOffRequests,
+    fleetCrew,
+  });
   const offRosterIds = new Set(
     offDisplays.filter((d) => d.kind === "roster").map((d) => d.member.id),
   );
@@ -62,6 +71,7 @@ export function DispatchCrewPanel({ embedded }: DispatchCrewPanelProps = {}) {
             key={member.id}
             name={member.name}
             roles={member.roles}
+            weekHours={weeklyHoursByCrewId.get(member.id) ?? 0}
             draggable
             onDragStart={(id) => crewDragPayload(id)}
             dragId={member.id}
@@ -74,24 +84,22 @@ export function DispatchCrewPanel({ embedded }: DispatchCrewPanelProps = {}) {
         ) : null}
       </ul>
 
-      <div className="mt-2.5 border-t border-slate-100 pt-2.5">
-        <h3 className="mb-1.5 flex items-center justify-between gap-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-          <span className="flex items-center gap-1.5">
-            <UserX className="h-3 w-3 shrink-0" />
-            Crew off
-          </span>
-          <span className="font-medium normal-case tabular-nums text-slate-500">
-            {offDisplays.length}
-          </span>
-        </h3>
-        <ul className="mt-1.5 space-y-1">
+      <DispatchOffAccordion
+        title="Crew off"
+        count={offDisplays.length}
+        icon={UserX}
+        emptyMessage="No crew off this day"
+      >
+        <ul className="space-y-1">
           {offDisplays.map((entry) =>
             entry.kind === "roster" ? (
               <CrewChip
                 key={entry.member.id}
                 name={entry.member.name}
                 roles={entry.member.roles}
+                weekHours={weeklyHoursByCrewId.get(entry.member.id) ?? 0}
                 off
+                offReason={entry.offReason}
                 dragId={entry.member.id}
               />
             ) : (
@@ -101,17 +109,13 @@ export function DispatchCrewPanel({ embedded }: DispatchCrewPanelProps = {}) {
                 roles={entry.roles}
                 off
                 offLabel={entry.calendarRole}
+                offReason={entry.offReason}
                 dragId={entry.id}
               />
             ),
           )}
-          {offDisplays.length === 0 ? (
-            <li className="rounded-lg border border-dashed border-slate-100 bg-slate-50/80 px-2 py-2 text-center text-[11px] text-slate-400">
-              No crew off this day
-            </li>
-          ) : null}
         </ul>
-      </div>
+      </DispatchOffAccordion>
     </div>
   );
 }
@@ -119,28 +123,26 @@ export function DispatchCrewPanel({ embedded }: DispatchCrewPanelProps = {}) {
 function CrewChip({
   name,
   roles,
+  weekHours,
   off,
   offLabel,
+  offReason,
   draggable: canDrag,
   dragId,
   onDragStart,
 }: {
   name: string;
   roles: DispatchCrewMember["roles"];
+  weekHours?: number;
   off?: boolean;
   offLabel?: string;
+  offReason?: CrewOffReason;
   draggable?: boolean;
   dragId: string;
   onDragStart?: (id: string) => string;
 }) {
-  return (
-    <li
-      draggable={canDrag && !off}
-      onDragStart={(e) => {
-        if (!canDrag || off || !onDragStart) return;
-        e.dataTransfer.setData(DRAG_TYPE, onDragStart(dragId));
-        e.dataTransfer.effectAllowed = "move";
-      }}
+  const chip = (
+    <div
       className={cn(
         "flex items-center gap-1.5 rounded-lg border px-2 py-1 text-left transition-colors",
         off
@@ -161,12 +163,44 @@ function CrewChip({
       >
         {name}
       </span>
-      <CrewRoleBadges roles={roles} />
+      <span className="ml-auto flex shrink-0 items-center gap-1">
+        {weekHours != null ? (
+          <span
+            className={cn(
+              "min-w-[1.75rem] text-right text-[10px] font-medium tabular-nums",
+              off ? "text-slate-400" : "text-slate-500",
+            )}
+            title="Hours this week"
+          >
+            {weekHours > 0 ? `${formatHoursShort(weekHours)}h` : "0h"}
+          </span>
+        ) : null}
+        <CrewRoleBadges roles={roles} />
+      </span>
       {off ? (
         <span className="shrink-0 text-[9px] font-medium text-slate-400">
           {offLabel ?? "Off"}
         </span>
       ) : null}
+    </div>
+  );
+
+  return (
+    <li
+      draggable={canDrag && !off}
+      onDragStart={(e) => {
+        if (!canDrag || off || !onDragStart) return;
+        e.dataTransfer.setData(DRAG_TYPE, onDragStart(dragId));
+        e.dataTransfer.effectAllowed = "move";
+      }}
+    >
+      {off && offReason ? (
+        <DispatchResourceTooltip label={offReason.label} detail={offReason.detail}>
+          {chip}
+        </DispatchResourceTooltip>
+      ) : (
+        chip
+      )}
     </li>
   );
 }

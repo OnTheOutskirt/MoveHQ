@@ -1,6 +1,7 @@
 import { addDays, parseDateKey, toDateKey } from "@/lib/calendar/date-utils";
 import { jobDayCrewLine, jobDayTruckLine } from "@/lib/moves/job-day-display";
 import { isMoveLost } from "@/lib/moves/move-pipeline";
+import { mergeRollingOpsDemoJobDays } from "@/lib/operations/ops-jobs-rolling-demo";
 import type { JobDayStatus, MoveJobDay, MoveRecord, PipelineStageId } from "@/lib/moves/types";
 
 /** Moves that have entered operations (booked or finished). */
@@ -68,7 +69,7 @@ function rowFromJobDay(move: MoveRecord, day: MoveJobDay): OpsJobDayRow {
   };
 }
 
-export function collectOpsJobDays(moves: MoveRecord[]): OpsJobDayRow[] {
+export function collectOpsJobDays(moves: MoveRecord[], today: Date = new Date()): OpsJobDayRow[] {
   const rows: OpsJobDayRow[] = [];
   for (const move of moves) {
     if (!isOpsJobsEligibleMove(move)) continue;
@@ -77,7 +78,7 @@ export function collectOpsJobDays(moves: MoveRecord[]): OpsJobDayRow[] {
       rows.push(rowFromJobDay(move, day));
     }
   }
-  return rows;
+  return mergeRollingOpsDemoJobDays(rows, moves, today);
 }
 
 function sortOpsJobRows(rows: OpsJobDayRow[], view: OpsJobsView): OpsJobDayRow[] {
@@ -177,6 +178,71 @@ export function defaultSelectedDateForBrowse(today: Date): string {
 
 export function isFutureDateKey(dateKey: string, today: Date): boolean {
   return dateKey > toDateKey(today);
+}
+
+/** Rolling demo rows use synthetic jobDayIds — build a displayable day from list row data. */
+export function jobDayFromOpsRow(row: OpsJobDayRow): MoveJobDay {
+  return {
+    id: row.jobDayId,
+    label: row.dayLabel,
+    date: row.date,
+    status: row.status,
+    arrivalWindow: row.arrivalWindow,
+    durationLabel: row.durationLabel,
+    crewSummary: row.crewLine ?? undefined,
+    truckSummary: row.truckLine ?? undefined,
+    originNote: row.origin,
+    destinationNote: row.destination,
+  };
+}
+
+/**
+ * Resolve the job day backing an ops list row.
+ * Demo rows may not have a matching id on the move — fall back to date match, then synthesize.
+ */
+export function resolveJobDayForOpsRow(
+  move: MoveRecord,
+  row: OpsJobDayRow,
+): MoveJobDay {
+  const byId = move.jobDays.find((d) => d.id === row.jobDayId);
+  if (byId) return byId;
+
+  const byDate = move.jobDays.find(
+    (d) =>
+      d.date === row.date &&
+      d.status !== "cancelled" &&
+      d.status !== "proposed",
+  );
+  if (byDate) return byDate;
+
+  return jobDayFromOpsRow(row);
+}
+
+/** Persisted job day on the move, if any — used when applying edits. */
+export function findPersistedJobDayForOpsRow(
+  move: MoveRecord,
+  row: OpsJobDayRow,
+): MoveJobDay | undefined {
+  return (
+    move.jobDays.find((d) => d.id === row.jobDayId) ??
+    move.jobDays.find(
+      (d) =>
+        d.date === row.date &&
+        d.status !== "cancelled" &&
+        d.status !== "proposed",
+    )
+  );
+}
+
+export function mergeOpsJobDayPatch(
+  move: MoveRecord,
+  row: OpsJobDayRow,
+  patch: Partial<MoveJobDay>,
+): MoveJobDay {
+  const resolved = resolveJobDayForOpsRow(move, row);
+  const persisted = findPersistedJobDayForOpsRow(move, row);
+  const base = persisted ?? resolved;
+  return { ...base, ...patch };
 }
 
 export { PAST_LOOKBACK_DAYS, FUTURE_LOOKAHEAD_DAYS };

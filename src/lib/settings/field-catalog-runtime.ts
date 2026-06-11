@@ -91,29 +91,12 @@ export function catalogFindLostReason(qualification: LostQualification, reasonId
   return catalogLostReasons(qualification).find((r) => r.id === reasonId);
 }
 
-export function catalogPriorityTierLabel(id: string): string {
-  return findEntry("priorityTiers", id)?.label ?? id;
-}
-
-export function catalogPriorityTierBadge(id: string): string {
-  return findEntry("priorityTiers", id)?.badgeClass ?? "bg-slate-100 text-slate-600";
-}
-
-export function catalogPriorityTierConfig(id: string) {
-  const entry = findEntry("priorityTiers", id);
-  if (!entry) return null;
-  return {
-    id: entry.id,
-    tierLabel: entry.label,
-    shortCode: entry.shortCode ?? entry.id,
-    meaning: entry.meaning ?? "",
-    badge: entry.badgeClass ?? "bg-slate-100 text-slate-600",
-  };
-}
-
-export function catalogPriorityTierIds(): string[] {
-  return runtimeCatalog.priorityTiers.map((t) => t.id);
-}
+export {
+  catalogPriorityTierBadge,
+  catalogPriorityTierConfig,
+  catalogPriorityTierIds,
+  catalogPriorityTierLabel,
+} from "@/lib/settings/priority-tier-rules-runtime";
 
 export function catalogHotLeadSourceIds(): string[] {
   return runtimeCatalog.leadSources.filter((s) => s.isHot).map((s) => s.id);

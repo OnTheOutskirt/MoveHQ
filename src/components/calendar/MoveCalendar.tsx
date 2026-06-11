@@ -5,8 +5,13 @@ import { CalendarLegend } from "@/components/calendar/CalendarLegend";
 import { DayDetailSidebar } from "@/components/calendar/DayDetailSidebar";
 import { MonthView } from "@/components/calendar/MonthView";
 import { CalendarSettingsSidebar } from "@/components/calendar/settings/CalendarSettingsSidebar";
+import { useMoves } from "@/components/moves/MovesProvider";
+import { useCalendarPlacements } from "@/components/providers/CalendarPlacementProvider";
 import { useCalendarSettings } from "@/components/providers/CalendarSettingsProvider";
+import { computeOpenSlotsForDay } from "@/lib/day-share/compute-open-slots";
 import { useFleet } from "@/components/providers/FleetProvider";
+import { mergePlacementsIntoDays } from "@/lib/calendar/placement";
+import { useBusinessCalendar } from "@/lib/settings/use-business-calendar";
 import {
   addMonths,
   formatMonthYear,
@@ -20,7 +25,7 @@ import type { CalendarDayData } from "@/lib/calendar/types";
 import { useEffect, useMemo, useState } from "react";
 
 export function MoveCalendar() {
-  const today = useMemo(() => new Date(), []);
+  const { today, openDays } = useBusinessCalendar();
   const {
     closedDays,
     federalHolidayBookedDates,
@@ -30,8 +35,11 @@ export function MoveCalendar() {
     removeClosedDayForDate,
   } = useCalendarSettings();
   const { isReady: fleetReady, getTruckCapacityForDate } = useFleet();
+  const { moves } = useMoves();
+  const { placements, isReady: placementsReady } = useCalendarPlacements();
+  const { dayShareSettings } = useCalendarSettings();
   const [anchor, setAnchor] = useState(() => startOfMonth(today));
-  const [days, setDays] = useState<Record<string, CalendarDayData>>({});
+  const [baseDays, setBaseDays] = useState<Record<string, CalendarDayData>>({});
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [daySidebarOpen, setDaySidebarOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -51,13 +59,29 @@ export function MoveCalendar() {
 
   useEffect(() => {
     if (!isReady) return;
-    setDays((prev) => ({
+    setBaseDays((prev) => ({
       ...prev,
       ...withFleetTruckCapacity(
-        buildMockMonth(anchor, today, closedDays, federalHolidayBookedDates),
+        buildMockMonth(anchor, today, closedDays, federalHolidayBookedDates, openDays),
       ),
     }));
-  }, [isReady, fleetReady, anchor, today, closedDays, federalHolidayBookedDates, getTruckCapacityForDate]);
+  }, [isReady, fleetReady, anchor, today, closedDays, federalHolidayBookedDates, getTruckCapacityForDate, openDays]);
+
+  const days = useMemo(() => {
+    const withPlacements = placementsReady
+      ? mergePlacementsIntoDays(baseDays, placements)
+      : baseDays;
+    const next = { ...withPlacements };
+    for (const key of Object.keys(next)) {
+      const day = next[key];
+      if (!day || day.isClosed) continue;
+      const computed = computeOpenSlotsForDay(moves, key, dayShareSettings);
+      if (computed.length > 0) {
+        next[key] = { ...day, ftas: computed };
+      }
+    }
+    return next;
+  }, [baseDays, placements, placementsReady, moves, dayShareSettings]);
 
   const selectedDay = selectedDate ? (days[toDateKey(selectedDate)] ?? null) : null;
   const selectedClosedEntry = selectedDate
@@ -68,10 +92,10 @@ export function MoveCalendar() {
     : undefined;
 
   function mergeMonth(monthAnchor: Date) {
-    setDays((prev) => ({
+    setBaseDays((prev) => ({
       ...prev,
       ...withFleetTruckCapacity(
-        buildMockMonth(monthAnchor, today, closedDays, federalHolidayBookedDates),
+        buildMockMonth(monthAnchor, today, closedDays, federalHolidayBookedDates, openDays),
       ),
     }));
   }
@@ -98,7 +122,7 @@ export function MoveCalendar() {
     setSettingsOpen(false);
     setSelectedDate(date);
     setDaySidebarOpen(true);
-    setDays((prev) => ({ ...prev, [day.date]: day }));
+    setBaseDays((prev) => ({ ...prev, [day.date]: day }));
   }
 
   function openDayForNotes(date: Date, day: CalendarDayData) {
@@ -113,7 +137,7 @@ export function MoveCalendar() {
   function patchSelectedDay(patch: Partial<CalendarDayData>) {
     if (!selectedDate) return;
     const key = toDateKey(selectedDate);
-    setDays((prev) => {
+    setBaseDays((prev) => {
       const existing = prev[key];
       if (!existing) return prev;
       return { ...prev, [key]: { ...existing, ...patch } };
@@ -162,7 +186,6 @@ export function MoveCalendar() {
 
       <MonthView
         anchor={anchor}
-        today={today}
         closedDays={closedDays}
         federalHolidayBookedDates={federalHolidayBookedDates}
         days={days}

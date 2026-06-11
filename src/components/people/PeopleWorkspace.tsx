@@ -5,45 +5,70 @@ import { OrganizationDetailSidebar } from "@/components/people/OrganizationDetai
 import { OrganizationsDirectory } from "@/components/people/OrganizationsDirectory";
 import { PeopleDirectory } from "@/components/people/PeopleDirectory";
 import { PersonDetailSidebar } from "@/components/people/PersonDetailSidebar";
+import { ReferralPartnersReport } from "@/components/reports/ReferralPartnersReport";
 import { TabBar } from "@/components/shared/TabBar";
 import { Button } from "@/components/ui/Button";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { directoryCounts, getOrganizationById, getPersonById } from "@/lib/people/mock-data";
+import { getOrganizationById, getPersonById } from "@/lib/people/mock-data";
+import {
+  getStoredOrganizationById,
+  listAllOrganizations,
+} from "@/lib/people/organizations-storage";
+import { getStoredPersonById, listAllPeople } from "@/lib/people/people-storage";
 import { usePersistedState } from "@/lib/hooks/use-persisted-state";
 import { pageMeta } from "@/lib/navigation/page-meta";
 import type { OrganizationRecord, PersonRecord } from "@/lib/people/types";
 import { Plus } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const meta = pageMeta["/sales/directory"];
 
-type DirectoryTab = "people" | "organizations";
+type DirectoryTab = "people" | "organizations" | "referral-partners";
 
 const TABS = [
   { id: "people" as const, label: "Contacts" },
   { id: "organizations" as const, label: "Organizations" },
+  { id: "referral-partners" as const, label: "Referral partners" },
 ];
+
+function isDirectoryTab(value: string | null): value is DirectoryTab {
+  return TABS.some((t) => t.id === value);
+}
 
 export function PeopleWorkspace() {
   const searchParams = useSearchParams();
   const [tab, setTab] = usePersistedState<DirectoryTab>("jm-tab-/sales/directory", "people");
   const [selectedPerson, setSelectedPerson] = useState<PersonRecord | null>(null);
   const [selectedOrg, setSelectedOrg] = useState<OrganizationRecord | null>(null);
-  const counts = directoryCounts();
+  const counts = useMemo(
+    () => ({
+      people: listAllPeople().length,
+      organizations: listAllOrganizations().length,
+      customers: listAllPeople().filter((p) => p.kind === "customer").length,
+      leads: listAllPeople().filter((p) => p.kind === "lead").length,
+      referrals: listAllPeople().filter((p) => p.kind === "referral").length,
+    }),
+    [tab],
+  );
 
   useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    if (isDirectoryTab(tabParam)) {
+      setTab(tabParam);
+    }
+
     const personId = searchParams.get("person");
     const orgId = searchParams.get("org");
     if (personId) {
-      const person = getPersonById(personId);
+      const person = getStoredPersonById(personId) ?? getPersonById(personId);
       if (person) {
         setTab("people");
         setSelectedPerson(person);
         setSelectedOrg(null);
       }
     } else if (orgId) {
-      const org = getOrganizationById(orgId);
+      const org = getStoredOrganizationById(orgId) ?? getOrganizationById(orgId);
       if (org) {
         setTab("organizations");
         setSelectedOrg(org);
@@ -59,22 +84,28 @@ export function PeopleWorkspace() {
           title={meta.title}
           description={meta.description}
           actions={
-            <Button type="button" size="sm" disabled title="Coming soon">
-              <Plus className="h-4 w-4" />
-              {tab === "people" ? "Add person" : "Add organization"}
-            </Button>
+            tab !== "referral-partners" ? (
+              <Button type="button" size="sm" disabled title="Coming soon">
+                <Plus className="h-4 w-4" />
+                {tab === "people" ? "Add person" : "Add organization"}
+              </Button>
+            ) : undefined
           }
         />
 
-        <div className="flex flex-wrap gap-4 text-center">
-          <CountCard label="Contacts" value={counts.people} />
-          <CountCard label="Organizations" value={counts.organizations} />
-          <CountCard label="Customers" value={counts.customers} muted />
-          <CountCard label="Leads" value={counts.leads} muted />
-          <CountCard label="Referral contacts" value={counts.referrals} muted />
-        </div>
+        {tab !== "referral-partners" ? (
+          <>
+            <div className="flex flex-wrap gap-4 text-center">
+              <CountCard label="Contacts" value={counts.people} />
+              <CountCard label="Organizations" value={counts.organizations} />
+              <CountCard label="Customers" value={counts.customers} muted />
+              <CountCard label="Leads" value={counts.leads} muted />
+              <CountCard label="Referral contacts" value={counts.referrals} muted />
+            </div>
 
-        <DirectoryModelNote />
+            <DirectoryModelNote />
+          </>
+        ) : null}
 
         <TabBar tabs={TABS} activeTab={tab} onChange={setTab} />
 
@@ -85,14 +116,16 @@ export function PeopleWorkspace() {
               setSelectedPerson(p);
             }}
           />
-        ) : (
+        ) : null}
+        {tab === "organizations" ? (
           <OrganizationsDirectory
             onSelectOrganization={(o) => {
               setSelectedPerson(null);
               setSelectedOrg(o);
             }}
           />
-        )}
+        ) : null}
+        {tab === "referral-partners" ? <ReferralPartnersReport /> : null}
       </div>
 
       <PersonDetailSidebar
@@ -104,7 +137,7 @@ export function PeopleWorkspace() {
         organization={selectedOrg}
         onClose={() => setSelectedOrg(null)}
         onSelectPerson={(personId) => {
-          const person = getPersonById(personId);
+          const person = getStoredPersonById(personId) ?? getPersonById(personId);
           if (person) {
             setSelectedOrg(null);
             setSelectedPerson(person);

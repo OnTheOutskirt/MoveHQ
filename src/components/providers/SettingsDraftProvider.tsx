@@ -4,6 +4,12 @@ import { useSettings } from "@/components/providers/SettingsProvider";
 import type { AppSettings } from "@/lib/settings/types";
 import type { FieldCatalogSettings } from "@/lib/settings/field-catalog-types";
 import { syncFieldCatalogRuntime } from "@/lib/settings/field-catalog-runtime";
+import { syncPipelineAutomationRuntime } from "@/lib/settings/pipeline-automation-runtime";
+import { syncPriorityTierRulesRuntime } from "@/lib/settings/priority-tier-rules-runtime";
+import type { PipelineAutomationSettings } from "@/lib/settings/pipeline-automation-rules";
+import type { LeadRoutingSettings } from "@/lib/settings/lead-routing-rules";
+import type { MoveTypeRulesSettings } from "@/lib/settings/move-type-rules";
+import type { PriorityTierRulesSettings } from "@/lib/settings/priority-tier-rules";
 import { mergeTerminology } from "@/lib/terminology/normalize";
 import type { TerminologySettings } from "@/lib/terminology/types";
 import {
@@ -28,6 +34,10 @@ type SettingsDraftContextValue = {
   updateFollowUps: (patch: Partial<AppSettings["followUps"]>) => void;
   updatePipelineCopy: (patch: Partial<AppSettings["pipelineCopy"]>) => void;
   updateFieldCatalog: (patch: Partial<FieldCatalogSettings>) => void;
+  updatePriorityTierRules: (patch: Partial<PriorityTierRulesSettings>) => void;
+  updatePipelineAutomations: (patch: Partial<PipelineAutomationSettings>) => void;
+  updateLeadRouting: (patch: Partial<LeadRoutingSettings>) => void;
+  updateMoveTypeRules: (patch: Partial<MoveTypeRulesSettings>) => void;
   replaceDraft: (next: AppSettings) => void;
 };
 
@@ -47,6 +57,8 @@ export function SettingsDraftProvider({ children }: { children: React.ReactNode 
     setDraft(settings);
     setSavedSnapshot(settingsSnapshot(settings));
     syncFieldCatalogRuntime(settings.fieldCatalog);
+    syncPriorityTierRulesRuntime(settings.priorityTierRules);
+    syncPipelineAutomationRuntime(settings.pipelineAutomations);
   }, [settings, isReady]);
 
   const dirty = settingsSnapshot(draft) !== savedSnapshot;
@@ -54,6 +66,8 @@ export function SettingsDraftProvider({ children }: { children: React.ReactNode 
   const save = useCallback(() => {
     replaceSettings(draft);
     syncFieldCatalogRuntime(draft.fieldCatalog);
+    syncPriorityTierRulesRuntime(draft.priorityTierRules);
+    syncPipelineAutomationRuntime(draft.pipelineAutomations);
     setSavedSnapshot(settingsSnapshot(draft));
   }, [draft, replaceSettings]);
 
@@ -61,6 +75,8 @@ export function SettingsDraftProvider({ children }: { children: React.ReactNode 
     setDraft(settings);
     setSavedSnapshot(settingsSnapshot(settings));
     syncFieldCatalogRuntime(settings.fieldCatalog);
+    syncPriorityTierRulesRuntime(settings.priorityTierRules);
+    syncPipelineAutomationRuntime(settings.pipelineAutomations);
   }, [settings]);
 
   const updateBranding = useCallback((patch: Partial<AppSettings["branding"]>) => {
@@ -111,6 +127,74 @@ export function SettingsDraftProvider({ children }: { children: React.ReactNode 
     });
   }, []);
 
+  const updatePriorityTierRules = useCallback((patch: Partial<PriorityTierRulesSettings>) => {
+    setDraft((prev) => {
+      const nextRules = {
+        ...prev.priorityTierRules,
+        ...patch,
+        followUpMode: {
+          ...prev.priorityTierRules.followUpMode,
+          ...patch.followUpMode,
+        },
+        tierDisplay: patch.tierDisplay
+          ? {
+              ...prev.priorityTierRules.tierDisplay,
+              ...Object.fromEntries(
+                Object.entries(patch.tierDisplay).map(([tier, display]) => [
+                  tier,
+                  {
+                    ...prev.priorityTierRules.tierDisplay[
+                      tier as keyof typeof prev.priorityTierRules.tierDisplay
+                    ],
+                    ...display,
+                  },
+                ]),
+              ),
+            }
+          : prev.priorityTierRules.tierDisplay,
+      };
+      syncPriorityTierRulesRuntime(nextRules);
+      return { ...prev, priorityTierRules: nextRules };
+    });
+  }, []);
+
+  const updatePipelineAutomations = useCallback(
+    (patch: Partial<PipelineAutomationSettings>) => {
+      setDraft((prev) => {
+        const nextAutomations = {
+          ...prev.pipelineAutomations,
+          ...patch,
+          rules: patch.rules ?? prev.pipelineAutomations.rules,
+        };
+        syncPipelineAutomationRuntime(nextAutomations);
+        return { ...prev, pipelineAutomations: nextAutomations };
+      });
+    },
+    [],
+  );
+
+  const updateLeadRouting = useCallback((patch: Partial<LeadRoutingSettings>) => {
+    setDraft((prev) => ({
+      ...prev,
+      leadRouting: {
+        ...prev.leadRouting,
+        ...patch,
+        rules: patch.rules ?? prev.leadRouting.rules,
+      },
+    }));
+  }, []);
+
+  const updateMoveTypeRules = useCallback((patch: Partial<MoveTypeRulesSettings>) => {
+    setDraft((prev) => ({
+      ...prev,
+      moveTypeRules: {
+        ...prev.moveTypeRules,
+        ...patch,
+        byTypeId: patch.byTypeId ?? prev.moveTypeRules.byTypeId,
+      },
+    }));
+  }, []);
+
   const replaceDraft = useCallback((next: AppSettings) => {
     setDraft(next);
   }, []);
@@ -129,6 +213,10 @@ export function SettingsDraftProvider({ children }: { children: React.ReactNode 
       updateFollowUps,
       updatePipelineCopy,
       updateFieldCatalog,
+      updatePriorityTierRules,
+      updatePipelineAutomations,
+      updateLeadRouting,
+      updateMoveTypeRules,
       replaceDraft,
     }),
     [
@@ -144,6 +232,10 @@ export function SettingsDraftProvider({ children }: { children: React.ReactNode 
       updateFollowUps,
       updatePipelineCopy,
       updateFieldCatalog,
+      updatePriorityTierRules,
+      updatePipelineAutomations,
+      updateLeadRouting,
+      updateMoveTypeRules,
       replaceDraft,
     ],
   );

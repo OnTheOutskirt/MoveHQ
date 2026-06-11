@@ -1,10 +1,21 @@
 import { buildMockDay } from "@/lib/calendar/mock-data";
 import { parseDateKey, toDateKey } from "@/lib/calendar/date-utils";
-import { ftaBookingFromCalendarSlot } from "@/lib/dispatch/fta";
+import type { FtaSlot } from "@/lib/calendar/types";
+import { computeOpenSlotsForDay } from "@/lib/day-share/compute-open-slots";
+import { defaultDayShareSettings } from "@/lib/day-share/settings-defaults";
+import { resolveJobDayArrivalWindow } from "@/lib/day-share/arrival-windows";
+import {
+  ftaBookingCode,
+  ftaBookingFromCalendarSlot,
+  type DispatchFtaBooking,
+} from "@/lib/dispatch/fta";
 import { isMoveLost } from "@/lib/moves/move-pipeline";
-import type { MoveJobDay, MoveRecord } from "@/lib/moves/types";
+import { isJobDayFirstStop, jobDaySharePeriod } from "@/lib/moves/job-day-schedule";
+import type { JobDayFraction, MoveJobDay, MoveRecord } from "@/lib/moves/types";
 import { resolveDayBeforeConfirmation } from "./day-before-confirmation";
+import { resolveDispatchScheduleBlock } from "./schedule-grid";
 import type { DispatchDaySnapshot, DispatchJob } from "./types";
+import type { DayShareSettings } from "@/lib/day-share/types";
 
 function locationSummary(day: MoveJobDay, role: "origin" | "destination"): string | undefined {
   const loc = day.locations?.find((l) => l.role === role);
@@ -22,8 +33,32 @@ function pinNoteFromJobDay(day: MoveJobDay): string | undefined {
   return undefined;
 }
 
-function jobDayToDispatchJob(move: MoveRecord, day: MoveJobDay, referenceDate: Date): DispatchJob {
+function buildFtaBookingFromJobDay(day: MoveJobDay): DispatchFtaBooking | undefined {
+  const fraction: JobDayFraction = day.dayFraction ?? "long";
+  if (fraction === "long") return undefined;
+  const period = jobDaySharePeriod(day);
+  return {
+    crewSize: day.crewSize ?? 4,
+    period,
+    morningStartTime: period === "morning" ? "7:45 AM" : null,
+    duration: fraction,
+  };
+}
+
+function jobDayOrdinal(move: MoveRecord, day: MoveJobDay): { dayNumber: number; totalJobDays: number } {
+  const sorted = [...move.jobDays].sort((a, b) => a.date.localeCompare(b.date) || a.label.localeCompare(b.label));
+  const index = sorted.findIndex((d) => d.id === day.id);
+  return {
+    dayNumber: index >= 0 ? index + 1 : 1,
+    totalJobDays: sorted.length,
+  };
+}
+
+export function jobDayToDispatchJob(move: MoveRecord, day: MoveJobDay, referenceDate: Date): DispatchJob {
   const id = `move:${move.id}:${day.id}`;
+  const ftaBooking = buildFtaBookingFromJobDay(day);
+  const isFtaJob = Boolean(ftaBooking);
+  const { dayNumber, totalJobDays } = jobDayOrdinal(move, day);
   return {
     id,
     source: "move",
@@ -33,8 +68,12 @@ function jobDayToDispatchJob(move: MoveRecord, day: MoveJobDay, referenceDate: D
     date: day.date,
     label: day.label,
     status: day.status,
-    arrivalWindow: day.arrivalWindow,
-    departureWindow: day.departureWindow,
+    arrivalWindow: resolveJobDayArrivalWindow({
+      arrivalWindow: day.arrivalWindow,
+      isFirstJobOfDay: isJobDayFirstStop(day),
+      dayPeriod: day.dayPeriod,
+    }),
+    departureWindow: isJobDayFirstStop(day) ? day.departureWindow : undefined,
     durationLabel: day.durationLabel,
     originSummary: locationSummary(day, "origin") ?? move.originAddress,
     destinationSummary: locationSummary(day, "destination") ?? move.destinationAddress,
@@ -44,8 +83,12 @@ function jobDayToDispatchJob(move: MoveRecord, day: MoveJobDay, referenceDate: D
     accessNotes: day.accessNotes ?? day.notes,
     services: day.services,
     pinnedNote: pinNoteFromJobDay(day),
-    ftaLabel: null,
-    isFtaJob: false,
+    ftaLabel: ftaBooking ? ftaBookingCode(ftaBooking) : null,
+    ftaBooking,
+    isFtaJob,
+    dayFraction: day.dayFraction,
+    dayNumber,
+    totalJobDays,
     dayBeforeConfirmation: resolveDayBeforeConfirmation(day.date, {
       move,
       jobDayId: day.id,
@@ -59,6 +102,7 @@ export function collectDispatchDay(
   moves: MoveRecord[],
   dateKey: string,
   today: Date = new Date(),
+  dayShareSettings: DayShareSettings = defaultDayShareSettings(),
 ): DispatchDaySnapshot {
   const date = parseDateKey(dateKey);
 
@@ -74,18 +118,21 @@ export function collectDispatchDay(
   }
 
   const jobs = [...fromMoves].sort((a, b) => {
-    const aw = a.arrivalWindow ?? "99:99";
-    const bw = b.arrivalWindow ?? "99:99";
-    return aw.localeCompare(bw) || a.customerName.localeCompare(b.customerName);
+    const { startMinutes: aStart } = resolveDispatchScheduleBlock(a);
+    const { startMinutes: bStart } = resolveDispatchScheduleBlock(b);
+    return aStart - bStart || a.customerName.localeCompare(b.customerName);
   });
 
   const calendarDay = buildMockDay(date, today);
-  const ftaBookings = calendarDay.ftas.map(ftaBookingFromCalendarSlot);
+  const computedSlots = computeOpenSlotsForDay(moves, dateKey, dayShareSettings);
+  const ftas: FtaSlot[] =
+    computedSlots.length > 0 ? computedSlots : calendarDay.ftas;
+  const ftaBookings = ftas.map(ftaBookingFromCalendarSlot);
 
   return {
     dateKey,
     jobs,
-    ftas: calendarDay.ftas,
+    ftas,
     ftaBookings,
     crewOffIds: [],
     crewOff: calendarDay.crewOff,

@@ -1,28 +1,31 @@
+import {
+  expandSlotPillLabels,
+  formatSlotCode,
+  formatSlotList,
+  formatSlotReadable,
+  slotTypeCode,
+} from "@/lib/day-share/labels";
 import type { FtaDuration, FtaPeriod, FtaSlot } from "./types";
 
-/** Ms, Mb, Mm, As, Ab, Am */
+/** @deprecated Use slotTypeCode from day-share */
 export function ftaCode(period: FtaPeriod, duration: FtaDuration): string {
-  const periodLetter = period === "morning" ? "M" : "A";
-  const durationLetter = duration === "short" ? "s" : duration === "brief" ? "b" : "m";
-  return `${periodLetter}${durationLetter}`;
+  return slotTypeCode(period, duration);
 }
 
-/** e.g. (1)2As — one two-man afternoon short slot */
+/** e.g. (1)2As — one two-person afternoon short open slot */
 export function formatFtaSlot(slot: FtaSlot): string {
-  return `(${slot.count})${slot.crewSize}${ftaCode(slot.period, slot.duration)}`;
+  return formatSlotCode(slot);
 }
 
 export function formatFtaList(ftas: FtaSlot[]): string {
-  return ftas.map(formatFtaSlot).join(" · ");
+  return formatSlotList(ftas);
 }
 
-/** One green pill label per available FTA slot (matches month-view count). */
+export function formatFtaSlotReadable(slot: FtaSlot): string {
+  return formatSlotReadable(slot);
+}
+
+/** One pill label per open slot unit (matches month-view count). */
 export function expandFtaPillLabels(ftas: FtaSlot[]): string[] {
-  const labels: string[] = [];
-  for (const slot of ftas) {
-    for (let i = 0; i < slot.count; i++) {
-      labels.push(formatFtaSlot({ ...slot, count: 1 }));
-    }
-  }
-  return labels;
+  return expandSlotPillLabels(ftas);
 }

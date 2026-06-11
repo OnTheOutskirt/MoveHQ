@@ -1,270 +1,121 @@
+import {
+  MEETING_5_28_DATE_LABEL,
+  MEETING_5_28_DEFAULT_DONE_IDS,
+  MEETING_5_28_GROUPS,
+} from "./meeting-notes-5-28";
+import {
+  MEETING_6_4_DATE_LABEL,
+  MEETING_6_4_DEFAULT_DONE_IDS,
+  MEETING_6_4_GROUPS,
+} from "./meeting-notes-6-4";
+import {
+  MEETING_6_8_DATE_LABEL,
+  MEETING_6_8_DEFAULT_DONE_IDS,
+  MEETING_6_8_GROUPS,
+} from "./meeting-notes-6-8";
+import {
+  UI_TODO_DEFAULT_DONE_IDS,
+  UI_TODO_GROUPS,
+  UI_TODO_TAB_LABEL,
+} from "./meeting-notes-ui-todo";
 import type { PlanningGroup } from "./types";
 
-/** Meeting date shown on the Planning tab and notes header. */
-export const MEETING_NOTES_DATE_LABEL = "5/28";
+export type MeetingNotesSession = {
+  id: string;
+  /** Sub-tab label in the Todo view */
+  tabLabel: string;
+  dateLabel: string;
+  summary?: string;
+  groups: PlanningGroup[];
+  defaultDoneIds: readonly string[];
+};
 
-export const MEETING_NOTES_TAB_LABEL = `Notes From Meeting · ${MEETING_NOTES_DATE_LABEL}`;
-
-/** Checklist groups sourced from stakeholder meeting notes. */
-export const MEETING_NOTES_GROUPS: PlanningGroup[] = [
+/** All todo sessions — UI backlog first, then meeting notes newest first. */
+export const MEETING_NOTE_SESSIONS: MeetingNotesSession[] = [
   {
-    id: "meeting-sales-pipeline",
-    title: "Sales & pipeline",
-    audienceDescription: "Lead quality, pipeline stages, and follow-up workflows.",
-    items: [
-      {
-        id: "meeting-qualified-vs-unqualified",
-        label: "Qualified Moves vs Unqualified Moves",
-        note: "Shipped — Mark lost dialog on move detail: pick Qualified vs Unqualified, then reason.",
-      },
-      {
-        id: "meeting-unqualified-reasons",
-        label:
-          "Define unqualified lead reasons: couldn’t get ahold, good move but booked, out of service area, duplicate/spam, etc.",
-        note: "Shipped — unqualified reason list in Mark lost flow; qualified reasons are separate.",
-      },
-      {
-        id: "meeting-website-booked-stage",
-        label: "Website Booked pipeline stage",
-      },
-      {
-        id: "meeting-web-vs-office-source",
-        label: "Add Web vs Office source tag",
-        note: "Shipped — quoteChannel on moves (web AI / phone / office); leadChannel stays for marketing.",
-      },
-      {
-        id: "meeting-website-booked-review",
-        label: "Add Website Booked Job Review workflow/tab",
-        note: "Shipped — Sales → Website queues + bookingReviewStatus on auto-booked moves.",
-      },
-      {
-        id: "meeting-followup-quoted-booked",
-        label: "Add follow-up workflows for Quoted and Booked jobs",
-      },
-      {
-        id: "meeting-website-booked-review",
-        label: "Add Website Booked Job Review workflow/tab",
-      },
-    ],
+    id: "ui-todo",
+    tabLabel: UI_TODO_TAB_LABEL,
+    dateLabel: "UI",
+    summary:
+      "Remaining UI polish across MoveHQ — dashboards through crew app and shared chrome. Check off as each area is finalized.",
+    groups: UI_TODO_GROUPS,
+    defaultDoneIds: UI_TODO_DEFAULT_DONE_IDS,
   },
   {
-    id: "meeting-move-details",
-    title: "Move details & directory",
-    items: [
-      {
-        id: "meeting-zillow-origin-link",
-        label:
-          "Move Detail View: “View on Zillow” link under origin address (search URL, new tab)",
-        note: "Shipped — uses /homes/{address}_rb/ format from origin address.",
-      },
-      {
-        id: "meeting-wardrobes-appliances-extras",
-        label:
-          "Move Detail View: rename/rework Wardrobes/Appliances section into Extras or place under Inventory",
-        note: "Shipped — Inventory & extras section on Move Plan; appliances + wardrobe nested under Extras.",
-      },
-      {
-        id: "meeting-directory-call-text",
-        label: "Directory: add call/text actions directly from directory and link to contact details",
-        note: "Shipped — Call/text on contacts table + detail sidebar; row opens contact; org contacts too.",
-      },
-    ],
+    id: "meeting-6-8",
+    tabLabel: `${MEETING_6_8_DATE_LABEL} meeting`,
+    dateLabel: MEETING_6_8_DATE_LABEL,
+    summary:
+      "Move detail finalize, schedule UI, qualified leads, dispatch, claims, reporting, job actuals & Jobs sidebar, follow-ups & multi-location.",
+    groups: MEETING_6_8_GROUPS,
+    defaultDoneIds: MEETING_6_8_DEFAULT_DONE_IDS,
   },
   {
-    id: "meeting-operations",
-    title: "Operations & dispatch",
-    items: [
-      {
-        id: "meeting-abnormal-operations",
-        label:
-          "Operations: support abnormal operations like hotel jobs, purchase needs, extras, special logistics",
-      },
-      {
-        id: "meeting-dispatch-crew-truck-changes",
-        label: "Dispatch: operations can change crew sizes and trucks",
-        note: "Shipped — per-job crew/truck steppers on dispatch cards and sidebar; overrides persist for the day.",
-      },
-      {
-        id: "meeting-dispatch-change-cost-tracking",
-        label: "Reporting: track when crew/truck changes save or cost money",
-        note: "Shipped — Operations → Dispatch changes report with AI baseline vs override and $ impact.",
-      },
-      {
-        id: "meeting-extras-third-party",
-        label: "Extras: third-party services such as Shamrock",
-      },
-    ],
+    id: "meeting-6-4",
+    tabLabel: `${MEETING_6_4_DATE_LABEL} meeting`,
+    dateLabel: MEETING_6_4_DATE_LABEL,
+    summary: "Calendar, crew app media, dispatch slots, flat-rate pricing, integrations V2.",
+    groups: MEETING_6_4_GROUPS,
+    defaultDoneIds: MEETING_6_4_DEFAULT_DONE_IDS,
   },
   {
-    id: "meeting-crew",
-    title: "Crew",
-    items: [
-      { id: "meeting-crew-skipper-ratings", label: "Crew: skipper ratings" },
-      { id: "meeting-crew-performance", label: "Crew: performance tracking" },
-      { id: "meeting-crew-claims", label: "Crew: claims tracking" },
-      { id: "meeting-crew-tardies", label: "Crew: tardies" },
-      { id: "meeting-crew-driving-issues", label: "Crew: driving issues" },
-      { id: "meeting-crew-on-job-issues", label: "Crew: on-the-job issues" },
-      { id: "meeting-crew-reporting-v1", label: "Crew reporting for V1" },
-      {
-        id: "meeting-skipper-callback-issue",
-        label:
-          "Skipper Issues: add Callback issue type for avoidable service problems that are not claims",
-      },
-      {
-        id: "meeting-crew-materials-labor",
-        label: "Crew tracking: materials used and labor hours",
-      },
-      { id: "meeting-crew-app-improvements", label: "Crew App improvements" },
-    ],
-  },
-  {
-    id: "meeting-trucks",
-    title: "Trucks & fleet",
-    items: [
-      {
-        id: "meeting-truck-types",
-        label: "Trucks: support 6-person cab, 3-person cab, F-150, 2-person, packing van/Sprinter, etc.",
-      },
-      {
-        id: "meeting-truck-temporary",
-        label: "Trucks: allow temporary truck such as U-Haul",
-        note: "Shipped — Fleet → Rentals tab; calendar capacity and dispatch include rentals by date.",
-      },
-      {
-        id: "meeting-samsara-research",
-        label: "Research Samsara API for LYTX replacement/new system",
-      },
-    ],
-  },
-  {
-    id: "meeting-reports",
-    title: "Reports",
-    items: [
-      {
-        id: "meeting-report-speed-to-lead",
-        label: "Reports: Speed to Lead, AI vs person",
-        note: "Shipped — Reports → Sales → Speed to lead.",
-      },
-      {
-        id: "meeting-report-sales-revenue",
-        label: "Reports: Sales revenue booked overall and per salesperson",
-        note: "Shipped — Reports → Sales → Revenue booked.",
-      },
-      {
-        id: "meeting-report-commission",
-        label: "Reports: salesperson commission tracking",
-        note: "Shipped — Reports → Sales → Commission.",
-      },
-      {
-        id: "meeting-report-labor-hours",
-        label: "Reports: movers labor hours per job",
-        note: "Shipped — Reports → Operations → Labor hours.",
-      },
-      {
-        id: "meeting-report-budget-actuals",
-        label:
-          "Reports: budget vs actuals for miles, labor, materials, flat rate, estimated margin, actual margin",
-        note: "Shipped — Reports → Operations → Budget vs actuals.",
-      },
-      {
-        id: "meeting-report-ai-quotes",
-        label: "Reports: AI quote accuracy and variance vs booked",
-        note: "Shipped — Reports → AI quotes tab.",
-      },
-    ],
-  },
-  {
-    id: "meeting-quotes",
-    title: "Quotes & change orders",
-    items: [
-      {
-        id: "meeting-ai-charge-order",
-        label: "AI quote system: add Charge Order workflow",
-        note: "Shipped — Move detail → Quote & contract → Change orders → Charge order (AI).",
-      },
-      {
-        id: "meeting-small-co-minor",
-        label: "Small Change Orders: minor quote changes without full requote",
-        note: "Shipped — Change orders → Small change order workflow.",
-      },
-      {
-        id: "meeting-small-co-inventory",
-        label:
-          "Small Change Orders: handle small inventory/labor changes with no new truck/day",
-        note: "Shipped — Change orders → Small CO inventory/labor (same trucks & days).",
-      },
-      {
-        id: "meeting-full-requote",
-        label:
-          "Full Requote Workflow: regenerate quote entirely for packing, storage, large additions, or major scope changes",
-        note: "Shipped — Change orders → Full requote workflow.",
-      },
-      {
-        id: "meeting-crew-app-change-order",
-        label: "Crew App: allow minor requote/change order from the field",
-      },
-    ],
-  },
-  {
-    id: "meeting-platform",
-    title: "Platform, payroll & tech stack",
-    items: [
-      {
-        id: "meeting-payroll-time-tracking",
-        label: "Add Payroll and Time Tracking planning items",
-      },
-      {
-        id: "meeting-github-org",
-        label: "Create GitHub repo/organization structure",
-        note: "Shipped — github.com/OnTheOutskirt/MoveHQ (5/28).",
-      },
-      {
-        id: "meeting-liveswitch-v1-stack",
-        label: "Add LiveSwitch to V1 tech stack planning + integration scope",
-        note: "Added to V1 tech stack on Overall Plan.",
-      },
-      {
-        id: "meeting-rippling-v2-stack",
-        label: "Add Rippling to V2 tech stack planning",
-        note: "Added to V2 tech stack on Overall Plan.",
-      },
-      {
-        id: "meeting-google-maps-v1-stack",
-        label: "Add Google Maps Platform to V1 tech stack (Maps, Directions, Geocoding, Places)",
-        note: "Added to V1 tech stack; route embeds already use Maps in the app.",
-      },
-    ],
+    id: "meeting-5-28",
+    tabLabel: `${MEETING_5_28_DATE_LABEL} meeting`,
+    dateLabel: MEETING_5_28_DATE_LABEL,
+    summary: "Pipeline, dispatch overrides, reports, change orders, tech stack.",
+    groups: MEETING_5_28_GROUPS,
+    defaultDoneIds: MEETING_5_28_DEFAULT_DONE_IDS,
   },
 ];
 
+/** @deprecated Use MEETING_NOTE_SESSIONS — kept for imports that expect a single date. */
+export const MEETING_NOTES_DATE_LABEL = MEETING_6_8_DATE_LABEL;
+
+export const PLANNING_TODO_TAB_LABEL = "Todo";
+
+/** @deprecated Use PLANNING_TODO_TAB_LABEL */
+export const MEETING_NOTES_TAB_LABEL = PLANNING_TODO_TAB_LABEL;
+
+/** @deprecated Use MEETING_NOTE_SESSIONS[2].groups */
+export const MEETING_NOTES_GROUPS = MEETING_5_28_GROUPS;
+
 export function allMeetingNotesItemIds(): string[] {
-  return MEETING_NOTES_GROUPS.flatMap((g) => g.items.map((i) => i.id));
+  return MEETING_NOTE_SESSIONS.flatMap((session) =>
+    session.groups.flatMap((g) => g.items.map((i) => i.id)),
+  );
+}
+
+export const DEFAULT_MEETING_SESSION_ID = MEETING_NOTE_SESSIONS[0]!.id;
+
+export function getMeetingSession(sessionId: string): MeetingNotesSession | undefined {
+  return MEETING_NOTE_SESSIONS.find((s) => s.id === sessionId);
+}
+
+export function isMeetingSessionId(id: string): boolean {
+  return MEETING_NOTE_SESSIONS.some((s) => s.id === id);
+}
+
+export function meetingNotesItemIdsForSession(sessionId: string): string[] {
+  const session = getMeetingSession(sessionId);
+  if (!session) return [];
+  return session.groups.flatMap((g) => g.items.map((i) => i.id));
+}
+
+export function meetingSessionProgressPct(
+  sessionId: string,
+  progress: Record<string, boolean>,
+): number {
+  const ids = meetingNotesItemIdsForSession(sessionId);
+  const total = ids.length;
+  if (!total) return 0;
+  const done = ids.filter((id) => progress[id]).length;
+  return Math.round((done / total) * 100);
 }
 
 /** Meeting-note items treated as done until the user explicitly unchecks them. */
 export const MEETING_NOTES_DEFAULT_DONE_IDS = [
-  "meeting-zillow-origin-link",
-  "meeting-liveswitch-v1-stack",
-  "meeting-rippling-v2-stack",
-  "meeting-google-maps-v1-stack",
-  "meeting-github-org",
-  "meeting-web-vs-office-source",
-  "meeting-website-booked-review",
-  "meeting-qualified-vs-unqualified",
-  "meeting-unqualified-reasons",
-  "meeting-wardrobes-appliances-extras",
-  "meeting-directory-call-text",
-  "meeting-dispatch-crew-truck-changes",
-  "meeting-dispatch-change-cost-tracking",
-  "meeting-report-speed-to-lead",
-  "meeting-report-sales-revenue",
-  "meeting-report-commission",
-  "meeting-report-labor-hours",
-  "meeting-report-budget-actuals",
-  "meeting-report-ai-quotes",
-  "meeting-ai-charge-order",
-  "meeting-small-co-minor",
-  "meeting-small-co-inventory",
-  "meeting-full-requote",
+  ...UI_TODO_DEFAULT_DONE_IDS,
+  ...MEETING_5_28_DEFAULT_DONE_IDS,
+  ...MEETING_6_4_DEFAULT_DONE_IDS,
+  ...MEETING_6_8_DEFAULT_DONE_IDS,
 ] as const;

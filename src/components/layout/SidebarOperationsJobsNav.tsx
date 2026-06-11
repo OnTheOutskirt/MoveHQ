@@ -31,6 +31,7 @@ export function SidebarOperationsJobsNav({ item }: SidebarOperationsJobsNavProps
     <li>
       <Link
         href={item.href}
+        prefetch={false}
         className={cn(
           "flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors",
           linkActive

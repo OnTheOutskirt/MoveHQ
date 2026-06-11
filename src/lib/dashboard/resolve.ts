@@ -8,7 +8,7 @@ import type { DashboardView } from "./types";
 export function dashboardViewForPermission(level: PermissionLevel): DashboardView {
   switch (level) {
     case "admin":
-      return "ceo";
+      return "executive";
     case "manager":
       return "manager";
     case "sales":

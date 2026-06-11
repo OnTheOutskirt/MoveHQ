@@ -1,22 +1,33 @@
-export const CREW_ISSUE_TYPES = [
-  "tardy",
-  "driving",
-  "on_job",
-  "claim",
-  "callback",
+import type { DriverViolationId } from "./driver-violations";
+import type { SkipperViolationId } from "./skipper-violations";
+
+/** Top-level classification: mistake, failure, or violation. */
+export const CREW_ISSUE_KINDS = ["mistake", "failure", "violation"] as const;
+
+export type CrewIssueKind = (typeof CREW_ISSUE_KINDS)[number];
+
+/** What the issue was about — shown as "Subject" in the UI. */
+export const CREW_ISSUE_SUBJECTS = [
+  "uniforms",
+  "attendance",
+  "seat_belt",
+  "policy",
+  "customer_complaint",
+  "work_rule",
 ] as const;
 
-export type CrewIssueType = (typeof CREW_ISSUE_TYPES)[number];
+export type CrewIssueSubject = (typeof CREW_ISSUE_SUBJECTS)[number];
 
 export type CrewIssueStatus = "open" | "under_review" | "resolved";
 
 export type CrewIssue = {
   id: string;
   crewId: string;
-  type: CrewIssueType;
+  kind: CrewIssueKind;
+  subject: CrewIssueSubject;
   date: string;
-  title: string;
-  description?: string;
+  description: string;
+  messageSent: boolean;
   jobRef?: string;
   moveId?: string;
   status: CrewIssueStatus;
@@ -32,18 +43,44 @@ export type SkipperRating = {
   date: string;
   jobRef?: string;
   moveId?: string;
-  /** 1–5 overall */
+  /** 0–10 overall — computed from violations when logged */
   rating: number;
+  /** Checklist items marked on this job review */
+  violations: SkipperViolationId[];
+  /** Detail when "Callback" is checked */
+  callbackNote?: string;
+  /** Detail when "Other" is checked */
+  otherNote?: string;
+  notes?: string;
+  ratedBy?: string;
+  createdAt: string;
+  /** Linked field capture from crew / ops app */
+  fieldMediaId?: string;
+  photoDataUrl?: string;
+  /** @deprecated Legacy sub-scores — kept for older saved records */
   communication?: number;
   leadership?: number;
   care?: number;
   efficiency?: number;
+};
+
+export type DriverReview = {
+  id: string;
+  driverId: string;
+  date: string;
+  jobRef?: string;
+  moveId?: string;
+  /** 0–10 overall — computed from violations when logged */
+  rating: number;
+  violations: DriverViolationId[];
+  otherNote?: string;
   notes?: string;
-  ratedBy?: string;
+  reviewedBy?: string;
   createdAt: string;
 };
 
 export type CrewRecordsStore = {
   issues: CrewIssue[];
   skipperRatings: SkipperRating[];
+  driverReviews: DriverReview[];
 };

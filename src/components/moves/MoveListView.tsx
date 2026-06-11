@@ -1,5 +1,7 @@
 "use client";
 
+import { LocationBadge } from "@/components/workspace/LocationBadge";
+import { useWorkspace } from "@/components/providers/WorkspaceProvider";
 import { QuadrantBadge } from "@/components/moves/shared/QuadrantBadge";
 import { getNextOpenFollowUp } from "@/lib/moves/move-follow-ups";
 import { DataTable, type Column, type SortDirection } from "@/components/ui/DataTable";
@@ -32,6 +34,7 @@ type MoveListViewProps = {
 
 type SortKey =
   | "customer"
+  | "location"
   | "quadrant"
   | "pipeline"
   | "route"
@@ -50,6 +53,9 @@ function compareMoves(a: MoveRecord, b: MoveRecord, key: SortKey, direction: Sor
       cmp =
         a.customerName.localeCompare(b.customerName, undefined, { sensitivity: "base" }) ||
         a.reference.localeCompare(b.reference, undefined, { sensitivity: "base" });
+      break;
+    case "location":
+      cmp = a.locationId.localeCompare(b.locationId);
       break;
     case "quadrant":
       cmp =
@@ -89,6 +95,7 @@ function compareMoves(a: MoveRecord, b: MoveRecord, key: SortKey, direction: Sor
 function isSortKey(key: string): key is SortKey {
   return (
     key === "customer" ||
+    key === "location" ||
     key === "quadrant" ||
     key === "pipeline" ||
     key === "route" ||
@@ -101,6 +108,7 @@ function isSortKey(key: string): key is SortKey {
 
 export function MoveListView({ moves }: MoveListViewProps) {
   const router = useRouter();
+  const { hasMultipleLocations } = useWorkspace();
   const [sort, setSort] = useState<SortState | null>(null);
 
   const handleSortColumn = useCallback((key: string) => {
@@ -118,8 +126,8 @@ export function MoveListView({ moves }: MoveListViewProps) {
     return copy.sort((a, b) => compareMoves(a, b, sort.key, sort.direction));
   }, [moves, sort]);
 
-  const columns = useMemo<Column<MoveRecord>[]>(
-    () => [
+  const columns = useMemo<Column<MoveRecord>[]>(() => {
+    const cols: Column<MoveRecord>[] = [
       {
         key: "customer",
         header: "Customer",
@@ -131,6 +139,16 @@ export function MoveListView({ moves }: MoveListViewProps) {
           </div>
         ),
       },
+    ];
+    if (hasMultipleLocations) {
+      cols.push({
+        key: "location",
+        header: "Location",
+        sortable: true,
+        cell: (move) => <LocationBadge locationId={move.locationId} />,
+      });
+    }
+    cols.push(
       {
         key: "tier",
         header: "Q",
@@ -206,9 +224,9 @@ export function MoveListView({ moves }: MoveListViewProps) {
           </div>
         ),
       },
-    ],
-    [],
-  );
+    );
+    return cols;
+  }, [hasMultipleLocations]);
 
   return (
     <DataTable

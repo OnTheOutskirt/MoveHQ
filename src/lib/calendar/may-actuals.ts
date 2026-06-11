@@ -109,7 +109,7 @@ const MAY_DAY_SPECS: Record<number, MayDaySpec> = {
     holds: [
       {
         id: "hold-may-27-1",
-        customerName: "Walsh office",
+        customerName: "Walsh office move",
         movers: 2,
         trucks: 1,
         moveId: "mv-quote-sent",
@@ -118,7 +118,7 @@ const MAY_DAY_SPECS: Record<number, MayDaySpec> = {
     waitlist: [
       {
         id: "wl-may-27-1",
-        customerName: "Peterson estate",
+        customerName: "Peterson estate move",
         movers: 3,
         trucks: 1,
         moveId: "mv-waiting-walkthrough",

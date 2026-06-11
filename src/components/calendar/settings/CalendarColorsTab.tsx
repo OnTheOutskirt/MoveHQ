@@ -91,7 +91,7 @@ function previewForKey(
 }
 
 export function CalendarColorsTab() {
-  const { colorPalette, updatePaletteColor, resetColors } = useCalendarSettings();
+  const { settingsColorPalette, updatePaletteColor, resetColors } = useCalendarSettings();
   const defaults = defaultCalendarPalette();
 
   return (
@@ -106,9 +106,9 @@ export function CalendarColorsTab() {
             <PaletteColorField
               label={field.label}
               hint={field.hint}
-              value={colorPalette[field.key]}
+              value={settingsColorPalette[field.key]}
               defaultValue={defaults[field.key]}
-              preview={previewForKey(colorPalette, field.key)}
+              preview={previewForKey(settingsColorPalette, field.key)}
               onChange={(v) => updatePaletteColor(field.key, v)}
             />
           </div>

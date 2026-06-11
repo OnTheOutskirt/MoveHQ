@@ -1,4 +1,10 @@
-import { InboxWorkspace } from "@/components/inbox/InboxWorkspace";
+import { lazyNamedWorkspace } from "@/lib/navigation/lazy-route";
+
+const InboxWorkspace = lazyNamedWorkspace(
+  () => import("@/components/inbox/InboxWorkspace"),
+  (module) => module.InboxWorkspace,
+  "Loading inbox…",
+);
 
 export default function InboxPage() {
   return (

@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { DetailSidebar } from "@/components/ui/DetailSidebar";
 import { formatClaimMoney } from "@/lib/operations/claims";
+import { MediaList } from "@/components/crew-app/CrewFieldCapturePanel";
 import {
   buildDocumentPreview,
   formatSignedAt,
@@ -202,11 +203,25 @@ function PacketOverview({
         </ul>
       </section>
 
-      <section className="flex items-center gap-4 text-sm text-slate-600">
-        <span className="inline-flex items-center gap-1.5">
-          <Camera className="h-4 w-4 text-slate-400" />
-          {packet.photoCount} photos on file
-        </span>
+      <section>
+        <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <Camera className="h-3.5 w-3.5" />
+          Field photos ({packet.photoCount})
+        </h3>
+        {packet.fieldMedia && packet.fieldMedia.length > 0 ? (
+          <MediaList media={packet.fieldMedia} className="mt-2" />
+        ) : (
+          <p className="mt-2 text-sm text-slate-600">
+            {packet.photoCount} photos on file from the crew app.
+          </p>
+        )}
+        {packet.takeHomeSignOff ? (
+          <p className="mt-2 rounded-lg border border-violet-100 bg-violet-50/80 px-2 py-1.5 text-xs text-violet-900">
+            <span className="font-semibold">Take-home sign-off:</span>{" "}
+            {packet.takeHomeSignOff.description} — signed by{" "}
+            {packet.takeHomeSignOff.customerName}
+          </p>
+        ) : null}
       </section>
 
       {packet.crewNotes ? (

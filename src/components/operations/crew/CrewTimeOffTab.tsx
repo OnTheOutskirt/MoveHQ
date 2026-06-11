@@ -1,46 +1,51 @@
 "use client";
 
 import { useFleet } from "@/components/providers/FleetProvider";
+import { TabBar } from "@/components/shared/TabBar";
 import { Button } from "@/components/ui/Button";
 import { DataTable, type Column } from "@/components/ui/DataTable";
 import { DetailSidebar } from "@/components/ui/DetailSidebar";
+import { usePersistedState } from "@/lib/hooks/use-persisted-state";
 import {
   evaluateTimeOffImpact,
   MIN_MOVERS_FOR_APPROVAL,
   type TimeOffRequest,
 } from "@/lib/operations/fleet";
+import { useBusinessCalendar } from "@/lib/settings/use-business-calendar";
+import { isCompanyOpenDayKey } from "@/lib/settings/business-calendar";
 import { useTerminology } from "@/lib/terminology/use-terminology";
 import { cn } from "@/lib/utils";
 import { AlertTriangle, CheckCircle2, Plus, XCircle } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type PanelMode = { type: "closed" } | { type: "review"; id: string } | { type: "add" };
 
-const STATUS_STYLES: Record<TimeOffRequest["status"], string> = {
-  pending: "bg-amber-100 text-amber-900",
-  approved: "bg-emerald-100 text-emerald-900",
-  denied: "bg-slate-200 text-slate-700",
-};
+type TimeOffStatusTab = TimeOffRequest["status"];
 
-const STATUS_LABELS: Record<TimeOffRequest["status"], string> = {
-  pending: "Pending",
-  approved: "Approved",
-  denied: "Declined",
-};
-
-const STATUS_GROUPS: {
-  id: TimeOffRequest["status"];
-  title: string;
-  empty: string;
-}[] = [
-  { id: "pending", title: "Pending requests", empty: "No pending requests." },
-  { id: "approved", title: "Approved requests", empty: "No approved requests." },
-  { id: "denied", title: "Declined requests", empty: "No declined requests." },
+const STATUS_TABS: { id: TimeOffStatusTab; label: string }[] = [
+  { id: "pending", label: "Pending" },
+  { id: "approved", label: "Approved" },
+  { id: "denied", label: "Declined" },
 ];
+
+const EMPTY_MESSAGES: Record<TimeOffStatusTab, string> = {
+  pending: "No pending requests.",
+  approved: "No approved requests.",
+  denied: "No declined requests.",
+};
 
 export function CrewTimeOffTab() {
   const { crew, timeOffRequests, schedules, addTimeOffRequest, updateTimeOffRequest } = useFleet();
+  const [storedTab, setStoredTab] = usePersistedState<TimeOffStatusTab>(
+    "jm-tab-/operations/crew/time-off",
+    "pending",
+  );
+  const [statusTab, setStatusTab] = useState<TimeOffStatusTab>(storedTab);
   const [panel, setPanel] = useState<PanelMode>({ type: "closed" });
+
+  useEffect(() => {
+    setStatusTab(storedTab);
+  }, [storedTab]);
 
   const selected =
     panel.type === "review" ? timeOffRequests.find((r) => r.id === panel.id) : undefined;
@@ -53,6 +58,17 @@ export function CrewTimeOffTab() {
       denied: sorted.filter((r) => r.status === "denied"),
     };
   }, [timeOffRequests]);
+
+  const tabsWithCounts = useMemo(
+    () =>
+      STATUS_TABS.map((tab) => ({
+        ...tab,
+        label: `${tab.label} (${groupedRequests[tab.id].length})`,
+      })),
+    [groupedRequests],
+  );
+
+  const filteredRows = groupedRequests[statusTab];
 
   const columns = useMemo<Column<TimeOffRequest>[]>(
     () => [
@@ -85,23 +101,14 @@ export function CrewTimeOffTab() {
           </span>
         ),
       },
-      {
-        key: "status",
-        header: "Status",
-        cell: (row) => (
-          <span
-            className={cn(
-              "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase",
-              STATUS_STYLES[row.status],
-            )}
-          >
-            {STATUS_LABELS[row.status]}
-          </span>
-        ),
-      },
     ],
     [crew],
   );
+
+  function changeStatusTab(next: TimeOffStatusTab) {
+    setStatusTab(next);
+    setStoredTab(next);
+  }
 
   return (
     <>
@@ -116,29 +123,16 @@ export function CrewTimeOffTab() {
         </Button>
       </div>
 
-      <div className="space-y-6">
-        {STATUS_GROUPS.map((group) => {
-          const rows = groupedRequests[group.id];
-          return (
-            <section key={group.id} className="space-y-2">
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm font-semibold text-slate-900">{group.title}</h3>
-                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium tabular-nums text-slate-600">
-                  {rows.length}
-                </span>
-              </div>
-              <div className="rounded-xl border border-slate-200 bg-white">
-                <DataTable
-                  columns={columns}
-                  data={rows}
-                  getRowKey={(r) => r.id}
-                  onRowClick={(r) => setPanel({ type: "review", id: r.id })}
-                  emptyMessage={group.empty}
-                />
-              </div>
-            </section>
-          );
-        })}
+      <TabBar tabs={tabsWithCounts} activeTab={statusTab} onChange={changeStatusTab} />
+
+      <div className="rounded-xl border border-slate-200 bg-white">
+        <DataTable
+          columns={columns}
+          data={filteredRows}
+          getRowKey={(r) => r.id}
+          onRowClick={(r) => setPanel({ type: "review", id: r.id })}
+          emptyMessage={EMPTY_MESSAGES[statusTab]}
+        />
       </div>
 
       <DetailSidebar
@@ -163,26 +157,15 @@ export function CrewTimeOffTab() {
             }}
           />
         ) : selected ? (
-          <ReviewTimeOffPanel
+          <EditTimeOffPanel
             request={selected}
             crewName={crew.find((c) => c.id === selected.crewId)?.name ?? "—"}
             crew={crew}
             schedules={schedules}
             timeOffRequests={timeOffRequests}
             onClose={() => setPanel({ type: "closed" })}
-            onApprove={() => {
-              updateTimeOffRequest(selected.id, {
-                status: "approved",
-                reviewedAt: new Date().toISOString(),
-              });
-              setPanel({ type: "closed" });
-            }}
-            onDeny={(note) => {
-              updateTimeOffRequest(selected.id, {
-                status: "denied",
-                reviewedAt: new Date().toISOString(),
-                reviewNote: note,
-              });
+            onSave={(patch) => {
+              updateTimeOffRequest(selected.id, patch);
               setPanel({ type: "closed" });
             }}
           />
@@ -192,15 +175,14 @@ export function CrewTimeOffTab() {
   );
 }
 
-function ReviewTimeOffPanel({
+function EditTimeOffPanel({
   request,
   crewName,
   crew,
   schedules,
   timeOffRequests,
   onClose,
-  onApprove,
-  onDeny,
+  onSave,
 }: {
   request: TimeOffRequest;
   crewName: string;
@@ -208,38 +190,135 @@ function ReviewTimeOffPanel({
   schedules: ReturnType<typeof useFleet>["schedules"];
   timeOffRequests: TimeOffRequest[];
   onClose: () => void;
-  onApprove: () => void;
-  onDeny: (note: string) => void;
+  onSave: (patch: Partial<TimeOffRequest>) => void;
 }) {
   const { plural } = useTerminology();
-  const impact =
-    request.status === "pending"
-      ? evaluateTimeOffImpact(request, crew, schedules, timeOffRequests)
-      : null;
+  const { openDays } = useBusinessCalendar();
+  const [startDate, setStartDate] = useState(request.startDate);
+  const [endDate, setEndDate] = useState(request.endDate);
+  const [reason, setReason] = useState(request.reason);
+  const [status, setStatus] = useState(request.status);
+  const [reviewNote, setReviewNote] = useState(request.reviewNote ?? "");
+
+  const draft = useMemo(
+    () => ({
+      id: request.id,
+      crewId: request.crewId,
+      startDate,
+      endDate: endDate || startDate,
+    }),
+    [request.id, request.crewId, startDate, endDate],
+  );
+
+  const impact = useMemo(() => {
+    if (status !== "pending" && status !== "approved") return null;
+    if (!startDate) return null;
+    return evaluateTimeOffImpact(draft, crew, schedules, timeOffRequests, openDays);
+  }, [status, draft, crew, schedules, timeOffRequests, startDate, openDays]);
+
+  const approvalBlocked = status === "approved" && impact ? !impact.canApproveAll : false;
+
+  function buildPatch(nextStatus: TimeOffRequest["status"]): Partial<TimeOffRequest> {
+    return {
+      startDate,
+      endDate: endDate || startDate,
+      reason: reason.trim() || request.reason,
+      status: nextStatus,
+      reviewNote:
+        nextStatus === "denied"
+          ? reviewNote.trim() || "Declined by operations"
+          : reviewNote.trim() || undefined,
+      reviewedAt: nextStatus === "pending" ? undefined : new Date().toISOString(),
+    };
+  }
+
+  function save(nextStatus: TimeOffRequest["status"] = status) {
+    if (!startDate) return;
+    if (nextStatus === "approved") {
+      const check = evaluateTimeOffImpact(
+        { ...draft, startDate, endDate: endDate || startDate },
+        crew,
+        schedules,
+        timeOffRequests,
+        openDays,
+      );
+      if (!check.canApproveAll) return;
+    }
+    onSave(buildPatch(nextStatus));
+  }
 
   return (
     <div className="space-y-4">
-      <dl className="grid grid-cols-2 gap-3 text-sm">
+      <div className="rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2 text-sm">
+        <p className="text-[10px] font-semibold uppercase text-slate-500">Crew member</p>
+        <p className="font-medium text-slate-900">{crewName}</p>
+        <p className="mt-1 text-xs text-slate-500 capitalize">
+          {request.source === "crew_app" ? "Submitted from crew app" : "Entered manually"}
+          {request.reviewedAt
+            ? ` · Last reviewed ${new Date(request.reviewedAt).toLocaleDateString()}`
+            : ""}
+        </p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
         <div>
-          <dt className="text-[10px] font-semibold uppercase text-slate-500">Crew</dt>
-          <dd className="font-medium text-slate-900">{crewName}</dd>
+          <label className="block text-xs font-semibold uppercase text-slate-500">Start</label>
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+            required
+          />
         </div>
         <div>
-          <dt className="text-[10px] font-semibold uppercase text-slate-500">Status</dt>
-          <dd className="capitalize">{STATUS_LABELS[request.status]}</dd>
+          <label className="block text-xs font-semibold uppercase text-slate-500">End</label>
+          <input
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+          />
         </div>
-        <div className="col-span-2">
-          <dt className="text-[10px] font-semibold uppercase text-slate-500">Dates</dt>
-          <dd>
-            {request.startDate}
-            {request.endDate !== request.startDate ? ` → ${request.endDate}` : ""}
-          </dd>
+      </div>
+
+      <div>
+        <label className="block text-xs font-semibold uppercase text-slate-500">Reason</label>
+        <textarea
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          rows={2}
+          className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+        />
+      </div>
+
+      <div>
+        <label className="block text-xs font-semibold uppercase text-slate-500">Status</label>
+        <select
+          value={status}
+          onChange={(e) => setStatus(e.target.value as TimeOffRequest["status"])}
+          className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+        >
+          <option value="pending">Pending</option>
+          <option value="approved">Approved</option>
+          <option value="denied">Declined</option>
+        </select>
+      </div>
+
+      {status === "denied" ? (
+        <div>
+          <label className="block text-xs font-semibold uppercase text-slate-500">
+            Decline note
+          </label>
+          <textarea
+            value={reviewNote}
+            onChange={(e) => setReviewNote(e.target.value)}
+            rows={2}
+            placeholder="Optional note to crew…"
+            className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+          />
         </div>
-        <div className="col-span-2">
-          <dt className="text-[10px] font-semibold uppercase text-slate-500">Reason</dt>
-          <dd>{request.reason}</dd>
-        </div>
-      </dl>
+      ) : null}
 
       {impact ? (
         <div
@@ -283,32 +362,29 @@ function ReviewTimeOffPanel({
         </div>
       ) : null}
 
-      {request.status === "pending" ? (
-        <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            onClick={onApprove}
-            disabled={impact ? !impact.canApproveAll : false}
-          >
-            Approve
-          </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => onDeny("Denied by operations")}
-          >
-            <XCircle className="h-4 w-4" />
-            Deny
-          </Button>
-          <Button type="button" variant="secondary" onClick={onClose}>
-            Close
-          </Button>
-        </div>
-      ) : (
-        <Button type="button" variant="secondary" onClick={onClose}>
-          Close
+      <div className="flex flex-wrap gap-2">
+        <Button type="button" onClick={() => save()} disabled={approvalBlocked || !startDate}>
+          Save changes
         </Button>
-      )}
+        {request.status === "pending" ? (
+          <>
+            <Button
+              type="button"
+              onClick={() => save("approved")}
+              disabled={impact ? !impact.canApproveAll : false}
+            >
+              Approve
+            </Button>
+            <Button type="button" variant="secondary" onClick={() => save("denied")}>
+              <XCircle className="h-4 w-4" />
+              Deny
+            </Button>
+          </>
+        ) : null}
+        <Button type="button" variant="secondary" onClick={onClose}>
+          Cancel
+        </Button>
+      </div>
     </div>
   );
 }

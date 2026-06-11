@@ -1,10 +1,28 @@
-export function formatMoveDate(iso: string): string {
-  const d = new Date(iso + "T12:00:00");
-  return d.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+const MONTH_SHORT = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+] as const;
+
+/** Format a `YYYY-MM-DD` date key — deterministic for SSR and hydration. */
+export function formatMoveDate(dateKey: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(dateKey);
+  if (!match) return dateKey;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const label = MONTH_SHORT[month - 1];
+  if (!label) return dateKey;
+  return `${label} ${day}, ${year}`;
 }
 
 export function formatQuote(amount: number | null, type: "hourly" | "flat" | null): string {

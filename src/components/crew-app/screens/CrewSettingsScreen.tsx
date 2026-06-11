@@ -1,46 +1,21 @@
 "use client";
 
 import { useCrewApp } from "@/components/crew-app/CrewAppProvider";
-import { CrewRoleSwitcher } from "@/components/crew-app/CrewRoleSwitcher";
-import { DEMO_CREW_MEMBERS } from "@/lib/crew-app/session";
+import { useTerminology } from "@/lib/terminology/use-terminology";
 import { Smartphone } from "lucide-react";
 
 export function CrewSettingsScreen() {
-  const { session, setSession } = useCrewApp();
+  const { session } = useCrewApp();
+  const { label: roleLabel } = useTerminology();
 
   return (
     <div className="space-y-5">
       <section className="rounded-xl border border-slate-200 bg-white p-4">
-        <h2 className="text-sm font-semibold text-slate-900">Demo profile</h2>
-        <p className="mt-1 text-xs text-slate-500">
-          Foundation build — pick a crew member and role to preview different job layouts.
+        <h2 className="text-sm font-semibold text-slate-900">Signed in</h2>
+        <p className="mt-2 text-sm text-slate-800">{session.name}</p>
+        <p className="text-xs text-slate-500">
+          {session.appRoles.map((r) => roleLabel(r)).join(" · ")}
         </p>
-
-        <label className="mt-4 block">
-          <span className="text-xs font-medium text-slate-600">Signed in as</span>
-          <select
-            value={session.crewId}
-            onChange={(e) => {
-              const member = DEMO_CREW_MEMBERS.find((m) => m.id === e.target.value);
-              if (member) {
-                setSession({
-                  crewId: member.id,
-                  name: member.name,
-                  primaryRole: member.primaryRole,
-                });
-              }
-            }}
-            className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-          >
-            {DEMO_CREW_MEMBERS.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <CrewRoleSwitcher className="mt-4" />
       </section>
 
       <section className="rounded-xl border border-slate-200 bg-white p-4">
@@ -55,7 +30,7 @@ export function CrewSettingsScreen() {
       </section>
 
       <p className="text-center text-[10px] text-slate-400">
-        Crew app v0.1 · mock schedule & local demo session
+        Crew app v0.2 · mock schedule from dispatch
       </p>
     </div>
   );

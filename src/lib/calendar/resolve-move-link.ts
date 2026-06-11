@@ -12,6 +12,7 @@ function normalize(label: string): string {
 
 /** Calendar mock labels → move ids (demo data). */
 const LABEL_ALIASES: Record<string, string> = {
+  "customer name move": "mv-booked",
   "walsh office": "mv-quote-sent",
   "walsh office relocation": "mv-quote-sent",
   "chen family": "mv-booked",

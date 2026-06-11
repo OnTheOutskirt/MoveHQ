@@ -44,10 +44,16 @@ export function MoveJobDayCard({ move, day, index }: MoveJobDayCardProps) {
                 <Calendar className="h-3 w-3" />
                 {formatJobDayDate(day.date)}
               </span>
+              {day.departureWindow ? (
+                <span className="inline-flex items-center gap-1 text-slate-500">
+                  <Clock className="h-3 w-3" />
+                  Crew {day.departureWindow}
+                </span>
+              ) : null}
               {day.arrivalWindow ? (
                 <span className="inline-flex items-center gap-1">
                   <Clock className="h-3 w-3" />
-                  {day.arrivalWindow}
+                  Arrive {day.arrivalWindow}
                 </span>
               ) : null}
               {day.durationLabel ? <span>{day.durationLabel}</span> : null}

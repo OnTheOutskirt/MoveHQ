@@ -8,12 +8,13 @@ import {
   slotElapsed,
 } from "@/lib/crew-app/job-field-storage";
 import { cn } from "@/lib/utils";
-import { Coffee, Car, Clock, Plus, Timer } from "lucide-react";
+import { Coffee, Car, Clock, Plus, Timer, Warehouse } from "lucide-react";
 import { useEffect, useState } from "react";
 
 const CATEGORY_ICONS: Record<TimeCategory, typeof Clock> = {
   move: Clock,
   drive: Car,
+  depot: Warehouse,
   extra: Plus,
   break: Coffee,
 };

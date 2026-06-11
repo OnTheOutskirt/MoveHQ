@@ -1,6 +1,11 @@
 import { buildDayPipeline } from "./day-jobs-mock";
 import { resolveMoveIdForCalendarLabel } from "./resolve-move-link";
-import { daysFromToday, isSunday, toDateKey } from "./date-utils";
+import { daysFromToday, toDateKey } from "./date-utils";
+import {
+  DEFAULT_COMPANY_OPEN_DAYS,
+  isCompanyOpenDay,
+} from "@/lib/settings/business-calendar";
+import type { WeekdayId } from "@/lib/operations/fleet-types";
 import { applyMayActuals } from "./may-actuals";
 import { applyClosedDays } from "./settings/apply-closed";
 import type { ClosedDayEntry } from "./settings/types";
@@ -18,13 +23,13 @@ const MOVER_CAPACITY = 18;
 const TRUCK_CAPACITY = 7;
 
 const WAITLIST_CUSTOMERS = [
-  "Anderson — Lakewood",
-  "Chen family",
-  "Peterson estate",
-  "Rivera condo",
-  "Walsh office",
-  "Nguyen townhouse",
-  "Foster duplex",
+  "Anderson — Lakewood move",
+  "Chen family move",
+  "Peterson estate move",
+  "Rivera condo move",
+  "Walsh office move",
+  "Nguyen townhouse move",
+  "Foster duplex move",
 ];
 
 const CREW_OFF_NAMES: { name: string; role: string }[] = [
@@ -224,11 +229,12 @@ export function buildMockDay(
   today: Date = new Date(),
   closedDays: ClosedDayEntry[] = [],
   federalHolidayBookedDates: string[] = [],
+  openDays: WeekdayId[] = DEFAULT_COMPANY_OPEN_DAYS,
 ): CalendarDayData {
   const key = toDateKey(date);
   const offset = daysFromToday(date, today);
 
-  if (isSunday(date)) {
+  if (!isCompanyOpenDay(date, openDays)) {
     return applyClosedDays(emptyFutureDay(date), closedDays, federalHolidayBookedDates);
   }
 
@@ -317,6 +323,7 @@ export function buildMockMonth(
   today: Date = new Date(),
   closedDays: ClosedDayEntry[] = [],
   federalHolidayBookedDates: string[] = [],
+  openDays: WeekdayId[] = DEFAULT_COMPANY_OPEN_DAYS,
 ): Record<string, CalendarDayData> {
   const year = anchor.getFullYear();
   const month = anchor.getMonth();
@@ -325,7 +332,13 @@ export function buildMockMonth(
 
   for (let d = 1; d <= daysInMonth; d++) {
     const date = new Date(year, month, d);
-    map[toDateKey(date)] = buildMockDay(date, today, closedDays, federalHolidayBookedDates);
+    map[toDateKey(date)] = buildMockDay(
+      date,
+      today,
+      closedDays,
+      federalHolidayBookedDates,
+      openDays,
+    );
   }
 
   return map;
@@ -337,7 +350,11 @@ export function getDayData(
   today: Date = new Date(),
   closedDays: ClosedDayEntry[] = [],
   federalHolidayBookedDates: string[] = [],
+  openDays: WeekdayId[] = DEFAULT_COMPANY_OPEN_DAYS,
 ): CalendarDayData {
   const key = toDateKey(date);
-  return map[key] ?? buildMockDay(date, today, closedDays, federalHolidayBookedDates);
+  return (
+    map[key] ??
+    buildMockDay(date, today, closedDays, federalHolidayBookedDates, openDays)
+  );
 }

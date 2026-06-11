@@ -1,8 +1,9 @@
 "use client";
 
+import { CrewHrDocsTab } from "@/components/operations/crew/CrewHrDocsTab";
 import { CrewListTab } from "@/components/operations/crew/CrewListTab";
 import { CrewReportsTab } from "@/components/operations/crew/CrewReportsTab";
-import { CrewSchedulingTab } from "@/components/operations/crew/CrewSchedulingTab";
+import { CrewTimeOffTab } from "@/components/operations/crew/CrewTimeOffTab";
 import { CrewTrackRecordTab } from "@/components/operations/crew/CrewTrackRecordTab";
 import { TabBar } from "@/components/shared/TabBar";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -14,8 +15,9 @@ const meta = pageMeta["/operations/crew"];
 
 const TABS = [
   { id: "roster" as const, label: "Roster" },
-  { id: "scheduling" as const, label: "Scheduling" },
+  { id: "time-off" as const, label: "Time off" },
   { id: "track-record" as const, label: "Track record" },
+  { id: "hr-docs" as const, label: "Write-ups & discipline" },
   { id: "reports" as const, label: "Reports" },
 ];
 
@@ -23,8 +25,9 @@ type CrewTabId = (typeof TABS)[number]["id"];
 
 const LEGACY_TAB_MAP: Record<string, CrewTabId> = {
   list: "roster",
-  schedule: "scheduling",
-  "time-off": "scheduling",
+  schedule: "time-off",
+  scheduling: "time-off",
+  "work-schedule": "roster",
   performance: "track-record",
 };
 
@@ -51,8 +54,9 @@ export function CrewWorkspace() {
       <PageHeader title={meta.title} description={meta.description} />
       <TabBar tabs={TABS} activeTab={tab} onChange={changeTab} />
       {tab === "roster" ? <CrewListTab /> : null}
-      {tab === "scheduling" ? <CrewSchedulingTab /> : null}
+      {tab === "time-off" ? <CrewTimeOffTab /> : null}
       {tab === "track-record" ? <CrewTrackRecordTab /> : null}
+      {tab === "hr-docs" ? <CrewHrDocsTab /> : null}
       {tab === "reports" ? <CrewReportsTab /> : null}
     </div>
   );

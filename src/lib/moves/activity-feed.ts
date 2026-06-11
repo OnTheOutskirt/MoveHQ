@@ -7,11 +7,25 @@ export type ActivityFeedItem = {
   detail?: string;
   kind: "activity" | "demo";
   activityType?: MoveActivity["type"];
+  document?: MoveActivity["document"];
 };
+
+function hasDocumentEvent(
+  move: MoveRecord,
+  event: NonNullable<MoveActivity["document"]>["event"],
+): boolean {
+  return move.activities.some((a) => a.document?.event === event);
+}
 
 function demoFeedItems(move: MoveRecord): ActivityFeedItem[] {
   const extras: ActivityFeedItem[] = [];
-  if (move.pipelineStage === "quote_sent" || move.pipelineStage === "booked") {
+  const hasViewed = hasDocumentEvent(move, "viewed");
+  const hasDeposit = hasDocumentEvent(move, "deposit_paid");
+
+  if (
+    !hasViewed &&
+    (move.pipelineStage === "quote_sent" || move.pipelineStage === "booked")
+  ) {
     extras.push({
       id: `demo-view-${move.id}`,
       at: move.updatedAt,
@@ -20,7 +34,7 @@ function demoFeedItems(move: MoveRecord): ActivityFeedItem[] {
       kind: "demo",
     });
   }
-  if (move.pipelineStage === "booked") {
+  if (!hasDeposit && move.pipelineStage === "booked") {
     extras.push({
       id: `demo-deposit-${move.id}`,
       at: move.createdAt,
@@ -40,6 +54,7 @@ export function buildMoveActivityFeed(move: MoveRecord): ActivityFeedItem[] {
     detail: a.actor,
     kind: "activity" as const,
     activityType: a.type,
+    document: a.document,
   }));
 
   return [...activityItems, ...demoFeedItems(move)].sort(

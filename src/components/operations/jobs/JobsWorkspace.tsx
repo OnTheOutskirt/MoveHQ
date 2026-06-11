@@ -77,10 +77,7 @@ export function JobsWorkspace() {
   const showFieldPackets =
     view === "past" || (view === "date" && !!selectedDateKey && selectedDateKey < todayKey);
 
-  const useJobDaySidebar =
-    view === "today" ||
-    view === "tomorrow" ||
-    (view === "date" && !!selectedDateKey && selectedDateKey >= todayKey);
+  const useJobDaySidebar = true;
 
   const openPacket = useMemo(() => {
     if (!packetRow) return null;
@@ -118,6 +115,7 @@ export function JobsWorkspace() {
             emptyMessage={emptyMessage}
             showDateColumn={view === "past" || view === "date"}
             showFieldPackets={showFieldPackets}
+            groupByJobDayStatus={view === "today"}
             onOpenFieldPacket={showFieldPackets ? setPacketRow : undefined}
             onSelectJob={useJobDaySidebar ? setSelectedJobRow : undefined}
             selectedJobId={selectedJobRow?.id ?? null}

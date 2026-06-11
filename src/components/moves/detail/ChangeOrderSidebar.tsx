@@ -47,8 +47,16 @@ export function ChangeOrderSidebar({ mode, move, onClose }: ChangeOrderSidebarPr
         originalQuoteAmount: move.quoteAmount,
         revisedQuoteAmount: move.quoteAmount,
         requiresNewTruckOrDay: kindRequiresNewTruckOrDay(mode.kind),
-        aiGenerated: mode.kind === "charge_order",
-        createdBy: mode.kind === "charge_order" ? "AI quote system" : move.assignedRep,
+        aiGenerated:
+          mode.kind === "charge_order" ||
+          mode.kind === "small_minor" ||
+          mode.kind === "full_requote",
+        createdBy:
+          mode.kind === "charge_order" ||
+          mode.kind === "small_minor" ||
+          mode.kind === "full_requote"
+            ? "AI quote system"
+            : move.assignedRep,
         notes: "",
       });
     } else if (existing) {

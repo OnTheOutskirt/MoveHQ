@@ -2,6 +2,7 @@
 
 import { useMoveSendDocument } from "@/components/moves/detail/MoveSendDocumentProvider";
 import { Button } from "@/components/ui/Button";
+import { cn } from "@/lib/utils";
 import { FileSignature, FileText } from "lucide-react";
 
 type SendDocumentButtonsProps = {
@@ -15,7 +16,13 @@ export function SendDocumentButtons({
   showQuote = true,
   showContract = true,
 }: SendDocumentButtonsProps) {
-  const { openSendQuote, openSendContract } = useMoveSendDocument();
+  const {
+    openSendQuote,
+    openSendContract,
+    canSendDocuments,
+    sentQuote,
+    sentContract,
+  } = useMoveSendDocument();
 
   if (!showQuote && !showContract) return null;
 
@@ -31,7 +38,9 @@ export function SendDocumentButtons({
         <Button
           type="button"
           size="sm"
-          className="gap-1.5"
+          className={cn("gap-1.5", sentQuote && canSendDocuments && "opacity-60")}
+          disabled={!canSendDocuments}
+          title={!canSendDocuments ? "Create a flat rate or hourly quote first" : undefined}
           onClick={openSendQuote}
         >
           <FileText className="h-3.5 w-3.5" />
@@ -43,7 +52,9 @@ export function SendDocumentButtons({
           type="button"
           size="sm"
           variant="secondary"
-          className="gap-1.5"
+          className={cn("gap-1.5", sentContract && canSendDocuments && "opacity-60")}
+          disabled={!canSendDocuments}
+          title={!canSendDocuments ? "Create a flat rate or hourly quote first" : undefined}
           onClick={openSendContract}
         >
           <FileSignature className="h-3.5 w-3.5" />

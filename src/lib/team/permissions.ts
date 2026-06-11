@@ -1,30 +1,50 @@
+import type { Capability } from "@/lib/auth/capabilities";
+import { baseCapabilitiesForLevel } from "@/lib/auth/capabilities";
 import type { PermissionLevel } from "./types";
 
 export const permissionLevelMeta: Record<
   PermissionLevel,
-  { label: string; description: string }
+  { label: string; tagline: string; description: string }
 > = {
   admin: {
     label: "Admin",
-    description: "Full system access — settings, team, pricing, integrations, and all modules.",
+    tagline: "Full access to every module, setting, and report.",
+    description: "Owners and system admins. Includes payroll, executive dashboard, admin settings, and planning.",
   },
   manager: {
     label: "Manager",
-    description: "Operations and sales oversight — dispatch, reports, moves, calendar, and team.",
+    tagline: "Run sales and operations with reports and admin settings.",
+    description: "Branch or department leads. Add payroll, executive view, or planning per person if needed.",
   },
   sales: {
     label: "Sales",
-    description: "Moves, people, quotes, calendar, and documents. JM software by default; crew app optional.",
+    tagline: "Pipeline, quotes, walkthroughs, and sales reporting.",
+    description: "Sales reps and coordinators. Read-only access to operations screens.",
   },
   operations: {
     label: "Operations",
-    description: "Calendar, dispatch, jobs, crew, trucks — JM software and crew app access.",
+    tagline: "Dispatch, jobs, crew, fleet, and operations reporting.",
+    description: "Dispatchers and ops leads. Includes dashboard and crew app.",
   },
   crew: {
     label: "Crew",
-    description: "Crew mobile app only. JM software access is not available at this level.",
+    tagline: "Crew mobile app only — no dashboard login.",
+    description: "Field crew on job days. Assign field roles separately below.",
   },
 };
+
+/** Highlights for the Roles admin tab */
+export const permissionLevelHighlights: Record<PermissionLevel, string[]> = {
+  admin: ["All modules", "Executive", "Admin", "Planning", "Payroll"],
+  manager: ["Sales & ops", "Reports", "Admin settings"],
+  sales: ["Sales pipeline", "Ops (read)", "Reports"],
+  operations: ["Dispatch & jobs", "Sales (read)", "Reports", "Crew app"],
+  crew: ["Crew app"],
+};
+
+export function capabilitiesForLevelDisplay(level: PermissionLevel): Capability[] {
+  return [...baseCapabilitiesForLevel(level)];
+}
 
 /** Defaults applied when permission level changes — not on every save. */
 export function getAccessDefaultsForPermission(level: PermissionLevel): {
@@ -34,6 +54,7 @@ export function getAccessDefaultsForPermission(level: PermissionLevel): {
   switch (level) {
     case "admin":
     case "manager":
+      return { hasSoftwareAccess: true, hasCrewAppAccess: false };
     case "operations":
       return { hasSoftwareAccess: true, hasCrewAppAccess: true };
     case "sales":

@@ -20,6 +20,14 @@ type DetailSidebarProps = {
   widthClassName?: string;
   /** Override scroll body layout (e.g. flex column for chat-style panels). */
   bodyClassName?: string;
+  /** Slide from the left instead of the right. */
+  side?: "left" | "right";
+  /** Dimmed backdrop — disable when stacking panels (e.g. calendar peek + job editor). */
+  showBackdrop?: boolean;
+  /** Lock document scroll while open. */
+  lockBodyScroll?: boolean;
+  /** Tailwind z-index class for the panel shell. */
+  zIndexClassName?: string;
 };
 
 export function DetailSidebar({
@@ -33,6 +41,10 @@ export function DetailSidebar({
   footer,
   widthClassName = "max-w-md",
   bodyClassName,
+  side = "right",
+  showBackdrop = true,
+  lockBodyScroll = true,
+  zIndexClassName = "z-50",
 }: DetailSidebarProps) {
   useEffect(() => {
     if (!open) return;
@@ -40,26 +52,37 @@ export function DetailSidebar({
       if (e.key === "Escape") onClose();
     }
     document.addEventListener("keydown", onKeyDown);
-    document.body.style.overflow = "hidden";
+    if (lockBodyScroll) document.body.style.overflow = "hidden";
     return () => {
       document.removeEventListener("keydown", onKeyDown);
-      document.body.style.overflow = "";
+      if (lockBodyScroll) document.body.style.overflow = "";
     };
-  }, [open, onClose]);
+  }, [open, onClose, lockBodyScroll]);
 
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true">
-      <button
-        type="button"
-        className="absolute inset-0 bg-slate-900/40 transition-opacity"
-        onClick={onClose}
-        aria-label="Close panel"
-      />
+    <div
+      className={cn(
+        "fixed inset-0 flex",
+        side === "left" ? "justify-start" : "justify-end",
+        zIndexClassName,
+      )}
+      role="dialog"
+      aria-modal="true"
+    >
+      {showBackdrop ? (
+        <button
+          type="button"
+          className="absolute inset-0 bg-slate-900/40 transition-opacity"
+          onClick={onClose}
+          aria-label="Close panel"
+        />
+      ) : null}
       <aside
         className={cn(
-          "relative flex h-full w-full flex-col border-l border-slate-200 bg-white shadow-xl",
+          "relative flex h-full w-full flex-col border-slate-200 bg-white shadow-xl",
+          side === "left" ? "border-r" : "border-l",
           widthClassName,
         )}
       >

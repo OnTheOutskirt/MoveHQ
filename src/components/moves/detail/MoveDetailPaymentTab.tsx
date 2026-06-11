@@ -1,6 +1,5 @@
 "use client";
 
-import { SendDocumentButtons } from "@/components/moves/detail/SendDocumentButtons";
 import { DetailSection } from "@/components/moves/detail/DetailSection";
 import { useSettings } from "@/components/providers/SettingsProvider";
 import { computeMoveDeposit } from "@/lib/moves/move-deposit";
@@ -21,7 +20,11 @@ function formatMoney(amount: number): string {
 
 export function MoveDetailPaymentTab({ move }: MoveDetailPaymentTabProps) {
   const { settings } = useSettings();
-  const deposit = computeMoveDeposit(move, settings.defaults);
+  const deposit = computeMoveDeposit(
+    move,
+    settings.defaults,
+    settings.fieldCatalog.discountReasons,
+  );
 
   return (
     <DetailSection title="Payment" description="Deposits, balances, and payment method">
@@ -56,10 +59,10 @@ export function MoveDetailPaymentTab({ move }: MoveDetailPaymentTabProps) {
         </div>
       </div>
 
-      <p className="mb-3 text-sm text-slate-600">
-        Collect deposit when sending the contract — payment link is included in the send dialog.
+      <p className="text-sm text-slate-600">
+        Deposit is collected when the customer signs the contract — use Send contract from the quote
+        section or quick actions.
       </p>
-      <SendDocumentButtons showQuote={false} variant="inline" />
 
       <div className="mt-4 rounded-lg border border-dashed border-slate-200 bg-slate-50/50 px-4 py-6 text-center text-sm text-slate-500">
         Card, ACH, and check recording — coming soon

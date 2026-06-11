@@ -1,7 +1,7 @@
 import type { CrewMemberOff, FtaSlot } from "@/lib/calendar/types";
 import type { DayBeforeConfirmation } from "./day-before-confirmation";
 import type { DispatchFtaBooking } from "./fta";
-import type { JobDayStatus, MoveJobDay } from "@/lib/moves/types";
+import type { JobDayFraction, JobDayStatus, MoveJobDay } from "@/lib/moves/types";
 
 export const CREW_ROLES = ["skipper", "driver", "mover"] as const;
 export type CrewRole = (typeof CREW_ROLES)[number];
@@ -46,6 +46,10 @@ export type DispatchJob = {
   ftaLabel?: string | null;
   ftaBooking?: DispatchFtaBooking;
   isFtaJob: boolean;
+  dayFraction?: JobDayFraction;
+  /** 1-based index among job days on the move (for multi-day label). */
+  dayNumber?: number;
+  totalJobDays?: number;
   /** Day-before move confirmation call — full workflow TBD. */
   dayBeforeConfirmation: DayBeforeConfirmation;
 };
@@ -62,6 +66,12 @@ export type DispatchJobAssignment = {
   /** Operations override — null/undefined uses planned count from move/job day. */
   crewSizeOverride?: number | null;
   trucksNeededOverride?: number | null;
+  /** Skipper also drives — hides driver slots; skipper badge shows S/D. */
+  skipperAlsoDriver?: boolean;
+  /** Other dispatch jobs paired to fill this crew-day. */
+  pairedJobIds?: string[];
+  /** Snapped timeline start (minutes from midnight) when ops reschedules on dispatch. */
+  scheduleStartOverrideMinutes?: number | null;
 };
 
 export type DispatchDaySnapshot = {

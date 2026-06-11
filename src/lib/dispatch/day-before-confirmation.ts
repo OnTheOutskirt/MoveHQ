@@ -10,6 +10,13 @@ export const DAY_BEFORE_CONFIRMATION_STATUSES = [
 
 export type DayBeforeConfirmationStatus = (typeof DAY_BEFORE_CONFIRMATION_STATUSES)[number];
 
+/** Statuses dispatch can set manually (excludes not_due — hides the pill). */
+export const DAY_BEFORE_CONFIRMATION_SELECTABLE_STATUSES = [
+  "confirmed",
+  "attempted",
+  "pending",
+] as const satisfies readonly DayBeforeConfirmationStatus[];
+
 export type DayBeforeConfirmation = {
   status: DayBeforeConfirmationStatus;
   /** ISO date key — day the confirmation call should happen (day before job). */
@@ -29,12 +36,7 @@ function formatCallDueLabel(callDueKey: string): string {
 }
 
 /** Stable mock for calendar-only dispatch rows. */
-function mockStatusFromJobId(jobId: string): DayBeforeConfirmationStatus {
-  let hash = 0;
-  for (let i = 0; i < jobId.length; i++) hash = (hash + jobId.charCodeAt(i)) % 997;
-  const bucket = hash % 5;
-  if (bucket === 0) return "confirmed";
-  if (bucket === 1) return "attempted";
+function mockStatusFromJobId(_jobId: string): DayBeforeConfirmationStatus {
   return "pending";
 }
 
@@ -84,20 +86,11 @@ export function resolveDayBeforeConfirmation(
   }
 
   if (options?.move) {
-    const bookingFollowUps = options.move.followUps.filter((f) => f.type === "booking_confirm");
-    const open = bookingFollowUps.find((f) => f.status === "open");
+    const open = options.move.followUps.find(
+      (f) => f.type === "booking_confirm" && f.status === "open",
+    );
     if (open) {
       const resolved = fromFollowUp(open, callDueKey);
-      if (resolved) return resolved;
-    }
-    const completed = bookingFollowUps.find((f) => f.status === "completed");
-    if (completed) {
-      const resolved = fromFollowUp(completed, callDueKey);
-      if (resolved) return resolved;
-    }
-    const skipped = bookingFollowUps.find((f) => f.status === "skipped");
-    if (skipped) {
-      const resolved = fromFollowUp(skipped, callDueKey);
       if (resolved) return resolved;
     }
 
@@ -115,7 +108,7 @@ export function resolveDayBeforeConfirmation(
 
   if (todayKey < callDueKey) {
     return {
-      status: "not_due",
+      status: "pending",
       callDueDateKey: callDueKey,
       detail: `Call due ${callDueLabel}`,
     };
@@ -142,7 +135,7 @@ export function resolveDayBeforeConfirmation(
 
   if (todayKey > jobDateKey) {
     return {
-      status: "confirmed",
+      status: "pending",
       callDueDateKey: callDueKey,
       detail: "Move day passed",
     };

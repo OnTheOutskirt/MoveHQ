@@ -8,19 +8,19 @@ function seeded(n: number): number {
 }
 
 const BOOKED_NAMES = [
-  "Chen Family",
-  "Walsh Office Relocation",
-  "Angela Brooks",
-  "Northside Dental",
-  "Rebecca Holt",
+  "Chen Family move",
+  "Walsh Office Relocation move",
+  "Angela Brooks move",
+  "Northside Dental move",
+  "Rebecca Holt move",
 ];
 
 const OPEN_NAMES = [
-  "Peterson Estate",
-  "James Okonkwo",
-  "Marcus & Dana Ellis",
-  "Sarah & Tom Walsh",
-  "Tyler Nguyen",
+  "Peterson Estate move",
+  "James Okonkwo move",
+  "Marcus & Dana Ellis move",
+  "Sarah & Tom Walsh move",
+  "Tyler Nguyen move",
 ];
 
 export const pipelineStageLabel: Record<DayPipelineStage, string> = {

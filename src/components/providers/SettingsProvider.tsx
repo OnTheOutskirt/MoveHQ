@@ -3,10 +3,16 @@
 import { defaultSettings } from "@/lib/settings/defaults";
 import { applyBrandingMeta, applyBrandingToDocument } from "@/lib/settings/apply-branding";
 import { syncFieldCatalogRuntime } from "@/lib/settings/field-catalog-runtime";
+import { syncPipelineAutomationRuntime } from "@/lib/settings/pipeline-automation-runtime";
+import { syncPriorityTierRulesRuntime } from "@/lib/settings/priority-tier-rules-runtime";
+import type { PipelineAutomationSettings } from "@/lib/settings/pipeline-automation-rules";
 import type { FieldCatalogSettings } from "@/lib/settings/field-catalog-types";
 import { loadSettings, saveSettings } from "@/lib/settings/storage";
 import { mergeTerminology } from "@/lib/terminology/normalize";
 import type { TerminologySettings } from "@/lib/terminology/types";
+import type { LeadRoutingSettings } from "@/lib/settings/lead-routing-rules";
+import type { MoveTypeRulesSettings } from "@/lib/settings/move-type-rules";
+import type { PriorityTierRulesSettings } from "@/lib/settings/priority-tier-rules";
 import type { AppSettings } from "@/lib/settings/types";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
@@ -20,6 +26,10 @@ type SettingsContextValue = {
   updateFollowUps: (patch: Partial<AppSettings["followUps"]>) => void;
   updatePipelineCopy: (patch: Partial<AppSettings["pipelineCopy"]>) => void;
   updateFieldCatalog: (patch: Partial<FieldCatalogSettings>) => void;
+  updatePriorityTierRules: (patch: Partial<PriorityTierRulesSettings>) => void;
+  updatePipelineAutomations: (patch: Partial<PipelineAutomationSettings>) => void;
+  updateLeadRouting: (patch: Partial<LeadRoutingSettings>) => void;
+  updateMoveTypeRules: (patch: Partial<MoveTypeRulesSettings>) => void;
   replaceSettings: (next: AppSettings) => void;
   resetSettings: () => void;
   isReady: boolean;
@@ -30,6 +40,8 @@ const SettingsContext = createContext<SettingsContextValue | null>(null);
 function commit(next: AppSettings) {
   saveSettings(next);
   syncFieldCatalogRuntime(next.fieldCatalog);
+  syncPriorityTierRulesRuntime(next.priorityTierRules);
+  syncPipelineAutomationRuntime(next.pipelineAutomations);
   applyBrandingToDocument(next.branding);
   applyBrandingMeta(next.branding);
   return next;
@@ -43,6 +55,8 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     const loaded = loadSettings();
     setSettings(loaded);
     syncFieldCatalogRuntime(loaded.fieldCatalog);
+    syncPriorityTierRulesRuntime(loaded.priorityTierRules);
+    syncPipelineAutomationRuntime(loaded.pipelineAutomations);
     applyBrandingToDocument(loaded.branding);
     applyBrandingMeta(loaded.branding);
     setIsReady(true);
@@ -103,6 +117,80 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     );
   }, []);
 
+  const updatePriorityTierRules = useCallback((patch: Partial<PriorityTierRulesSettings>) => {
+    setSettings((prev) =>
+      commit({
+        ...prev,
+        priorityTierRules: {
+          ...prev.priorityTierRules,
+          ...patch,
+          followUpMode: {
+            ...prev.priorityTierRules.followUpMode,
+            ...patch.followUpMode,
+          },
+          tierDisplay: patch.tierDisplay
+            ? {
+                ...prev.priorityTierRules.tierDisplay,
+                ...Object.fromEntries(
+                  Object.entries(patch.tierDisplay).map(([tier, display]) => [
+                    tier,
+                    {
+                      ...prev.priorityTierRules.tierDisplay[
+                        tier as keyof typeof prev.priorityTierRules.tierDisplay
+                      ],
+                      ...display,
+                    },
+                  ]),
+                ),
+              }
+            : prev.priorityTierRules.tierDisplay,
+        },
+      }),
+    );
+  }, []);
+
+  const updatePipelineAutomations = useCallback(
+    (patch: Partial<PipelineAutomationSettings>) => {
+      setSettings((prev) =>
+        commit({
+          ...prev,
+          pipelineAutomations: {
+            ...prev.pipelineAutomations,
+            ...patch,
+            rules: patch.rules ?? prev.pipelineAutomations.rules,
+          },
+        }),
+      );
+    },
+    [],
+  );
+
+  const updateLeadRouting = useCallback((patch: Partial<LeadRoutingSettings>) => {
+    setSettings((prev) =>
+      commit({
+        ...prev,
+        leadRouting: {
+          ...prev.leadRouting,
+          ...patch,
+          rules: patch.rules ?? prev.leadRouting.rules,
+        },
+      }),
+    );
+  }, []);
+
+  const updateMoveTypeRules = useCallback((patch: Partial<MoveTypeRulesSettings>) => {
+    setSettings((prev) =>
+      commit({
+        ...prev,
+        moveTypeRules: {
+          ...prev.moveTypeRules,
+          ...patch,
+          byTypeId: patch.byTypeId ?? prev.moveTypeRules.byTypeId,
+        },
+      }),
+    );
+  }, []);
+
   const replaceSettings = useCallback((next: AppSettings) => {
     setSettings(commit(next));
   }, []);
@@ -122,6 +210,10 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       updateFollowUps,
       updatePipelineCopy,
       updateFieldCatalog,
+      updatePriorityTierRules,
+      updatePipelineAutomations,
+      updateLeadRouting,
+      updateMoveTypeRules,
       replaceSettings,
       resetSettings,
       isReady,
@@ -136,6 +228,10 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       updateFollowUps,
       updatePipelineCopy,
       updateFieldCatalog,
+      updatePriorityTierRules,
+      updatePipelineAutomations,
+      updateLeadRouting,
+      updateMoveTypeRules,
       replaceSettings,
       resetSettings,
       isReady,

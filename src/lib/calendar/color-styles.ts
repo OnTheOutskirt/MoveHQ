@@ -59,6 +59,32 @@ export function holdPillStyle(colors: CalendarColorTheme): CSSProperties {
   };
 }
 
+export function waitlistPillStyle(colors: CalendarColorTheme): CSSProperties {
+  return {
+    backgroundColor: colors.waitlistBg,
+    color: colors.waitlistText,
+    boxShadow: `inset 0 0 0 1px ${colors.waitlistBorder}`,
+  };
+}
+
+export function holdAccentButtonStyle(colors: CalendarColorTheme): CSSProperties {
+  return {
+    backgroundColor: colors.holdBg,
+    color: colors.holdText,
+    borderColor: colors.holdBorder,
+    boxShadow: `inset 0 0 0 1px ${colors.holdBorder}`,
+  };
+}
+
+export function waitlistAccentButtonStyle(colors: CalendarColorTheme): CSSProperties {
+  return {
+    backgroundColor: colors.waitlistBg,
+    color: colors.waitlistText,
+    borderColor: colors.waitlistBorder,
+    boxShadow: `inset 0 0 0 1px ${colors.waitlistBorder}`,
+  };
+}
+
 export function pillStyle(bg: string, text: string): CSSProperties {
   return { backgroundColor: bg, color: text };
 }

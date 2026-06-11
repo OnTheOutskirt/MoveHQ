@@ -3,7 +3,8 @@
 import { CountBadge } from "@/components/ui/CountBadge";
 import { useMoves } from "@/components/moves/MovesProvider";
 import { followUpSummaryForRep } from "@/lib/moves/follow-ups";
-import { CURRENT_USER } from "@/lib/session/current-user";
+import { useSession } from "@/components/providers/SessionProvider";
+import { repFilterForPersona } from "@/lib/session/personas";
 import type { NavLink } from "@/lib/tokens/navigation";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -16,10 +17,11 @@ type SidebarFollowUpsNavProps = {
 
 export function SidebarFollowUpsNav({ item }: SidebarFollowUpsNavProps) {
   const pathname = usePathname();
+  const { user } = useSession();
   const { moves } = useMoves();
   const mySummary = useMemo(
-    () => followUpSummaryForRep(moves, CURRENT_USER.assignedRep),
-    [moves],
+    () => followUpSummaryForRep(moves, repFilterForPersona(user)),
+    [moves, user],
   );
   const Icon = item.icon;
   const linkActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -28,6 +30,7 @@ export function SidebarFollowUpsNav({ item }: SidebarFollowUpsNavProps) {
     <li>
       <Link
         href={item.href}
+        prefetch={false}
         className={cn(
           "flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors",
           linkActive

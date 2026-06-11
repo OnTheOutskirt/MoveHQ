@@ -1,7 +1,7 @@
 import {
   countFilledCrewSlots,
   countFilledRoleSlots,
-  driversNeededForJob,
+  driverRolesNeededForDayTotals,
   ensureDriverMoverLengths,
   skippersNeededForJob,
 } from "./crew-slots";
@@ -25,10 +25,27 @@ export type DispatchDayRequirements = {
   hasShortfall: boolean;
 };
 
+/** Partner jobs stacked on an anchor row — excluded from day totals. */
+export function pairedPartnerJobIds(
+  jobs: DispatchJob[],
+  getAssignment: (jobId: string) => DispatchJobAssignment,
+): Set<string> {
+  const ids = new Set<string>();
+  for (const job of jobs) {
+    for (const partnerId of getAssignment(job.id).pairedJobIds ?? []) {
+      ids.add(partnerId);
+    }
+  }
+  return ids;
+}
+
 export function evaluateDayRequirements(
   day: DispatchDaySnapshot,
   getAssignment: (jobId: string) => DispatchJobAssignment,
 ): DispatchDayRequirements {
+  const partnerIds = pairedPartnerJobIds(day.jobs, getAssignment);
+  const staffingJobs = day.jobs.filter((job) => !partnerIds.has(job.id));
+
   let crewNeeded = 0;
   let skippersNeeded = 0;
   let driversNeeded = 0;
@@ -38,7 +55,7 @@ export function evaluateDayRequirements(
   let driversFilled = 0;
   let trucksFilled = 0;
 
-  for (const job of day.jobs) {
+  for (const job of staffingJobs) {
     const raw = getAssignment(job.id);
     const effective = effectiveDispatchJob(job, raw);
     const assignment = ensureDriverMoverLengths(effective, raw);
@@ -50,7 +67,7 @@ export function evaluateDayRequirements(
     crewFilled += filled;
     skippersNeeded += skippersNeededForJob(effective);
     skippersFilled += roles.skippers;
-    driversNeeded += driversNeededForJob(effective);
+    driversNeeded += driverRolesNeededForDayTotals(effective);
     driversFilled += roles.drivers;
     trucksNeeded += effective.trucksNeeded;
     trucksFilled += assignment.truckIds.length;
@@ -62,7 +79,7 @@ export function evaluateDayRequirements(
   const shortTrucks = Math.max(0, trucksNeeded - trucksFilled);
 
   return {
-    jobCount: day.jobs.length,
+    jobCount: staffingJobs.length,
     crewNeeded,
     skippersNeeded,
     driversNeeded,

@@ -1,7 +1,7 @@
 "use client";
 
 import { DocumentEmailPreview } from "@/components/admin/setup/document-templates/DocumentEmailPreview";
-import { DocumentPortalPreview } from "@/components/admin/setup/document-templates/DocumentPortalPreview";
+import { DocumentPortalPreviewPanel } from "@/components/admin/setup/document-templates/DocumentPortalPreviewPanel";
 import { MergeFieldPicker } from "@/components/admin/setup/document-templates/MergeFieldPicker";
 import {
   RichTextEditor,
@@ -13,7 +13,10 @@ import { TabBar } from "@/components/shared/TabBar";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { defaultDocumentTemplate } from "@/lib/settings/document-template-normalize";
-import { sampleDocumentVars } from "@/lib/settings/document-template-defaults";
+import { resolveDocumentAccentColor } from "@/lib/settings/document-accent";
+import { buildDocumentPreviewVars } from "@/lib/settings/document-preview";
+import type { DocumentPortalView, DocumentPreviewPricing } from "@/lib/settings/document-preview";
+import { DEFAULT_PORTAL_ACCENT } from "@/lib/settings/document-template-defaults";
 import type {
   DocumentPortalSettings,
   DocumentTemplate,
@@ -33,6 +36,10 @@ export function TemplatesTab({ templates, onChange }: TemplatesTabProps) {
   const { settings } = useSettings();
   const [activeId, setActiveId] = useState<DocumentTemplateType>("quote");
   const [editorPane, setEditorPane] = useState<EditorPane>("email");
+  const [previewPricing, setPreviewPricing] = useState<DocumentPreviewPricing>("flat");
+  const [previewUnregulated, setPreviewUnregulated] = useState(false);
+  const [previewBallpark, setPreviewBallpark] = useState(true);
+  const [previewPortalView, setPreviewPortalView] = useState<DocumentPortalView>("document");
 
   const active = useMemo(
     () => templates.find((t) => t.id === activeId) ?? templates[0]!,
@@ -40,13 +47,16 @@ export function TemplatesTab({ templates, onChange }: TemplatesTabProps) {
   );
 
   const previewVars = useMemo(
-    () => ({
-      ...sampleDocumentVars(settings.branding.companyName),
-      company_phone: settings.company.phone || sampleDocumentVars().company_phone,
-      company_email: settings.company.email || sampleDocumentVars().company_email,
-    }),
-    [settings.branding.companyName, settings.company.phone, settings.company.email],
+    () =>
+      buildDocumentPreviewVars(settings, {
+        pricing: previewPricing,
+        forceUnregulated: previewUnregulated,
+        showBallpark: previewPricing === "hourly" ? previewBallpark : false,
+      }),
+    [settings, previewPricing, previewUnregulated, previewBallpark],
   );
+
+  const previewAccent = resolveDocumentAccentColor(active, settings.branding.accentColor);
 
   function patchTemplate(patch: Partial<DocumentTemplate>) {
     onChange(
@@ -111,8 +121,8 @@ export function TemplatesTab({ templates, onChange }: TemplatesTabProps) {
           onChange={setEditorPane}
         />
 
-        <div className="space-y-6">
-          <Card>
+        <div className="grid gap-6 xl:grid-cols-2">
+          <Card className="min-w-0">
             <CardHeader>
               <CardTitle className="text-base">
                 {editorPane === "email" ? "Email copy" : "Portal page"}
@@ -120,14 +130,21 @@ export function TemplatesTab({ templates, onChange }: TemplatesTabProps) {
               <p className="text-sm text-slate-500">
                 {editorPane === "email"
                   ? "Subject and body sent with the portal link."
-                  : "Branded web page — logo and accent color from Company settings."}
+                  : "Branded web page — logo from Company settings; accent defaults to Jonah's blue."}
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
               {editorPane === "email" ? (
                 <EmailEditor email={active.email} onChange={patchEmail} />
               ) : (
-                <PortalEditor portal={active.portal} kind={activeId} onChange={patchPortal} />
+                <PortalEditor
+                  portal={active.portal}
+                  kind={activeId}
+                  accentColor={active.accentColor}
+                  globalAccentColor={settings.branding.accentColor}
+                  onChange={patchPortal}
+                  onAccentChange={(accentColor) => patchTemplate({ accentColor })}
+                />
               )}
               <Button type="button" variant="secondary" size="sm" onClick={resetActive}>
                 Reset {active.name.toLowerCase()} template
@@ -135,10 +152,17 @@ export function TemplatesTab({ templates, onChange }: TemplatesTabProps) {
             </CardContent>
           </Card>
 
-          <div>
-            <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-              Preview
-            </p>
+          <div className="min-w-0 xl:sticky xl:top-4 xl:self-start">
+            <div className="mb-2">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                Preview
+              </p>
+              {editorPane === "portal" ? (
+                <p className="mt-0.5 text-xs text-slate-500">
+                  Mobile view here — use Open preview window for desktop.
+                </p>
+              ) : null}
+            </div>
             {editorPane === "email" ? (
               <DocumentEmailPreview
                 subject={active.email.subject}
@@ -146,13 +170,27 @@ export function TemplatesTab({ templates, onChange }: TemplatesTabProps) {
                 vars={previewVars}
               />
             ) : (
-              <DocumentPortalPreview
+              <DocumentPortalPreviewPanel
+                kind={activeId}
                 portal={active.portal}
                 vars={previewVars}
-                kind={activeId}
                 logoDataUrl={settings.branding.logoDataUrl}
-                accentColor={settings.branding.accentColor}
+                accentColor={previewAccent}
                 companyName={settings.branding.companyName}
+                pricing={previewPricing}
+                onPricingChange={setPreviewPricing}
+                unregulated={previewUnregulated}
+                onUnregulatedChange={setPreviewUnregulated}
+                showBallpark={previewBallpark}
+                onShowBallparkChange={setPreviewBallpark}
+                portalView={previewPortalView}
+                onPortalViewChange={setPreviewPortalView}
+                viewport="mobile"
+                previewForceUnregulated={previewUnregulated}
+                showViewToggle={activeId === "contract"}
+                showViewportToggle={false}
+                embedded
+                interactive
               />
             )}
           </div>
@@ -222,11 +260,17 @@ function EmailEditor({
 function PortalEditor({
   portal,
   kind,
+  accentColor,
+  globalAccentColor,
   onChange,
+  onAccentChange,
 }: {
   portal: DocumentPortalSettings;
   kind: DocumentTemplateType;
+  accentColor: string | null;
+  globalAccentColor: string;
   onChange: (patch: Partial<DocumentPortalSettings>) => void;
+  onAccentChange: (accentColor: string | null) => void;
 }) {
   type PortalField = "headline" | "intro" | "mainContent" | "footerNote";
   const [focusField, setFocusField] = useState<PortalField>("mainContent");
@@ -260,6 +304,32 @@ function PortalEditor({
 
   return (
     <>
+      <SettingsField
+        label="Portal accent color"
+        hint={`Default ${DEFAULT_PORTAL_ACCENT}. Overrides global branding (${globalAccentColor}) when set.`}
+        className="w-full"
+      >
+        <div className="flex flex-wrap items-center gap-3">
+          <input
+            type="color"
+            value={accentColor ?? globalAccentColor}
+            onChange={(e) => onAccentChange(e.target.value)}
+            className="h-10 w-14 cursor-pointer rounded border border-slate-200"
+          />
+          <SettingsInput
+            value={accentColor ?? ""}
+            onChange={(e) => onAccentChange(e.target.value.trim() || null)}
+            placeholder={`Use global (${globalAccentColor})`}
+            className="max-w-[10rem] font-mono"
+          />
+          {accentColor ? (
+            <Button type="button" variant="secondary" size="sm" onClick={() => onAccentChange(null)}>
+              Use global
+            </Button>
+          ) : null}
+        </div>
+      </SettingsField>
+
       <SettingsField label="Page headline" className="w-full">
         <SettingsInput
           ref={headlineRef}
@@ -320,6 +390,47 @@ function PortalEditor({
         />
       </SettingsField>
 
+      <SettingsField
+        label="Hourly terms & conditions"
+        hint="Shown in a modal when the move is priced hourly. One section per paragraph starting with “Section N”."
+        className="w-full"
+      >
+        <textarea
+          value={portal.termsHourly}
+          onChange={(e) => onChange({ termsHourly: e.target.value })}
+          rows={8}
+          className="w-full rounded-lg border border-slate-200 px-3 py-2 font-mono text-xs leading-relaxed text-slate-800"
+        />
+      </SettingsField>
+
+      <SettingsField
+        label="Flat rate terms & conditions"
+        hint="Shown in a modal when the move is flat rate. Customers on quotes can read; contracts require acceptance."
+        className="w-full"
+      >
+        <textarea
+          value={portal.termsFlat}
+          onChange={(e) => onChange({ termsFlat: e.target.value })}
+          rows={8}
+          className="w-full rounded-lg border border-slate-200 px-3 py-2 font-mono text-xs leading-relaxed text-slate-800"
+        />
+      </SettingsField>
+
+      {kind === "quote" ? (
+        <SettingsField
+          label="Booking — card charge acknowledgment"
+          hint="Required checkbox before “I'd like to book this move.” Distinct from general terms. Supports merge fields like {{company_name}}."
+          className="w-full"
+        >
+          <textarea
+            value={portal.bookingCardChargeAcknowledgment}
+            onChange={(e) => onChange({ bookingCardChargeAcknowledgment: e.target.value })}
+            rows={3}
+            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm leading-relaxed text-slate-800"
+          />
+        </SettingsField>
+      ) : null}
+
       <div className="space-y-2 rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-3">
         <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
           Portal sections
@@ -330,9 +441,46 @@ function PortalEditor({
           onChange={(v) => onChange({ showPricingSummary: v })}
         />
         <ToggleRow
+          label="Flat-rate all-in breakdown"
+          checked={portal.showFlatBreakdown}
+          onChange={(v) => onChange({ showFlatBreakdown: v })}
+        />
+        <ToggleRow
+          label="Move contents review & confirm"
+          checked={portal.showContents}
+          onChange={(v) => onChange({ showContents: v })}
+        />
+        <ToggleRow
           label="Deposit / validity callout"
           checked={portal.showDepositLine}
           onChange={(v) => onChange({ showDepositLine: v })}
+        />
+        <ToggleRow
+          label="Valuation & liability coverage"
+          checked={portal.showValuation}
+          onChange={(v) => onChange({ showValuation: v })}
+        />
+        {portal.showValuation ? (
+          <label className="flex cursor-pointer items-center gap-2 pl-1 text-xs text-slate-600">
+            <span className="text-slate-500">Unregulated moves:</span>
+            <select
+              value={portal.unregulatedValuationDisplay}
+              onChange={(e) =>
+                onChange({
+                  unregulatedValuationDisplay: e.target.value as "hidden" | "notice",
+                })
+              }
+              className="rounded border border-slate-200 px-2 py-1 text-xs"
+            >
+              <option value="notice">Show notice (no coverage)</option>
+              <option value="hidden">Hide section</option>
+            </select>
+          </label>
+        ) : null}
+        <ToggleRow
+          label="Terms & conditions"
+          checked={portal.showTerms}
+          onChange={(v) => onChange({ showTerms: v })}
         />
         {kind === "contract" ? (
           <ToggleRow
