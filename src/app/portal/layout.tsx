@@ -1,3 +1,4 @@
+import { PortalClientReady } from "@/components/portal/PortalClientReady";
 import { EquipmentCatalogProvider } from "@/components/providers/EquipmentCatalogProvider";
 import { RoleTemplatesProvider } from "@/components/providers/RoleTemplatesProvider";
 import { SessionProvider } from "@/components/providers/SessionProvider";
@@ -26,7 +27,9 @@ export default function PortalLayout({ children }: { children: ReactNode }) {
               <WorkspaceProvider>
                 <MovesProvider>
                   <Suspense fallback={<PortalFallback />}>
-                    <div className="min-h-dvh bg-slate-100">{children}</div>
+                    <PortalClientReady>
+                      <div className="min-h-dvh bg-slate-100">{children}</div>
+                    </PortalClientReady>
                   </Suspense>
                 </MovesProvider>
               </WorkspaceProvider>

@@ -4,7 +4,6 @@ import { useTeamMembers } from "@/components/providers/TeamMembersProvider";
 import { ModulePage } from "@/components/shared/ModulePage";
 import { TabBar } from "@/components/shared/TabBar";
 import { DirectoryTab } from "@/components/team/tabs/DirectoryTab";
-import { PayRatesTab } from "@/components/team/tabs/PayRatesTab";
 import { RoleDefaultsTab } from "@/components/team/tabs/RoleDefaultsTab";
 import { Button } from "@/components/ui/Button";
 import { pageMeta } from "@/lib/navigation/page-meta";
@@ -13,7 +12,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 const TABS = [
   { id: "people", label: "People" },
   { id: "roles", label: "Role defaults" },
-  { id: "pay", label: "Pay" },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
@@ -24,8 +22,6 @@ function TabPanel({ tab }: { tab: TabId }) {
       return <DirectoryTab />;
     case "roles":
       return <RoleDefaultsTab />;
-    case "pay":
-      return <PayRatesTab />;
     default:
       return <DirectoryTab />;
   }

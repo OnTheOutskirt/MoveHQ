@@ -9,7 +9,7 @@ type QuoteBookingConfirmationProps = {
   companyName: string;
   moveDate?: string;
   moveReference?: string;
-  quoteHref?: string;
+  portalHomeHref?: string;
 };
 
 export function QuoteBookingConfirmation({
@@ -17,7 +17,7 @@ export function QuoteBookingConfirmation({
   companyName,
   moveDate,
   moveReference,
-  quoteHref,
+  portalHomeHref,
 }: QuoteBookingConfirmationProps) {
   return (
     <div className="overflow-hidden rounded-xl border border-emerald-200 bg-white shadow-sm">
@@ -64,12 +64,13 @@ export function QuoteBookingConfirmation({
           </ol>
         </div>
 
-        {quoteHref ? (
+        {portalHomeHref ? (
           <Link
-            href={quoteHref}
-            className="flex w-full items-center justify-center rounded-lg border border-slate-200 bg-white py-2.5 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50"
+            href={portalHomeHref}
+            className="flex w-full items-center justify-center rounded-lg py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-105"
+            style={{ backgroundColor: accentColor }}
           >
-            View quote details
+            Return to your portal
           </Link>
         ) : null}
 

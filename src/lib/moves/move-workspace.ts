@@ -287,14 +287,16 @@ export function getContextualQuickActions(
   if (isMoveLost(move)) {
     return [
       { id: "note", label: "Add note" },
-      { id: "call", label: "Re-open move", primary: true },
+      { id: "call", label: "Call client", primary: true },
     ];
   }
 
   const actions = getMoveQuickActions(move);
-  return actions.map((a, i) => ({
+  const stageIds = new Set(actions.slice(4).map((a) => a.id));
+
+  return actions.map((a) => ({
     ...a,
-    primary: i === 0 && a.id === "call",
+    primary: stageIds.has(a.id) && a.id === actions[4]?.id,
   }));
 }
 

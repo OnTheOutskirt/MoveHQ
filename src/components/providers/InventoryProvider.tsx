@@ -2,10 +2,8 @@
 
 import { useEquipmentCatalog } from "@/components/providers/EquipmentCatalogProvider";
 import { useSession } from "@/components/providers/SessionProvider";
-import {
-  applyInventoryAdjustment,
-  mergeStockLines,
-} from "@/lib/operations/inventory";
+import { applyInventoryAdjustment, mergeStockLines } from "@/lib/operations/inventory";
+import { buildDefaultInventoryStore } from "@/lib/operations/inventory-defaults";
 import {
   INVENTORY_STORAGE_KEY,
   inventorySnapshot,
@@ -46,7 +44,7 @@ const InventoryContext = createContext<InventoryContextValue | null>(null);
 export function InventoryProvider({ children }: { children: ReactNode }) {
   const { catalog, isReady: catalogReady } = useEquipmentCatalog();
   const { user } = useSession();
-  const [store, setStore] = useState<InventoryStore>(() => loadInventoryStore());
+  const [store, setStore] = useState<InventoryStore>(() => buildDefaultInventoryStore());
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {

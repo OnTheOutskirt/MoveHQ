@@ -7,6 +7,7 @@ import { defaultPipelineCopySettings } from "@/lib/settings/pipeline-copy";
 import { normalizePipelineAutomations } from "@/lib/settings/pipeline-automation-rules";
 import { normalizeLeadRoutingRules } from "@/lib/settings/lead-routing-rules";
 import { normalizeMoveTypeRules } from "@/lib/settings/move-type-rules";
+import { normalizeOpsPrepRules } from "@/lib/settings/ops-prep-rules";
 import { normalizePriorityTierRules } from "@/lib/settings/priority-tier-rules";
 import { normalizeTerminology } from "@/lib/terminology/normalize";
 import { defaultCrewDepartureTime24 } from "@/lib/moves/crew-departure";
@@ -126,6 +127,7 @@ export function normalizeAppSettings(raw: Partial<AppSettings> | null | undefine
     pipelineAutomations: normalizePipelineAutomations(raw.pipelineAutomations),
     leadRouting: normalizeLeadRoutingRules(raw.leadRouting),
     moveTypeRules: normalizeMoveTypeRules(raw.moveTypeRules),
+    opsPrepRules: normalizeOpsPrepRules(raw.opsPrepRules, fieldCatalog.vendorTypes),
   };
 }
 

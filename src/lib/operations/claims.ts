@@ -2,7 +2,6 @@ import { currentStepLabel, isWaitingOnVendor } from "./claims-workflow";
 import type {
   ClaimCategory,
   ClaimPendingReason,
-  ClaimPipelineColumn,
   ClaimResolutionType,
   ClaimStatus,
   ClaimStatusTab,
@@ -97,39 +96,4 @@ export function claimsForMove(claims: MoveClaim[], moveId: string): MoveClaim[] 
   return claims.filter((c) => c.moveId === moveId);
 }
 
-export function claimMatchesPipelineColumn(
-  claim: MoveClaim,
-  column: ClaimPipelineColumn,
-): boolean {
-  if (column === "waiting_vendor") return isWaitingOnVendor(claim);
-  if (column === "completed") return claim.status === "completed" || claim.status === "denied";
-  if (column === "pending") return claim.status === "pending" && !isWaitingOnVendor(claim);
-  return claim.status === column;
-}
-
-export function claimsForPipelineColumn(
-  claims: MoveClaim[],
-  column: ClaimPipelineColumn,
-): MoveClaim[] {
-  return claims
-    .filter((c) => claimMatchesPipelineColumn(c, column))
-    .sort((a, b) => b.reportedDate.localeCompare(a.reportedDate));
-}
-
-export const CLAIM_PIPELINE_LABELS: Record<ClaimPipelineColumn, string> = {
-  new: "New",
-  in_progress: "In progress",
-  waiting_vendor: "Waiting on vendor",
-  pending: "Pending (other)",
-  completed: "Resolved",
-};
-
 export { currentStepLabel };
-
-export const CLAIM_PIPELINE_COLUMN_CLASS: Record<ClaimPipelineColumn, string> = {
-  new: "border-violet-200 bg-violet-50/50",
-  in_progress: "border-sky-200 bg-sky-50/50",
-  waiting_vendor: "border-amber-200 bg-amber-50/50",
-  pending: "border-orange-200 bg-orange-50/40",
-  completed: "border-emerald-200 bg-emerald-50/40",
-};

@@ -1,5 +1,6 @@
 "use client";
 
+import { JobDayArrivalWindowFields } from "@/components/moves/detail/JobDayArrivalWindowFields";
 import { JobDayEditorCalendarPeek } from "@/components/moves/detail/JobDayEditorCalendarPeek";
 import { JobDayEditorSwitcher } from "@/components/moves/detail/JobDayEditorSwitcher";
 import { JobDayLocationsEditor } from "@/components/moves/detail/JobDayLocationsEditor";
@@ -7,8 +8,8 @@ import { useMoves } from "@/components/moves/MovesProvider";
 import { useSettings } from "@/components/providers/SettingsProvider";
 import { useWorkspace } from "@/components/providers/WorkspaceProvider";
 import { Button } from "@/components/ui/Button";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { DetailSidebar } from "@/components/ui/DetailSidebar";
-import { DAY_SHARE_COMBINATION_HINT } from "@/lib/day-share/units";
 import {
   defaultCrewDepartureLabel,
   formatCrewDepartureLabel,
@@ -18,11 +19,18 @@ import {
   estimateDepotToOriginDriveMinutes,
   resolveArrivalWindowMinutes,
   resolveDepotDriveMinutes,
+  roundUpToArrivalIncrement,
 } from "@/lib/moves/job-day-arrival";
+import {
+  computeCrewHotelClientCharge,
+} from "@/lib/moves/job-day-crew-hotel";
 import {
   DEFAULT_FOLLOW_ON_DAY_FRACTION,
   JOB_DAY_SERVICE_OPTIONS,
+  coerceFollowOnDayFraction,
+  jobDayFractionOptionLabel,
   jobDayFractionOptionsForSchedule,
+  syncDayFractionFromEstimatedHours,
   MAX_JOB_DAYS_PER_MOVE,
   buildJobDaySwitcherLabels,
   createDefaultJobDayFormValues,
@@ -38,9 +46,9 @@ import {
   type JobDayFormContext,
   type JobDayFormValues,
 } from "@/lib/moves/job-day-form";
-import type { MoveRecord } from "@/lib/moves/types";
+import type { JobDayFraction, MoveRecord } from "@/lib/moves/types";
 import { cn } from "@/lib/utils";
-import { Calendar } from "lucide-react";
+import { Calendar, BedDouble } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 type MoveJobDayEditorSidebarProps = {
@@ -121,6 +129,8 @@ export function MoveJobDayEditorSidebar({
   const [drafts, setDrafts] = useState<Record<string, JobDayFormValues>>({});
   const [dirtyKeys, setDirtyKeys] = useState<Set<string>>(() => new Set());
   const [calendarPeekOpen, setCalendarPeekOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [pendingDayFraction, setPendingDayFraction] = useState<JobDayFraction | null>(null);
 
   const totalDayCount = sortedDays.length + newDayKeys.length;
   const atDayCap = totalDayCount >= MAX_JOB_DAYS_PER_MOVE;
@@ -176,12 +186,27 @@ export function MoveJobDayEditorSidebar({
 
   const showMorningDriveHint = values.isFirstJobOfDay;
 
+  const crewHotelBreakdown = useMemo(() => {
+    if (!values.crewHotelNeeded) return null;
+    const lodging = settings.opsPrepRules.crewLodging;
+    const moverCount = parseInt(values.crewSize, 10) || 4;
+    const charge = computeCrewHotelClientCharge({
+      moverCount,
+      roomRate: lodging.roomRatePerNight,
+      perDiemPerMover: lodging.perDiemPerMover,
+      moversPerRoom: lodging.moversPerRoom,
+    });
+    return { lodging, moverCount, charge };
+  }, [values.crewHotelNeeded, values.crewSize, settings.opsPrepRules.crewLodging]);
+
   useEffect(() => {
     if (!open) {
       setDrafts({});
       setDirtyKeys(new Set());
       setNewDayKeys([]);
       setCalendarPeekOpen(false);
+      setDeleteConfirmOpen(false);
+      setPendingDayFraction(null);
       return;
     }
 
@@ -265,9 +290,63 @@ export function MoveJobDayEditorSidebar({
     markDirty(activeKey);
   }
 
+  function applyDayFractionChange(fraction: JobDayFraction) {
+    const base = drafts[activeKey] ?? values;
+    let next: JobDayFormValues = {
+      ...base,
+      dayFraction: fraction,
+      dayFractionManualOverride: true,
+    };
+    if (!next.arrivalWindowManual) {
+      next = withAutoArrival(next, move, formContext);
+    }
+    patchValues(next);
+  }
+
+  function clearDayFractionOverride() {
+    const base = drafts[activeKey] ?? values;
+    let next: JobDayFormValues = {
+      ...base,
+      dayFractionManualOverride: false,
+      dayFraction: syncDayFractionFromEstimatedHours(base),
+    };
+    if (!next.arrivalWindowManual) {
+      next = withAutoArrival(next, move, formContext);
+    }
+    patchValues(next);
+  }
+
+  function recalcCrewHotelCharge(base: JobDayFormValues): JobDayFormValues {
+    if (!base.crewHotelNeeded) return base;
+    const lodging = settings.opsPrepRules.crewLodging;
+    const moverCount = parseInt(base.crewSize, 10) || 4;
+    const charge = computeCrewHotelClientCharge({
+      moverCount,
+      roomRate: lodging.roomRatePerNight,
+      perDiemPerMover: lodging.perDiemPerMover,
+      moversPerRoom: lodging.moversPerRoom,
+    });
+    return {
+      ...base,
+      crewHotelMoverCount: String(moverCount),
+      crewHotelRoomCount: String(charge.roomCount),
+      crewHotelRoomRate: String(lodging.roomRatePerNight),
+      crewHotelPerDiem: String(lodging.perDiemPerMover),
+      crewHotelClientCharge: String(charge.total),
+    };
+  }
+
   function patch<K extends keyof JobDayFormValues>(key: K, value: JobDayFormValues[K]) {
     const base = drafts[activeKey] ?? values;
     let next: JobDayFormValues = { ...base, [key]: value };
+
+    if (key === "crewHotelNeeded" && value === true) {
+      next = recalcCrewHotelCharge(next);
+    }
+
+    if (key === "crewSize" && next.crewHotelNeeded) {
+      next = recalcCrewHotelCharge(next);
+    }
 
     if (key === "isFirstJobOfDay") {
       if (!value) {
@@ -284,6 +363,19 @@ export function MoveJobDayEditorSidebar({
           departureWindow: defaultCrewDepartureLabel(formContext.defaults),
         };
       }
+      if (!next.dayFractionManualOverride) {
+        next.dayFraction = syncDayFractionFromEstimatedHours(next);
+      } else {
+        next.dayFraction = coerceFollowOnDayFraction(next.dayFraction, Boolean(value));
+      }
+    }
+
+    if (key === "hoursEstimated" && !next.dayFractionManualOverride) {
+      next.dayFraction = syncDayFractionFromEstimatedHours(next);
+    }
+
+    if (key === "dayFractionManualOverride" && value === false) {
+      next.dayFraction = syncDayFractionFromEstimatedHours(next);
     }
 
     if (
@@ -291,6 +383,8 @@ export function MoveJobDayEditorSidebar({
       (key === "departureWindow" ||
         key === "isFirstJobOfDay" ||
         key === "dayFraction" ||
+        key === "hoursEstimated" ||
+        key === "dayFractionManualOverride" ||
         key === "locations")
     ) {
       next = withAutoArrival(next, move, formContext);
@@ -312,6 +406,16 @@ export function MoveJobDayEditorSidebar({
       arrivalWindowManual: true,
       arrivalWindow: base.arrivalWindow || computedArrival,
     });
+  }
+
+  function patchArrivalWindow(nextWindow: string) {
+    const base = drafts[activeKey] ?? values;
+    patchValues({
+      ...base,
+      arrivalWindow: nextWindow,
+      arrivalWindowManual: true,
+    });
+    markDirty(activeKey);
   }
 
   function toggleService(id: JobDayFormValues["services"][number]) {
@@ -352,6 +456,14 @@ export function MoveJobDayEditorSidebar({
     return [...keys];
   }, [dirtyKeys, activeKey]);
 
+  const pendingDayFractionCopy = useMemo(() => {
+    if (!pendingDayFraction) return null;
+    const currentLabel = jobDayFractionOptionLabel(values.dayFraction);
+    const nextLabel = jobDayFractionOptionLabel(pendingDayFraction);
+    const estHours = values.hoursEstimated.trim() || "—";
+    return { currentLabel, nextLabel, estHours };
+  }, [pendingDayFraction, values.dayFraction, values.hoursEstimated]);
+
   const saveLabel = keysToSave.length === 1 ? "Save day" : "Save days";
 
   function handleSave() {
@@ -386,12 +498,20 @@ export function MoveJobDayEditorSidebar({
 
   function handleDelete() {
     if (isEdit && activeKey && canDelete) {
+      setDeleteConfirmOpen(true);
+    }
+  }
+
+  function confirmDelete() {
+    if (isEdit && activeKey && canDelete) {
       removeJobDay(move.id, activeKey);
+      setDeleteConfirmOpen(false);
       onClose();
     }
   }
 
   const arrivalWindowMinutes = resolveArrivalWindowMinutes(formContext.defaults);
+  const plannedDriveMinutes = roundUpToArrivalIncrement(driveMinutes);
 
   const footer = (
     <div className="flex flex-wrap gap-2">
@@ -545,8 +665,12 @@ export function MoveJobDayEditorSidebar({
               step={0.5}
               value={values.hoursEstimated}
               onChange={(e) => patch("hoursEstimated", e.target.value)}
-              placeholder="8"
             />
+            {values.dayFractionManualOverride ? (
+              <p className="mt-1 text-[10px] text-slate-400">Day length overridden</p>
+            ) : (
+              <p className="mt-1 text-[10px] text-slate-400">Sets day length</p>
+            )}
           </label>
         </div>
 
@@ -590,12 +714,21 @@ export function MoveJobDayEditorSidebar({
               </label>
             ) : null}
             <label className="block">
-              <FieldLabel>Day length</FieldLabel>
+              <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5">
+                <FieldLabel>Day length</FieldLabel>
+                {values.dayFractionManualOverride ? (
+                  <span className="text-[10px] font-semibold text-amber-700">Overridden</span>
+                ) : (
+                  <span className="text-[10px] text-slate-400">From est. hrs</span>
+                )}
+              </div>
               <select
                 value={values.dayFraction}
-                onChange={(e) =>
-                  patch("dayFraction", e.target.value as JobDayFormValues["dayFraction"])
-                }
+                onChange={(e) => {
+                  const next = e.target.value as JobDayFraction;
+                  if (next === values.dayFraction) return;
+                  setPendingDayFraction(next);
+                }}
                 className="mt-0.5 w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm"
               >
                 {jobDayFractionOptionsForSchedule(values.isFirstJobOfDay).map((opt) => (
@@ -604,11 +737,23 @@ export function MoveJobDayEditorSidebar({
                   </option>
                 ))}
               </select>
+              <label className="mt-1 flex items-center gap-1.5 text-[10px] text-slate-600">
+                <input
+                  type="checkbox"
+                  checked={values.dayFractionManualOverride}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      patch("dayFractionManualOverride", true);
+                      return;
+                    }
+                    clearDayFractionOverride();
+                  }}
+                  className="rounded border-slate-300"
+                />
+                Override
+              </label>
             </label>
           </div>
-          {values.dayFraction !== "long" ? (
-            <p className="text-[10px] leading-snug text-slate-500">{DAY_SHARE_COMBINATION_HINT}</p>
-          ) : null}
 
           <div className="rounded-md border border-slate-200 bg-white px-2.5 py-2">
             <div className="flex items-start justify-between gap-2">
@@ -617,23 +762,22 @@ export function MoveJobDayEditorSidebar({
                   <FieldLabel>Arrival window</FieldLabel>
                   {showMorningDriveHint ? (
                     <span className="text-[10px] text-slate-400">
-                      ~{driveMinutes} min drive · {arrivalWindowMinutes}-min window
+                      {driveMinutes} min drive
+                      {plannedDriveMinutes !== driveMinutes
+                        ? ` (${plannedDriveMinutes} min for arrival)`
+                        : ""}{" "}
+                      · {arrivalWindowMinutes}-min window
                     </span>
                   ) : null}
                 </div>
-                {values.arrivalWindowManual ? (
-                  <input
-                    type="text"
-                    value={values.arrivalWindow}
-                    onChange={(e) => patch("arrivalWindow", e.target.value)}
-                    placeholder="e.g. 8:00 – 8:30 AM"
-                    className="mt-0.5 w-full rounded-md border border-slate-200 px-2 py-1.5 text-sm"
-                  />
-                ) : (
-                  <p className="mt-0.5 text-sm font-medium leading-snug text-slate-900">
-                    {values.arrivalWindow}
-                  </p>
-                )}
+                <JobDayArrivalWindowFields
+                  arrivalWindow={values.arrivalWindow}
+                  computedArrival={computedArrival}
+                  isFirstJobOfDay={values.isFirstJobOfDay}
+                  manual={values.arrivalWindowManual}
+                  defaults={formContext.defaults}
+                  onChange={patchArrivalWindow}
+                />
               </div>
               <label className="flex shrink-0 items-center gap-1 pt-0.5 text-[10px] text-slate-600">
                 <input
@@ -657,6 +801,50 @@ export function MoveJobDayEditorSidebar({
           </div>
         </fieldset>
 
+        <fieldset className="space-y-2 rounded-lg border border-violet-100 bg-violet-50/40 p-2.5">
+          <legend className="flex items-center gap-1.5 px-1 text-[10px] font-semibold uppercase tracking-wide text-violet-800">
+            <BedDouble className="h-3.5 w-3.5" />
+            Crew hotel
+          </legend>
+          <label className="flex items-center gap-2 rounded-md border border-violet-100 bg-white px-2 py-1.5">
+            <input
+              type="checkbox"
+              checked={values.crewHotelNeeded}
+              onChange={(e) => patch("crewHotelNeeded", e.target.checked)}
+              className="rounded border-slate-300"
+            />
+            <span className="text-[11px] font-medium text-slate-700">Hotel needed this day</span>
+          </label>
+          {values.crewHotelNeeded ? (
+            <div className="space-y-2 rounded-md border border-violet-100 bg-white p-2.5">
+              {crewHotelBreakdown ? (
+                <p className="text-[11px] leading-snug text-slate-600">
+                  From setup ({crewHotelBreakdown.moverCount} mover
+                  {crewHotelBreakdown.moverCount === 1 ? "" : "s"} on this day):{" "}
+                  {crewHotelBreakdown.charge.roomCount} room
+                  {crewHotelBreakdown.charge.roomCount === 1 ? "" : "s"} × $
+                  {crewHotelBreakdown.lodging.roomRatePerNight} + $
+                  {crewHotelBreakdown.lodging.perDiemPerMover} per diem/mover ={" "}
+                  <span className="font-medium text-slate-800">
+                    ${crewHotelBreakdown.charge.total} suggested
+                  </span>
+                </p>
+              ) : null}
+              <label className="block">
+                <FieldLabel>Client charge</FieldLabel>
+                <NumberInput
+                  min={0}
+                  value={values.crewHotelClientCharge}
+                  onChange={(e) => patch("crewHotelClientCharge", e.target.value)}
+                />
+                <p className="mt-1 text-[10px] text-slate-500">
+                  What you quote the client — creates an ops prep task to book the hotel.
+                </p>
+              </label>
+            </div>
+          ) : null}
+        </fieldset>
+
         <JobDayLocationsEditor
           move={move}
           locations={values.locations}
@@ -664,6 +852,34 @@ export function MoveJobDayEditorSidebar({
         />
       </div>
     </DetailSidebar>
+    <ConfirmDialog
+      open={pendingDayFraction !== null}
+      onClose={() => setPendingDayFraction(null)}
+      onConfirm={() => {
+        if (pendingDayFraction) applyDayFractionChange(pendingDayFraction);
+        setPendingDayFraction(null);
+      }}
+      title="Change day length?"
+      description={
+        pendingDayFractionCopy
+          ? values.dayFractionManualOverride
+            ? `Change day length from ${pendingDayFractionCopy.currentLabel} to ${pendingDayFractionCopy.nextLabel}? Est. hours will stay at ${pendingDayFractionCopy.estHours}.`
+            : `Switch from ${pendingDayFractionCopy.currentLabel} to ${pendingDayFractionCopy.nextLabel}? Est. hours will stay at ${pendingDayFractionCopy.estHours} and day length will be marked as overridden.`
+          : ""
+      }
+      confirmLabel="Yes, change"
+      cancelLabel="Cancel"
+    />
+    <ConfirmDialog
+      open={deleteConfirmOpen}
+      onClose={() => setDeleteConfirmOpen(false)}
+      onConfirm={confirmDelete}
+      title="Delete job day?"
+      description={`Remove ${existing?.label ?? dayTitle} from this move? This cannot be undone.`}
+      confirmLabel="Yes, delete"
+      cancelLabel="Cancel"
+      variant="danger"
+    />
     </>
   );
 }

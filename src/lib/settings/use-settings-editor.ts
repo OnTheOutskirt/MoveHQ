@@ -23,6 +23,7 @@ export function useSettingsEditor() {
       updatePipelineAutomations: draft.updatePipelineAutomations,
       updateLeadRouting: draft.updateLeadRouting,
       updateMoveTypeRules: draft.updateMoveTypeRules,
+      updateOpsPrepRules: draft.updateOpsPrepRules,
       isDraft: true as const,
     };
   }
@@ -41,6 +42,7 @@ export function useSettingsEditor() {
     updatePipelineAutomations: live.updatePipelineAutomations,
     updateLeadRouting: live.updateLeadRouting,
     updateMoveTypeRules: live.updateMoveTypeRules,
+    updateOpsPrepRules: live.updateOpsPrepRules,
     isDraft: false as const,
   };
 }
@@ -63,6 +65,7 @@ export function useSettingsSection<K extends keyof AppSettings>(key: K) {
         pipelineAutomations: editor.updatePipelineAutomations,
         leadRouting: editor.updateLeadRouting,
         moveTypeRules: editor.updateMoveTypeRules,
+        opsPrepRules: editor.updateOpsPrepRules,
       } as const;
       (map[key] as (p: Partial<AppSettings[K]>) => void)(patch);
     },

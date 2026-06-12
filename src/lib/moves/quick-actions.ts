@@ -1,25 +1,21 @@
 import { isMoveLost } from "@/lib/moves/move-pipeline";
-import type { MoveRecord, PipelineStageId } from "@/lib/moves/types";
+import type { MoveRecord } from "@/lib/moves/types";
 
 /** Always available on move detail (unless lost — then core four only). */
 export const CORE_QUICK_ACTION_IDS = ["call", "sms", "email", "note"] as const;
 
 export type CoreQuickActionId = (typeof CORE_QUICK_ACTION_IDS)[number];
 
-/** Stage-specific slots (fifth and sixth actions in the grid). */
-export type StageQuickActionId =
-  | "follow-up"
+/** Extra shortcuts — bottom two vary by stage; all appear under “See all”. */
+export type ExtendedQuickActionId =
   | "book-walkthrough"
-  | "check-quote"
-  | "send-reminder"
-  | "collect-deposit"
-  | "send-contract"
-  | "confirm-move"
-  | "ops-handoff"
-  | "collect-payment"
-  | "final-invoice";
+  | "view-profitability"
+  | "view-portal";
 
-export type MoveQuickActionId = CoreQuickActionId | StageQuickActionId;
+/** Panel-only — opened from follow-ups sidebar, not the quick-action grid. */
+export type FollowUpComposerActionId = "add-follow-up";
+
+export type MoveQuickActionId = CoreQuickActionId | ExtendedQuickActionId | FollowUpComposerActionId;
 
 export type QuickActionDef = { id: MoveQuickActionId; label: string };
 
@@ -28,77 +24,83 @@ export const QUICK_ACTION_LABELS: Record<MoveQuickActionId, string> = {
   sms: "Send SMS",
   email: "Send email",
   note: "Add note",
-  "follow-up": "Follow up",
   "book-walkthrough": "Book walkthrough",
-  "check-quote": "Check on quote",
-  "send-reminder": "Send reminder",
-  "collect-deposit": "Collect deposit",
-  "send-contract": "Send contract",
-  "confirm-move": "Confirm move day",
-  "ops-handoff": "Ops handoff",
-  "collect-payment": "Record payment",
-  "final-invoice": "Final invoice",
+  "add-follow-up": "Add follow-up task",
+  "view-profitability": "View profitability",
+  "view-portal": "View portal",
 };
 
-/** Actions that show a threaded history feed above the composer. */
-export const QUICK_ACTIONS_WITH_HISTORY: CoreQuickActionId[] = [
-  "call",
-  "sms",
-  "email",
-  "note",
-];
+/** Opens a main tab — no slide-over composer. */
+export const NAVIGATION_QUICK_ACTION_IDS = ["view-profitability"] as const;
 
-export type HistoryQuickActionId = Extract<
-  MoveQuickActionId,
-  "call" | "sms" | "email" | "note" | "follow-up"
->;
+export type NavigationQuickActionId = (typeof NAVIGATION_QUICK_ACTION_IDS)[number];
+
+/** Opens the customer portal in a new tab. */
+export const EXTERNAL_QUICK_ACTION_IDS = ["view-portal"] as const;
+
+export type ExternalQuickActionId = (typeof EXTERNAL_QUICK_ACTION_IDS)[number];
+
+/** Actions that show a threaded history feed above the composer. */
+export const QUICK_ACTIONS_WITH_HISTORY: CoreQuickActionId[] = ["call", "sms", "email", "note"];
+
+export type HistoryQuickActionId = CoreQuickActionId;
 
 export function quickActionHasHistory(action: MoveQuickActionId): action is HistoryQuickActionId {
-  return action === "follow-up" || QUICK_ACTIONS_WITH_HISTORY.includes(action as CoreQuickActionId);
+  return QUICK_ACTIONS_WITH_HISTORY.includes(action as CoreQuickActionId);
 }
 
 export function quickActionLabel(action: MoveQuickActionId): string {
   return QUICK_ACTION_LABELS[action];
 }
 
-/** All quick actions open a slide-over panel. */
-export const MOVE_QUICK_ACTIONS_WITH_PANEL: MoveQuickActionId[] = Object.keys(
-  QUICK_ACTION_LABELS,
-) as MoveQuickActionId[];
+export function isNavigationQuickAction(
+  action: MoveQuickActionId,
+): action is NavigationQuickActionId {
+  return (NAVIGATION_QUICK_ACTION_IDS as readonly string[]).includes(action);
+}
 
-function stageSpecificActions(stage: PipelineStageId): QuickActionDef[] {
-  switch (stage) {
+export function isExternalQuickAction(
+  action: MoveQuickActionId,
+): action is ExternalQuickActionId {
+  return (EXTERNAL_QUICK_ACTION_IDS as readonly string[]).includes(action);
+}
+
+export function quickActionOpensPanel(action: MoveQuickActionId): boolean {
+  if (isNavigationQuickAction(action) || isExternalQuickAction(action)) return false;
+  return true;
+}
+
+/** @deprecated Use quickActionOpensPanel */
+export const MOVE_QUICK_ACTIONS_WITH_PANEL: MoveQuickActionId[] = (
+  Object.keys(QUICK_ACTION_LABELS) as MoveQuickActionId[]
+).filter(quickActionOpensPanel);
+
+const EXTENDED_QUICK_ACTION_IDS: ExtendedQuickActionId[] = [
+  "book-walkthrough",
+  "view-profitability",
+  "view-portal",
+];
+
+function extendedAction(id: ExtendedQuickActionId): QuickActionDef {
+  return { id, label: QUICK_ACTION_LABELS[id] };
+}
+
+function stageSpecificActions(move: MoveRecord): QuickActionDef[] {
+  switch (move.pipelineStage) {
     case "new_lead":
+      return [extendedAction("book-walkthrough"), extendedAction("view-portal")];
     case "waiting":
-      return [
-        { id: "follow-up", label: QUICK_ACTION_LABELS["follow-up"] },
-        { id: "book-walkthrough", label: QUICK_ACTION_LABELS["book-walkthrough"] },
-      ];
+      return [extendedAction("book-walkthrough"), extendedAction("view-portal")];
     case "quote_sent":
-      return [
-        { id: "check-quote", label: QUICK_ACTION_LABELS["check-quote"] },
-        { id: "send-reminder", label: QUICK_ACTION_LABELS["send-reminder"] },
-      ];
+      return [extendedAction("view-portal"), extendedAction("view-profitability")];
     case "needs_contract":
-      return [
-        { id: "collect-deposit", label: QUICK_ACTION_LABELS["collect-deposit"] },
-        { id: "send-contract", label: QUICK_ACTION_LABELS["send-contract"] },
-      ];
+      return [extendedAction("view-portal"), extendedAction("view-profitability")];
     case "booked":
-      return [
-        { id: "confirm-move", label: QUICK_ACTION_LABELS["confirm-move"] },
-        { id: "ops-handoff", label: QUICK_ACTION_LABELS["ops-handoff"] },
-      ];
+      return [extendedAction("view-profitability"), extendedAction("view-portal")];
     case "completed":
-      return [
-        { id: "collect-payment", label: QUICK_ACTION_LABELS["collect-payment"] },
-        { id: "final-invoice", label: QUICK_ACTION_LABELS["final-invoice"] },
-      ];
+      return [extendedAction("view-profitability"), extendedAction("view-portal")];
     default:
-      return [
-        { id: "follow-up", label: QUICK_ACTION_LABELS["follow-up"] },
-        { id: "book-walkthrough", label: QUICK_ACTION_LABELS["book-walkthrough"] },
-      ];
+      return [extendedAction("book-walkthrough"), extendedAction("view-portal")];
   }
 }
 
@@ -109,20 +111,6 @@ function coreQuickActions(): QuickActionDef[] {
   }));
 }
 
-/** Every stage-specific action — order used when “View all” is expanded. */
-const ALL_STAGE_QUICK_ACTION_IDS: StageQuickActionId[] = [
-  "follow-up",
-  "book-walkthrough",
-  "check-quote",
-  "send-reminder",
-  "collect-deposit",
-  "send-contract",
-  "confirm-move",
-  "ops-handoff",
-  "collect-payment",
-  "final-invoice",
-];
-
 /** Six quick actions: core four + two for the current pipeline stage. */
 export function getMoveQuickActions(move: MoveRecord): QuickActionDef[] {
   const core = coreQuickActions();
@@ -131,17 +119,16 @@ export function getMoveQuickActions(move: MoveRecord): QuickActionDef[] {
     return core;
   }
 
-  return [...core, ...stageSpecificActions(move.pipelineStage)];
+  return [...core, ...stageSpecificActions(move)];
 }
 
-/** Full quick-action menu (all fourteen). */
+/** Full quick-action menu (core + every extended shortcut). */
 export function getAllMoveQuickActions(move: MoveRecord): QuickActionDef[] {
-  const core = coreQuickActions();
-  const stage = ALL_STAGE_QUICK_ACTION_IDS.map((id) => ({
-    id,
-    label: QUICK_ACTION_LABELS[id],
-  }));
-  return [...core, ...stage];
+  if (isMoveLost(move)) {
+    return coreQuickActions();
+  }
+
+  return [...coreQuickActions(), ...EXTENDED_QUICK_ACTION_IDS.map(extendedAction)];
 }
 
 export function moveQuickActionsHasMore(move: MoveRecord): boolean {
@@ -149,9 +136,8 @@ export function moveQuickActionsHasMore(move: MoveRecord): boolean {
   return getAllMoveQuickActions(move).length > getMoveQuickActions(move).length;
 }
 
-/** @deprecated Use getMoveQuickActions(move) — static list for lead/waiting only. */
+/** @deprecated Use getMoveQuickActions(move) */
 export const MOVE_QUICK_ACTIONS: QuickActionDef[] = [
   ...CORE_QUICK_ACTION_IDS.map((id) => ({ id, label: QUICK_ACTION_LABELS[id] })),
-  { id: "follow-up", label: QUICK_ACTION_LABELS["follow-up"] },
-  { id: "book-walkthrough", label: QUICK_ACTION_LABELS["book-walkthrough"] },
+  extendedAction("book-walkthrough"),
 ];

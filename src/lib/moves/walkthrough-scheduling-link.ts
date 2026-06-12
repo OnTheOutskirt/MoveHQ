@@ -39,6 +39,32 @@ export function buildWalkthroughSchedulingPath(params: WalkthroughLinkParams): s
   return `${ROUTES.portalWalkthrough}?${search.toString()}`;
 }
 
+export type WalkthroughCancelLinkParams = {
+  moveId: string;
+};
+
+export function buildWalkthroughCancelPath(params: WalkthroughCancelLinkParams): string {
+  const search = new URLSearchParams({ move: params.moveId });
+  return `${ROUTES.portalWalkthrough}/cancel?${search.toString()}`;
+}
+
+/** Absolute URL for cancellation link in confirmation email/SMS. */
+export function buildWalkthroughCancelUrl(
+  origin: string,
+  params: WalkthroughCancelLinkParams,
+): string {
+  const path = buildWalkthroughCancelPath(params);
+  return `${origin.replace(/\/$/, "")}${path}`;
+}
+
+export function parseWalkthroughCancelSearchParams(
+  searchParams: URLSearchParams,
+): WalkthroughCancelLinkParams | null {
+  const moveId = searchParams.get("move")?.trim();
+  if (!moveId) return null;
+  return { moveId };
+}
+
 /** Absolute URL for SMS/email — pass origin in browser, or app base URL on server. */
 export function buildWalkthroughSchedulingUrl(
   origin: string,

@@ -6,15 +6,16 @@ import { useSettings } from "@/components/providers/SettingsProvider";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { linkedPersonRoleConfig, linkedPersonRoleLabel } from "@/lib/moves/linked-people";
 import {
+  buildUnknownReferralContact,
   CHANNEL_TO_ROLES,
   directoryPeopleForReferralChannel,
   isReferralLeadChannel,
-  leadSourceLabel,
+  isUnknownReferralContact,
   linkedPersonFromDirectory,
   referralContactForLeadSource,
+  referralContactResolution,
   referralPartnerLabel,
 } from "@/lib/moves/lead-referral";
-import { leadChannelLabel } from "@/lib/moves/move-priority-tier";
 import { type LeadChannel, type MoveLinkedPerson, type MoveRecord } from "@/lib/moves/types";
 import { salesDirectoryPersonPath } from "@/lib/navigation/routes";
 import { cn } from "@/lib/utils";
@@ -98,12 +99,61 @@ function ReferralContactCard({
   );
 }
 
+function ReferralLinkActions({
+  partner,
+  resolution,
+  pickerOpen,
+  onLink,
+  onUnknown,
+}: {
+  partner: string;
+  resolution: ReturnType<typeof referralContactResolution>;
+  pickerOpen?: boolean;
+  onLink: () => void;
+  onUnknown: () => void;
+}) {
+  const linkHighlighted = resolution === "unset" || Boolean(pickerOpen);
+  const unknownSelected = resolution === "unknown" && !pickerOpen;
+
+  return (
+    <div className="mt-2 flex gap-2">
+      <button
+        type="button"
+        onClick={onLink}
+        className={cn(
+          "inline-flex min-w-0 flex-1 items-center justify-center gap-1 rounded-lg border py-2 text-[11px] font-medium transition-colors",
+          linkHighlighted
+            ? "border-brand-400 bg-brand-50 text-brand-800 ring-1 ring-brand-200/80"
+            : "border-dashed border-slate-300 text-slate-600 hover:border-brand-300 hover:text-brand-800",
+        )}
+      >
+        <User className="h-3.5 w-3.5 shrink-0" />
+        <span className="truncate">{partner === "person" ? "Link Person" : `Link ${partner}`}</span>
+      </button>
+      <button
+        type="button"
+        onClick={onUnknown}
+        aria-pressed={unknownSelected}
+        className={cn(
+          "inline-flex shrink-0 items-center justify-center rounded-lg border px-3 py-2 text-[11px] font-medium transition-colors",
+          unknownSelected
+            ? "border-slate-400 bg-slate-100 text-slate-800 ring-1 ring-slate-200"
+            : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50",
+        )}
+      >
+        Unknown
+      </button>
+    </div>
+  );
+}
+
 export function MoveDetailLeadSourcePanel({ move }: MoveDetailLeadSourcePanelProps) {
   const { settings } = useSettings();
   const leadSources = settings.fieldCatalog.leadSources;
   const { setReferralContact, clearReferralContact, updateLeadChannel } = useMoves();
   const isReferral = isReferralLeadChannel(move.leadChannel);
   const referralContact = isReferral ? referralContactForLeadSource(move) : undefined;
+  const resolution = isReferral ? referralContactResolution(move) : "unset";
   const roles = CHANNEL_TO_ROLES[move.leadChannel] ?? [];
   const primaryRole = roles[0] ?? "referral_partner";
   const directoryOptions = isReferral
@@ -127,6 +177,13 @@ export function MoveDetailLeadSourcePanel({ move }: MoveDetailLeadSourcePanelPro
     setPickerOpen(false);
     setCreating(false);
     setSelectedPersonId("");
+  }
+
+  function openLinkPicker() {
+    if (resolution === "unknown") {
+      clearReferralContact(move.id);
+    }
+    setPickerOpen(true);
   }
 
   function linkDirectoryPerson() {
@@ -155,7 +212,19 @@ export function MoveDetailLeadSourcePanel({ move }: MoveDetailLeadSourcePanelPro
     closePicker();
   }
 
+  function markReferralUnknown() {
+    if (resolution === "unknown") {
+      clearReferralContact(move.id);
+      return;
+    }
+    setReferralContact(move.id, buildUnknownReferralContact(move.id, primaryRole));
+    closePicker();
+  }
+
   const partner = referralPartnerLabel(move.leadChannel);
+  const linkedContact =
+    referralContact && !isUnknownReferralContact(referralContact) ? referralContact : undefined;
+  const showLinkActions = resolution === "unset" || resolution === "unknown";
 
   return (
     <div className="min-w-0 shrink-0 border-b border-slate-200 p-3">
@@ -176,28 +245,31 @@ export function MoveDetailLeadSourcePanel({ move }: MoveDetailLeadSourcePanelPro
 
       {isReferral ? (
         <div className="mt-2">
-          {referralContact ? (
+          {linkedContact ? (
             <ReferralContactCard
-              person={referralContact}
+              person={linkedContact}
               onRemove={() => setConfirmRemove(true)}
             />
           ) : null}
 
-          {!pickerOpen && !referralContact ? (
+          {resolution === "unset" ? (
             <p className="mt-2 text-xs text-slate-500">
-              Link the referring {partner} for this move.
+              Link the referring {partner} for this move, or mark as unknown.
             </p>
           ) : null}
 
-          {!pickerOpen && !referralContact ? (
-            <button
-              type="button"
-              onClick={() => setPickerOpen(true)}
-              className="mt-2 inline-flex w-full items-center justify-center gap-1 rounded-lg border border-dashed border-slate-300 py-2 text-[11px] font-medium text-slate-600 hover:border-brand-300 hover:text-brand-800"
-            >
-              <User className="h-3.5 w-3.5" />
-              Link {partner}
-            </button>
+          {resolution === "unknown" ? (
+            <p className="mt-2 text-xs text-slate-500">Referrer not identified for this move.</p>
+          ) : null}
+
+          {showLinkActions ? (
+            <ReferralLinkActions
+              partner={partner}
+              resolution={resolution}
+              pickerOpen={pickerOpen}
+              onLink={openLinkPicker}
+              onUnknown={markReferralUnknown}
+            />
           ) : null}
 
           {pickerOpen ? (
@@ -303,13 +375,13 @@ export function MoveDetailLeadSourcePanel({ move }: MoveDetailLeadSourcePanelPro
         </div>
       ) : null}
 
-      {referralContact ? (
+      {linkedContact ? (
         <ConfirmDialog
           open={confirmRemove}
           onClose={() => setConfirmRemove(false)}
           onConfirm={() => clearReferralContact(move.id)}
           title="Remove referral contact?"
-          description={`Are you sure you want to remove ${referralContact.name} as the referring ${partner}? You can link a new contact afterward.`}
+          description={`Are you sure you want to remove ${linkedContact.name} as the referring ${partner}? You can link a new contact afterward.`}
           confirmLabel="Remove"
           variant="danger"
         />

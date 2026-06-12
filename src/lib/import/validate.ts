@@ -1,4 +1,5 @@
 import { rowToRecord } from "./csv";
+import { REFERRAL_PARTNER_TYPES } from "@/lib/people/types";
 import { IMPORT_FIELD_SCHEMAS } from "./schemas";
 import type {
   ImportDatasetKind,
@@ -107,17 +108,7 @@ export function validateMappedRows(
           issues.push(
             ...parseEnum(
               data.referral_type,
-              [
-                "realtor",
-                "storage_facility",
-                "developer",
-                "restoration_company",
-                "senior_living",
-                "insurance",
-                "attorney",
-                "business",
-                "other",
-              ] as const,
+              REFERRAL_PARTNER_TYPES,
               "referral_type",
               rowNum,
             ),

@@ -9,6 +9,7 @@ import { syncPriorityTierRulesRuntime } from "@/lib/settings/priority-tier-rules
 import type { PipelineAutomationSettings } from "@/lib/settings/pipeline-automation-rules";
 import type { LeadRoutingSettings } from "@/lib/settings/lead-routing-rules";
 import type { MoveTypeRulesSettings } from "@/lib/settings/move-type-rules";
+import type { OpsPrepRulesSettings } from "@/lib/settings/ops-prep-rules";
 import type { PriorityTierRulesSettings } from "@/lib/settings/priority-tier-rules";
 import { mergeTerminology } from "@/lib/terminology/normalize";
 import type { TerminologySettings } from "@/lib/terminology/types";
@@ -38,6 +39,7 @@ type SettingsDraftContextValue = {
   updatePipelineAutomations: (patch: Partial<PipelineAutomationSettings>) => void;
   updateLeadRouting: (patch: Partial<LeadRoutingSettings>) => void;
   updateMoveTypeRules: (patch: Partial<MoveTypeRulesSettings>) => void;
+  updateOpsPrepRules: (patch: Partial<OpsPrepRulesSettings>) => void;
   replaceDraft: (next: AppSettings) => void;
 };
 
@@ -195,6 +197,24 @@ export function SettingsDraftProvider({ children }: { children: React.ReactNode 
     }));
   }, []);
 
+  const updateOpsPrepRules = useCallback((patch: Partial<OpsPrepRulesSettings>) => {
+    setDraft((prev) => ({
+      ...prev,
+      opsPrepRules: {
+        ...prev.opsPrepRules,
+        ...patch,
+        jobDayHotel: patch.jobDayHotel
+          ? { ...prev.opsPrepRules.jobDayHotel, ...patch.jobDayHotel }
+          : prev.opsPrepRules.jobDayHotel,
+        crewLodging: patch.crewLodging
+          ? { ...prev.opsPrepRules.crewLodging, ...patch.crewLodging }
+          : prev.opsPrepRules.crewLodging,
+        vendorTypes: patch.vendorTypes ?? prev.opsPrepRules.vendorTypes,
+        builtIn: patch.builtIn ?? prev.opsPrepRules.builtIn,
+      },
+    }));
+  }, []);
+
   const replaceDraft = useCallback((next: AppSettings) => {
     setDraft(next);
   }, []);
@@ -217,6 +237,7 @@ export function SettingsDraftProvider({ children }: { children: React.ReactNode 
       updatePipelineAutomations,
       updateLeadRouting,
       updateMoveTypeRules,
+      updateOpsPrepRules,
       replaceDraft,
     }),
     [
@@ -236,6 +257,7 @@ export function SettingsDraftProvider({ children }: { children: React.ReactNode 
       updatePipelineAutomations,
       updateLeadRouting,
       updateMoveTypeRules,
+      updateOpsPrepRules,
       replaceDraft,
     ],
   );

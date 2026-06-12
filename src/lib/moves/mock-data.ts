@@ -695,7 +695,7 @@ function withFollowUps(core: MoveCore): MoveRecord {
           dueAt: "2026-06-15T10:00:00Z",
           channel: "email",
           linkedStage: "quote_sent",
-          source: "scheduled",
+          source: "manual",
         },
       ]);
     case "mv-needs-contract":

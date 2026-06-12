@@ -1,8 +1,12 @@
 "use client";
 
 import { MoveContactPanel } from "@/components/moves/detail/MoveContactPanel";
+import { MoveCrewFeedbackPanel } from "@/components/moves/detail/MoveCrewFeedbackPanel";
 import { MoveWaitingSubstagePicker } from "@/components/moves/detail/MoveWaitingSubstagePicker";
+import { WebIntakeQueuePanel } from "@/components/moves/detail/WebBookingReviewPanel";
+import { useMoves } from "@/components/moves/MovesProvider";
 import { QuadrantBadge } from "@/components/moves/shared/QuadrantBadge";
+import { openAutomatedFollowUps } from "@/lib/moves/cancel-automated-follow-ups";
 import { formatMoveDate, formatQuote } from "@/lib/moves/format";
 import {
   bookingReviewLabel,
@@ -37,8 +41,10 @@ function SnapshotField({
 }
 
 export function MoveDetailOverviewTab({ move, onNavigateTab }: MoveDetailOverviewTabProps) {
+  const { cancelAutomatedFollowUps } = useMoves();
   const nextFu = getNextOpenFollowUp(move);
   const fuBucket = nextFu ? getFollowUpDueBucket(nextFu) : null;
+  const openAutomated = openAutomatedFollowUps(move);
   const est = getMoveEstimatedValue(move);
 
   const blockers: string[] = [];
@@ -88,6 +94,10 @@ export function MoveDetailOverviewTab({ move, onNavigateTab }: MoveDetailOvervie
             <MoveWaitingSubstagePicker move={move} className="mt-3" />
           </section>
 
+          <WebIntakeQueuePanel move={move} />
+
+          <MoveCrewFeedbackPanel move={move} />
+
           <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
             <h2 className="text-base font-semibold text-slate-900">Next follow-up</h2>
             {nextFu ? (
@@ -104,6 +114,20 @@ export function MoveDetailOverviewTab({ move, onNavigateTab }: MoveDetailOvervie
             ) : (
               <p className="mt-2 text-sm text-slate-500">No open follow-up scheduled.</p>
             )}
+            {openAutomated.length > 0 || move.automationsSuppressed ? (
+              <div className="mt-3">
+                <button
+                  type="button"
+                  onClick={() => cancelAutomatedFollowUps(move.id)}
+                  disabled={openAutomated.length === 0}
+                  className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-800 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {move.automationsSuppressed && openAutomated.length === 0
+                    ? "Automated follow-ups cancelled"
+                    : `Cancel automated follow-ups (${openAutomated.length})`}
+                </button>
+              </div>
+            ) : null}
             {move.followUps.length > 0 ? (
               <ul className="mt-4 space-y-2 border-t border-slate-100 pt-3">
                 {move.followUps.map((fu) => (

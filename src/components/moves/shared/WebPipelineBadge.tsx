@@ -10,10 +10,12 @@ type WebPipelineBadgeProps = {
     | "quoteChannel"
     | "source"
     | "leadChannel"
-    | "intakeProgress"
+    | "conditionStatus"
     | "pipelineStage"
     | "quoteAmount"
     | "bookingReviewStatus"
+    | "websiteIntake"
+    | "sentQuote"
   >;
   size?: "sm" | "md";
   className?: string;

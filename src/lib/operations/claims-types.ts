@@ -19,17 +19,6 @@ export const CLAIM_STATUS_TABS = [
 
 export type ClaimStatusTab = (typeof CLAIM_STATUS_TABS)[number];
 
-/** Pipeline board columns — includes waiting-on-vendor lane */
-export const CLAIM_PIPELINE_COLUMNS = [
-  "new",
-  "in_progress",
-  "waiting_vendor",
-  "pending",
-  "completed",
-] as const;
-
-export type ClaimPipelineColumn = (typeof CLAIM_PIPELINE_COLUMNS)[number];
-
 export const CLAIM_CATEGORIES = ["damage", "lost_item", "other"] as const;
 
 export type ClaimCategory = (typeof CLAIM_CATEGORIES)[number];
@@ -115,8 +104,10 @@ export type MoveClaim = {
   denialReason?: string;
   /** Outbound / inbound comms log */
   commsLog: ClaimCommsEntry[];
-  /** Selected third-party vendor (MoveBees, AHM, etc.) */
+  /** Selected third-party vendor (directory id: person:… or org:…) */
   vendorId?: string;
+  /** Setup → Pipelines & fields vendor type id */
+  vendorTypeId?: string;
   acknowledgementSentAt?: string;
   vendorSentAt?: string;
   vendorResponseDue?: string;

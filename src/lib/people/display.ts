@@ -1,4 +1,8 @@
 import type { OrganizationType, PersonKind, ReferralPartnerType } from "./types";
+import {
+  catalogReferralTypeLabel,
+  catalogVendorTypeLabel,
+} from "@/lib/settings/field-catalog-runtime";
 
 export const personKindConfig: Record<
   PersonKind,
@@ -65,10 +69,10 @@ export const referralPartnerTypeConfig: Record<
     description: "Adjusters and insurance partners",
     badge: "bg-indigo-50 text-indigo-900",
   },
-  attorney: {
-    label: "Attorney / estate",
-    description: "Estate, probate, and legal referrals",
-    badge: "bg-slate-100 text-slate-800",
+  apartment_complex: {
+    label: "Apartment complex",
+    description: "Property managers and apartment community referrals",
+    badge: "bg-lime-50 text-lime-900",
   },
   business: {
     label: "Business referrer",
@@ -111,6 +115,11 @@ export const organizationTypeConfig: Record<
     description: "Mitigation and rebuild partners",
     badge: "bg-rose-50 text-rose-900",
   },
+  apartment_complex: {
+    label: "Apartment complex",
+    description: "Property management and apartment communities",
+    badge: "bg-lime-50 text-lime-900",
+  },
   commercial: {
     label: "Commercial",
     description: "Offices, retail, clinics — B2B accounts",
@@ -140,13 +149,60 @@ export function referralPartnerTypeLabel(type: ReferralPartnerType): string {
   return referralPartnerTypeConfig[type].label;
 }
 
-/** Display label for person type column — includes referral subtype when applicable. */
+/** Display label for person type column — includes referral or vendor subtype when applicable. */
 export function personTypeDisplay(person: {
   kind: PersonKind;
   referralType: ReferralPartnerType | null;
+  vendorType?: string | null;
 }): string {
   if (person.kind === "referral" && person.referralType) {
-    return referralPartnerTypeLabel(person.referralType);
+    return catalogReferralTypeLabel(person.referralType);
+  }
+  if (person.kind === "vendor" && person.vendorType) {
+    return catalogVendorTypeLabel(person.vendorType);
   }
   return personKindLabel(person.kind);
 }
+
+export function vendorTypeLabel(type: string): string {
+  return vendorTypeConfig[type]?.label ?? type.replace(/_/g, " ");
+}
+
+export const vendorTypeConfig: Record<string, { label: string; description: string; badge: string }> =
+  {
+    truck_fleet: {
+      label: "Truck fleet",
+      description: "Rental trucks and fleet partners",
+      badge: "bg-slate-100 text-slate-800",
+    },
+    claim_repairs: {
+      label: "Claim repairs",
+      description: "Claims repair vendors",
+      badge: "bg-rose-50 text-rose-900",
+    },
+    operations_materials: {
+      label: "Operations / materials",
+      description: "Bubble wrap, packing materials, supplies",
+      badge: "bg-orange-50 text-orange-900",
+    },
+    special_services: {
+      label: "Special services",
+      description: "Crating, playgrounds, pool table, special-order packing",
+      badge: "bg-violet-50 text-violet-800",
+    },
+    hr_vendors: {
+      label: "HR vendors",
+      description: "Benefits, chaplain, and employee services",
+      badge: "bg-teal-50 text-teal-800",
+    },
+    crew_vendors: {
+      label: "Crew vendors",
+      description: "Subcontract crew and labor partners",
+      badge: "bg-brand-50 text-brand-800",
+    },
+    fleet_repair: {
+      label: "Fleet repair",
+      description: "Repair fleet, lift gate, truck maintenance",
+      badge: "bg-indigo-50 text-indigo-900",
+    },
+  };

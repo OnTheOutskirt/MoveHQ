@@ -8,7 +8,6 @@ import type { LeadChannel, MoveRecord } from "@/lib/moves/types";
 import {
   parseReferralPartnerKey,
   referralPartnerKey,
-  type ReferralPartnerCategory,
   type ReferralPartnerKey,
   type ReferralPartnerStats,
   type ReferralPartnerType,
@@ -21,7 +20,7 @@ type PartnerAccumulator = {
   subtitle?: string;
   organizationName?: string;
   organizationId?: string;
-  category: ReferralPartnerCategory;
+  referralTypeId: string;
   referralCount: number;
   bookedCount: number;
   completedCount: number;
@@ -58,7 +57,7 @@ function moveInDateRange(
   return true;
 }
 
-function categoryFromLeadChannel(channel: LeadChannel): ReferralPartnerCategory {
+function referralTypeFromLeadChannel(channel: LeadChannel): string {
   switch (channel) {
     case "referral_realtor":
       return "realtor";
@@ -71,34 +70,27 @@ function categoryFromLeadChannel(channel: LeadChannel): ReferralPartnerCategory 
   }
 }
 
-function categoryFromOrg(org: OrganizationRecord): ReferralPartnerCategory {
+function referralTypeFromOrg(org: OrganizationRecord): string {
   switch (org.orgType) {
     case "realtor":
-      return "realtor";
     case "senior_living":
-      return "senior_living";
-    case "commercial":
+    case "storage_facility":
     case "developer":
+    case "restoration_company":
+      return org.orgType;
+    case "commercial":
       return "business";
     default:
       return "other";
   }
 }
 
-function categoryFromPerson(
+function referralTypeFromPerson(
   person: PersonRecord,
   org?: OrganizationRecord,
-): ReferralPartnerCategory {
-  if (org) return categoryFromOrg(org);
-  if (person.referralType === "realtor") return "realtor";
-  if (person.referralType === "senior_living") return "senior_living";
-  if (
-    person.referralType === "business" ||
-    person.referralType === "developer" ||
-    person.referralType === "storage_facility"
-  ) {
-    return "business";
-  }
+): string {
+  if (person.referralType) return person.referralType;
+  if (org) return referralTypeFromOrg(org);
   return "other";
 }
 
@@ -116,7 +108,7 @@ function partnerFromPerson(person: PersonRecord): PartnerAccumulator {
     subtitle: person.title ?? person.referralType?.replace(/_/g, " ") ?? undefined,
     organizationName: org?.name,
     organizationId: org?.id,
-    category: categoryFromPerson(person, org),
+    referralTypeId: referralTypeFromPerson(person, org),
     referralCount: 0,
     bookedCount: 0,
     completedCount: 0,
@@ -136,7 +128,7 @@ function partnerFromOrg(org: OrganizationRecord): PartnerAccumulator {
     subtitle: contact ? `Primary: ${contact.name}` : org.orgType.replace(/_/g, " "),
     organizationName: org.name,
     organizationId: org.id,
-    category: categoryFromOrg(org),
+    referralTypeId: referralTypeFromOrg(org),
     referralCount: 0,
     bookedCount: 0,
     completedCount: 0,
@@ -169,21 +161,21 @@ function bumpPartner(
 function resolvePartnerFromMove(move: MoveRecord): PartnerAccumulator | null {
   const people = listAllPeople();
   const orgs = listAllOrganizations();
-  const category = categoryFromLeadChannel(move.leadChannel);
+  const referralTypeId = referralTypeFromLeadChannel(move.leadChannel);
 
   const contact = referralContactForLeadSource(move);
   if (contact?.personId) {
     const person = people.find((p) => p.id === contact.personId);
     if (person) {
       const acc = partnerFromPerson(person);
-      return { ...acc, category };
+      return { ...acc, referralTypeId };
     }
   }
   if (contact?.organization) {
     const org = orgs.find((o) => o.name.toLowerCase() === contact.organization!.toLowerCase());
     if (org) {
       const acc = partnerFromOrg(org);
-      return { ...acc, category };
+      return { ...acc, referralTypeId };
     }
   }
   if (contact?.name) {
@@ -193,7 +185,7 @@ function resolvePartnerFromMove(move: MoveRecord): PartnerAccumulator | null {
       name: contact.name,
       subtitle: contact.relationship ?? contact.role,
       organizationName: contact.organization,
-      category,
+      referralTypeId,
       referralCount: 0,
       bookedCount: 0,
       completedCount: 0,
@@ -212,7 +204,7 @@ function toStatsRow(p: PartnerAccumulator): ReferralPartnerStats {
     subtitle: p.subtitle,
     organizationName: p.organizationName,
     organizationId: p.organizationId,
-    category: p.category,
+    referralTypeId: p.referralTypeId,
     referralCount: p.referralCount,
     bookedCount: p.bookedCount,
     completedCount: p.completedCount,
@@ -289,14 +281,14 @@ export function rollupReferralStatsByOrganization(
           partnerId: orgId,
           name: row.organizationName ?? row.name,
           subtitle:
-            row.category === "realtor"
+            row.referralTypeId === "realtor"
               ? "Brokerage rollup"
-              : row.category === "senior_living"
+              : row.referralTypeId === "senior_living"
                 ? "Community rollup"
                 : "Organization rollup",
           organizationName: row.organizationName,
           organizationId: orgId,
-          category: row.category,
+          referralTypeId: row.referralTypeId,
           referralCount: row.referralCount,
           bookedCount: row.bookedCount,
           completedCount: row.completedCount,

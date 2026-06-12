@@ -23,6 +23,7 @@ import {
   type WalkthroughLinkMode,
 } from "@/lib/moves/walkthrough-scheduling-link";
 import type { WalkthroughScheduleDraft } from "@/lib/moves/types";
+import { resolveMoveWalkthrough } from "@/lib/moves/walkthroughs";
 import { cn } from "@/lib/utils";
 import type { MoveRecord } from "@/lib/moves/types";
 import { Calendar, Link2, MapPin, PhoneCall, SlidersHorizontal, Video } from "lucide-react";
@@ -45,7 +46,7 @@ export function BookWalkthroughPanel({
   onCompose,
 }: BookWalkthroughPanelProps) {
   const { scheduleWalkthrough } = useMovesActions();
-  const existing = move.scheduledWalkthrough;
+  const existing = resolveMoveWalkthrough(move);
   const [tab, setTab] = useState<BookingTab>("calendar");
   const [assignedRep, setAssignedRep] = useState(
     existing?.assignedTo ?? move.assignedRep,

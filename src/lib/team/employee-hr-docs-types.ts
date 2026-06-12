@@ -1,3 +1,24 @@
+import type { TeamMemberRecord } from "./types";
+import { memberDisplayName } from "./types";
+
+export function teamMembersForHrDocumentation(
+  members: TeamMemberRecord[],
+): TeamMemberRecord[] {
+  return members
+    .filter((member) => member.status === "active")
+    .filter(
+      (member) =>
+        member.permissionLevel === "admin" ||
+        member.permissionLevel === "manager" ||
+        member.jobTitles.includes("Manager"),
+    )
+    .sort((a, b) =>
+      memberDisplayName(a).localeCompare(memberDisplayName(b), undefined, {
+        sensitivity: "base",
+      }),
+    );
+}
+
 export const EMPLOYEE_HR_DOC_KINDS = ["write_up", "warning", "improvement_plan"] as const;
 
 export type EmployeeHrDocKind = (typeof EMPLOYEE_HR_DOC_KINDS)[number];

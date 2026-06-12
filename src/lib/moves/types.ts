@@ -112,6 +112,8 @@ export type WebsiteIntakeMeta = {
   lastStepCompleted?: string;
   quotedAt?: string | null;
   bookedAt?: string | null;
+  /** Manually cleared from AI Web Quotes lists (incomplete / quoted). */
+  dismissedQueues?: ("incomplete" | "quoted" | "booked_review")[];
 };
 
 export type MoveType = "Local" | "Long distance" | "Commercial" | "Labor only";
@@ -232,6 +234,18 @@ export type JobDayFraction = (typeof JOB_DAY_FRACTIONS)[number];
 export const JOB_DAY_PERIODS = ["morning", "afternoon"] as const;
 export type JobDayPeriod = (typeof JOB_DAY_PERIODS)[number];
 
+/** Crew hotel for this job day — client charge on quote; ops books via prep task. */
+export type JobDayCrewHotel = {
+  needed: boolean;
+  moverCount?: number;
+  roomCount?: number;
+  roomRate?: number;
+  perDiemPerMover?: number;
+  /** Total client charge (rooms + per diem) */
+  clientCharge?: number;
+  notes?: string;
+};
+
 export type MoveJobDay = {
   id: string;
   label: string;
@@ -239,6 +253,8 @@ export type MoveJobDay = {
   status: JobDayStatus;
   /** Partial-day length — `long` is a full crew-day (default). */
   dayFraction?: JobDayFraction;
+  /** When true, day length is set manually and does not follow est. hours. */
+  dayFractionOverride?: boolean;
   /** Morning = tight arrival window; afternoon = flexible 11–4. @deprecated Prefer isFirstJobOfDay */
   dayPeriod?: JobDayPeriod;
   /** When false, crew is already on the road — flexible 11 AM–4 PM arrival, no shop departure. */
@@ -268,6 +284,7 @@ export type MoveJobDay = {
   customerNotes?: string;
   accessNotes?: string;
   notes?: string;
+  crewHotel?: JobDayCrewHotel;
 };
 
 export const LINKED_PERSON_ROLES = [
@@ -374,6 +391,8 @@ export type MoveRecord = {
   /** @deprecated Prefer `followUps` — kept for migration */
   followUpDue: string | null;
   followUps: MoveFollowUp[];
+  /** When true, pipeline automations will not create new follow-up rows on this move. */
+  automationsSuppressed?: boolean;
   source: MoveSource;
   assignedRep: string;
   coordinator: string | null;

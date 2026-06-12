@@ -1,4 +1,6 @@
+import { organizationMatchesVendorTypeFilter } from "@/lib/people/organization-directory-filters";
 import { getOrganizationById, getOrganizationForPerson, MOCK_ORGANIZATIONS } from "@/lib/people/mock-data";
+import { listAllOrganizations } from "@/lib/people/organizations-storage";
 import { listAllPeople } from "@/lib/people/people-storage";
 import type { OrganizationRecord, PersonRecord } from "@/lib/people/types";
 
@@ -8,15 +10,20 @@ export type VendorDirectoryOption = {
   phone: string | null;
   email: string | null;
   source: "person" | "organization";
+  vendorTypeId: string | null;
 };
 
-function orgVendorOption(org: OrganizationRecord): VendorDirectoryOption {
+function orgVendorOption(org: OrganizationRecord, people: PersonRecord[]): VendorDirectoryOption {
+  const linkedVendor = people.find(
+    (person) => person.organizationId === org.id && person.kind === "vendor",
+  );
   return {
     id: `org:${org.id}`,
     label: org.name,
     phone: org.phone,
     email: org.email,
     source: "organization",
+    vendorTypeId: linkedVendor?.vendorType ?? null,
   };
 }
 
@@ -29,31 +36,70 @@ function personVendorOption(person: PersonRecord): VendorDirectoryOption {
     phone: person.phone,
     email: person.email,
     source: "person",
+    vendorTypeId: person.vendorType ?? null,
   };
 }
 
-export function listVendorDirectoryOptions(): VendorDirectoryOption[] {
+export function listVendorDirectoryOptions(vendorTypeId?: string): VendorDirectoryOption[] {
+  const people = listAllPeople().filter((person) => person.kind === "vendor");
+  const orgs = listAllOrganizations();
   const options: VendorDirectoryOption[] = [];
-  const people = listAllPeople().filter((p) => p.kind === "vendor");
 
   for (const person of people) {
     options.push(personVendorOption(person));
   }
 
-  for (const org of MOCK_ORGANIZATIONS) {
-    if (org.orgType === "vendor") {
-      const covered = people.some((p) => p.organizationId === org.id);
-      if (!covered) options.push(orgVendorOption(org));
-    }
+  for (const org of orgs) {
+    if (org.orgType !== "vendor") continue;
+    const covered = people.some((person) => person.organizationId === org.id);
+    if (!covered) options.push(orgVendorOption(org, people));
   }
 
-  return options.sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: "base" }));
+  for (const org of MOCK_ORGANIZATIONS) {
+    if (org.orgType !== "vendor") continue;
+    if (orgs.some((stored) => stored.id === org.id)) continue;
+    const covered = people.some((person) => person.organizationId === org.id);
+    if (!covered) options.push(orgVendorOption(org, people));
+  }
+
+  const sorted = options.sort((a, b) =>
+    a.label.localeCompare(b.label, undefined, { sensitivity: "base" }),
+  );
+
+  if (!vendorTypeId) return sorted;
+
+  return sorted.filter((option) => vendorDirectoryOptionMatchesType(option, vendorTypeId, people, orgs));
+}
+
+function vendorDirectoryOptionMatchesType(
+  option: VendorDirectoryOption,
+  vendorTypeId: string,
+  people: PersonRecord[],
+  orgs: OrganizationRecord[],
+): boolean {
+  if (option.source === "person") {
+    const personId = option.id.slice("person:".length);
+    const person = people.find((entry) => entry.id === personId);
+    return person?.vendorType === vendorTypeId;
+  }
+
+  const orgId = option.id.slice("org:".length);
+  const org = orgs.find((entry) => entry.id === orgId) ?? getOrganizationById(orgId);
+  if (!org) return false;
+  return organizationMatchesVendorTypeFilter(org, vendorTypeId, listAllPeople());
+}
+
+export function resolveVendorDirectoryOption(
+  vendorDirectoryId: string | null | undefined,
+): VendorDirectoryOption | undefined {
+  if (!vendorDirectoryId) return undefined;
+  return listVendorDirectoryOptions().find((option) => option.id === vendorDirectoryId);
 }
 
 export function resolveVendorDirectoryLabel(vendorDirectoryId: string | null | undefined): string {
   if (!vendorDirectoryId) return "";
   if (vendorDirectoryId.startsWith("person:")) {
-    const person = listAllPeople().find((p) => p.id === vendorDirectoryId.slice(7));
+    const person = listAllPeople().find((entry) => entry.id === vendorDirectoryId.slice(7));
     return person ? personVendorOption(person).label : "";
   }
   if (vendorDirectoryId.startsWith("org:")) {
@@ -61,4 +107,12 @@ export function resolveVendorDirectoryLabel(vendorDirectoryId: string | null | u
     return org?.name ?? "";
   }
   return "";
+}
+
+export function vendorDirectoryOptionMatchesVendorType(
+  vendorDirectoryId: string | null | undefined,
+  vendorTypeId: string,
+): boolean {
+  if (!vendorDirectoryId) return false;
+  return listVendorDirectoryOptions(vendorTypeId).some((option) => option.id === vendorDirectoryId);
 }

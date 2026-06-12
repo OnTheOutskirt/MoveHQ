@@ -2,8 +2,10 @@
 
 import { PlanningProgressProvider } from "@/components/planning/PlanningProgressProvider";
 import { PlanningScheduleProvider } from "@/components/planning/PlanningScheduleProvider";
+import { useTesterFeedback } from "@/components/providers/TesterFeedbackProvider";
 import { ModulePage } from "@/components/shared/ModulePage";
 import { PLANNING_TODO_TAB_LABEL } from "@/lib/planning/meeting-notes";
+import { openTesterFeedbackCount } from "@/lib/planning/tester-feedback";
 import { SAAS_PLAN_TAB_LABEL } from "@/lib/planning/saas-plan";
 import { lazyNamedWorkspace } from "@/lib/navigation/lazy-route";
 import { pageMeta } from "@/lib/navigation/page-meta";
@@ -30,12 +32,17 @@ const SaasPlanView = lazyNamedWorkspace(
   () => import("@/components/planning/SaasPlanView"),
   (module) => module.SaasPlanView,
 );
+const TesterFeedbackView = lazyNamedWorkspace(
+  () => import("@/components/planning/TesterFeedbackView"),
+  (module) => module.TesterFeedbackView,
+);
 
 const TABS = [
   { id: "overall", label: "Overall Plan" },
   { id: "v1", label: "V1 Roadmap" },
   { id: "v2", label: "V2 Roadmap" },
   { id: "todo", label: PLANNING_TODO_TAB_LABEL },
+  { id: "feedback", label: "Tester feedback" },
   { id: "saas", label: SAAS_PLAN_TAB_LABEL },
 ] as const;
 
@@ -51,6 +58,8 @@ function TabPanel({ tab }: { tab: TabId }) {
       return <V2PlanView />;
     case "todo":
       return <MeetingNotesView />;
+    case "feedback":
+      return <TesterFeedbackView />;
     case "saas":
       return <SaasPlanView />;
     default:
@@ -61,6 +70,8 @@ function TabPanel({ tab }: { tab: TabId }) {
 export default function PlanningPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { items: feedbackItems } = useTesterFeedback();
+  const feedbackOpenCount = openTesterFeedbackCount(feedbackItems);
   const rawTab = searchParams.get("tab");
   const normalizedTab = rawTab === "meeting-notes" ? "todo" : rawTab;
   const activeTab: TabId = TABS.some((t) => t.id === normalizedTab)
@@ -98,6 +109,11 @@ export default function PlanningPage() {
                 )}
               >
                 {tab.label}
+                {tab.id === "feedback" && feedbackOpenCount > 0 ? (
+                  <span className="ml-1.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-amber-900">
+                    {feedbackOpenCount}
+                  </span>
+                ) : null}
               </button>
             ))}
           </nav>

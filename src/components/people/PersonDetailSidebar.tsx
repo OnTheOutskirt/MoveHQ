@@ -3,6 +3,7 @@
 import { DirectoryContactActions } from "@/components/people/DirectoryContactActions";
 import { DirectoryCommunicationHistory } from "@/components/people/DirectoryCommunicationHistory";
 import { DirectoryRelatedMoves } from "@/components/people/DirectoryRelatedMoves";
+import { ReferralTouchLogSection } from "@/components/people/ReferralTouchLogSection";
 import { DetailSidebar } from "@/components/ui/DetailSidebar";
 import { MOCK_MOVES } from "@/lib/moves/mock-data";
 import { getOrganizationForPerson } from "@/lib/people/mock-data";
@@ -114,6 +115,10 @@ export function PersonDetailSidebar({ person, onClose }: PersonDetailSidebarProp
           {person.notes ? <Field label="Notes">{person.notes}</Field> : null}
 
           <DirectoryRelatedMoves moves={moves} showCustomerName />
+
+          {person.kind === "referral" ? (
+            <ReferralTouchLogSection partnerType="person" partnerId={person.id} />
+          ) : null}
 
           <DirectoryCommunicationHistory moveIds={person.moveIds} />
         </div>

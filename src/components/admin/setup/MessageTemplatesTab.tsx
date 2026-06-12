@@ -14,7 +14,9 @@ import {
   type MessageTemplateEditorChannel,
 } from "@/lib/communications/message-templates";
 import { WalkthroughShareTemplatesEditor } from "@/components/admin/setup/WalkthroughShareTemplatesEditor";
+import { VendorTemplatesEditor } from "@/components/admin/setup/VendorTemplatesEditor";
 import type { WalkthroughShareTemplates } from "@/lib/communications/walkthrough-share-templates";
+import type { VendorMessageTemplatesStore } from "@/lib/communications/vendor-message-templates";
 import { cn } from "@/lib/utils";
 import { Plus, RotateCcw, Trash2 } from "lucide-react";
 import Link from "next/link";
@@ -44,13 +46,15 @@ const PREVIEW_CONTEXT = {
   reviewLink: "https://g.page/r/jonahs-movers-tomball/review",
 };
 
-type MessageSection = "sales" | "ops" | "automations" | "walkthrough";
+type MessageSection = "sales" | "ops" | "automations" | "vendors" | "walkthrough";
 
 type MessageTemplatesTabProps = {
   templates: MessageTemplate[];
   onChange: (templates: MessageTemplate[]) => void;
   walkthroughTemplates: WalkthroughShareTemplates;
   onWalkthroughChange: (templates: WalkthroughShareTemplates) => void;
+  vendorTemplates: VendorMessageTemplatesStore;
+  onVendorTemplatesChange: (templates: VendorMessageTemplatesStore) => void;
 };
 
 export function MessageTemplatesTab({
@@ -58,6 +62,8 @@ export function MessageTemplatesTab({
   onChange,
   walkthroughTemplates,
   onWalkthroughChange,
+  vendorTemplates,
+  onVendorTemplatesChange,
 }: MessageTemplatesTabProps) {
   const [section, setSection] = useState<MessageSection>("sales");
 
@@ -73,6 +79,11 @@ export function MessageTemplatesTab({
           active={section === "ops"}
           onClick={() => setSection("ops")}
           label="Operations"
+        />
+        <SectionButton
+          active={section === "vendors"}
+          onClick={() => setSection("vendors")}
+          label="Vendor templates"
         />
         <SectionButton
           active={section === "automations"}
@@ -91,6 +102,8 @@ export function MessageTemplatesTab({
           templates={walkthroughTemplates}
           onChange={onWalkthroughChange}
         />
+      ) : section === "vendors" ? (
+        <VendorTemplatesEditor templates={vendorTemplates} onChange={onVendorTemplatesChange} />
       ) : (
         <QuickReplyTemplateEditor
           templates={templates}

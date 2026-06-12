@@ -1,3 +1,4 @@
+import { applyAcquisitionFields } from "./acquisition";
 import { buildLostReasonDisplay, type MarkLostPayload } from "./lost-reasons";
 import {
   hasEnabledStageAutomations,
@@ -314,7 +315,7 @@ export function applyPipelineStage(
   };
   const withAutomations = mergeAutomationFollowUps(next, stage);
   if (withAutomations.followUps.length > next.followUps.length || hasEnabledStageAutomations(stage)) {
-    return syncFollowUpDue(withAutomations);
+    return applyAcquisitionFields(syncFollowUpDue(withAutomations));
   }
   const template = defaultFollowUpForStage(next, stage);
   if (template && !getOpenFollowUpsFromMove(next)) {
@@ -322,9 +323,9 @@ export function applyPipelineStage(
       ...next,
       followUps: [...next.followUps, createFollowUp(next, template)],
     };
-    return syncFollowUpDue(withFu);
+    return applyAcquisitionFields(syncFollowUpDue(withFu));
   }
-  return syncFollowUpDue(withAutomations);
+  return applyAcquisitionFields(syncFollowUpDue(withAutomations));
 }
 
 function getOpenFollowUpsFromMove(move: MoveRecord) {
@@ -350,18 +351,20 @@ export function markMoveLost(
   const cleared = move.followUps.map((f) =>
     f.status === "open" ? { ...f, status: "skipped" as const } : f,
   );
-  return syncFollowUpDue({
-    ...move,
-    lostAt: at,
-    lostFromStage: move.pipelineStage,
-    lostQualification: payload.qualification,
-    lostReasonId: payload.reasonId,
-    lostNotes: payload.notes?.trim() || null,
-    lostReason: buildLostReasonDisplay(payload),
-    conditionStatus: "lost",
-    status: "lost",
-    followUps: cleared,
-  });
+  return applyAcquisitionFields(
+    syncFollowUpDue({
+      ...move,
+      lostAt: at,
+      lostFromStage: move.pipelineStage,
+      lostQualification: payload.qualification,
+      lostReasonId: payload.reasonId,
+      lostNotes: payload.notes?.trim() || null,
+      lostReason: buildLostReasonDisplay(payload),
+      conditionStatus: "lost",
+      status: "lost",
+      followUps: cleared,
+    }),
+  );
 }
 
 export function reopenLostMove(move: MoveRecord): MoveRecord {

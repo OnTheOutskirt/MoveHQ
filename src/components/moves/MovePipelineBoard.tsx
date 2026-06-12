@@ -28,7 +28,7 @@ import { useMemo, useState } from "react";
 
 type MovePipelineBoardProps = {
   moves: MoveRecord[];
-  onStageChange: (moveId: string, stage: PipelineStageId) => void;
+  onStageChange: (move: MoveRecord, stage: PipelineStageId) => void;
 };
 
 const pipelineCollisionDetection: CollisionDetection = (args) => {
@@ -194,7 +194,7 @@ export function MovePipelineBoard({
         if (!next || next === "completed") return;
         const move = boardMoves.find((m) => m.id === moveId);
         if (!move || move.pipelineStage === next) return;
-        onStageChange(moveId, next);
+        onStageChange(move, next);
       }}
       onDragCancel={() => {
         setActiveMoveId(null);

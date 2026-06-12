@@ -1,36 +1,46 @@
 import type { IntakeThirdPartyService } from "./flat-rate-intake";
+import { catalogVendorTypeLabel } from "@/lib/settings/field-catalog-runtime";
 
-export type ThirdPartyServiceType = {
-  id: string;
-  label: string;
-  hint?: string;
+/** Legacy equipment-tab service ids → Setup vendor type ids. */
+const LEGACY_SERVICE_TO_VENDOR_TYPE: Record<string, string> = {
+  crating: "special_services",
+  piano: "special_services",
+  appliance: "special_services",
+  junk: "special_services",
+  storage: "operations_materials",
+  cleaning: "special_services",
+  other: "special_services",
 };
 
-export const THIRD_PARTY_SERVICE_TYPES: ThirdPartyServiceType[] = [
-  { id: "crating", label: "Crating", hint: "Custom wood crating for art, marble, etc." },
-  { id: "piano", label: "Piano / specialty moving" },
-  { id: "appliance", label: "Appliance disconnect / reconnect" },
-  { id: "junk", label: "Junk haul-off" },
-  { id: "storage", label: "Portable storage / POD" },
-  { id: "cleaning", label: "Post-move cleaning" },
-  { id: "other", label: "Other" },
-];
+export function normalizeThirdPartyVendorTypeId(serviceTypeId: string): string {
+  return LEGACY_SERVICE_TO_VENDOR_TYPE[serviceTypeId] ?? serviceTypeId;
+}
 
 export function newThirdPartyServiceId(): string {
   return `tps-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
-export function thirdPartyServiceLabel(line: IntakeThirdPartyService): string {
-  const preset = THIRD_PARTY_SERVICE_TYPES.find((t) => t.id === line.serviceTypeId);
+export function thirdPartyVendorTypeLabel(line: IntakeThirdPartyService): string {
+  const typeId = normalizeThirdPartyVendorTypeId(line.serviceTypeId);
   if (line.serviceTypeId === "other" && line.customLabel?.trim()) {
     return line.customLabel.trim();
   }
-  return preset?.label ?? line.serviceTypeId;
+  return catalogVendorTypeLabel(typeId);
+}
+
+/** @deprecated Use thirdPartyVendorTypeLabel */
+export function thirdPartyServiceLabel(line: IntakeThirdPartyService): string {
+  return thirdPartyVendorTypeLabel(line);
 }
 
 export function normalizeThirdPartyServices(
   raw: IntakeThirdPartyService[] | undefined,
 ): IntakeThirdPartyService[] {
   if (!Array.isArray(raw)) return [];
-  return raw.filter((line) => line.serviceTypeId);
+  return raw
+    .filter((line) => line.serviceTypeId)
+    .map((line) => ({
+      ...line,
+      serviceTypeId: normalizeThirdPartyVendorTypeId(line.serviceTypeId),
+    }));
 }

@@ -3,19 +3,27 @@
 import { AdminSaveBar } from "@/components/admin/AdminSaveBar";
 import { AutomationsTab } from "@/components/admin/setup/AutomationsTab";
 import { CrewAppTab } from "@/components/admin/setup/CrewAppTab";
-import { LeadsTab } from "@/components/admin/setup/LeadsTab";
-import { MoveTypesTab } from "@/components/admin/setup/MoveTypesTab";
-import { PipelineTab } from "@/components/admin/setup/PipelineTab";
-import { RatesCatalogTab } from "@/components/admin/setup/RatesCatalogTab";
 import { MessageTemplatesTab } from "@/components/admin/setup/MessageTemplatesTab";
-import { TemplatesTab } from "@/components/admin/setup/TemplatesTab";
+import { OperationsSetupTab } from "@/components/admin/setup/OperationsSetupTab";
+import { SalesSetupTab } from "@/components/admin/setup/SalesSetupTab";
 import { TerminologyTab } from "@/components/admin/setup/TerminologyTab";
 import { SettingsDraftProvider, useSettingsDraft } from "@/components/providers/SettingsDraftProvider";
 import { useSettings } from "@/components/providers/SettingsProvider";
 import { ModulePage } from "@/components/shared/ModulePage";
 import { TabBar } from "@/components/shared/TabBar";
-import { SETUP_INTEGRATIONS_PATH, setupTabRedirect } from "@/lib/navigation/admin-redirects";
+import { SETUP_INTEGRATIONS_PATH } from "@/lib/navigation/admin-redirects";
 import { pageMeta } from "@/lib/navigation/page-meta";
+import {
+  operationsSectionFromLocation,
+  resolveSetupLocation,
+  salesSectionFromLocation,
+  SETUP_TOP_TABS,
+  setupLocationHref,
+  type SetupLocation,
+  type SetupOperationsSectionId,
+  type SetupSalesSectionId,
+  type SetupTopTabId,
+} from "@/lib/navigation/setup-tabs";
 import { defaultDocumentTemplates } from "@/lib/settings/defaults";
 import { loadDocumentTemplates, saveDocumentTemplates } from "@/lib/settings/storage";
 import {
@@ -24,6 +32,12 @@ import {
   saveMessageTemplates,
   templatesSnapshot as messageTemplatesSnapshot,
 } from "@/lib/communications/message-templates";
+import {
+  loadVendorMessageTemplates,
+  saveVendorMessageTemplates,
+  vendorMessageTemplatesSnapshot,
+  type VendorMessageTemplatesStore,
+} from "@/lib/communications/vendor-message-templates";
 import {
   defaultWalkthroughShareTemplates,
   loadWalkthroughShareTemplates,
@@ -58,20 +72,6 @@ import type { MessageTemplate } from "@/lib/communications/message-templates";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
-const TABS = [
-  { id: "rates", label: "Rates & catalog" },
-  { id: "pipeline", label: "Pipeline & fields" },
-  { id: "leads", label: "Leads" },
-  { id: "move-types", label: "Move types" },
-  { id: "documents", label: "Documents" },
-  { id: "messages", label: "Email & SMS" },
-  { id: "automations", label: "Automations" },
-  { id: "terminology", label: "Terminology" },
-  { id: "crew-app", label: "Crew app" },
-] as const;
-
-type TabId = (typeof TABS)[number]["id"];
-
 function templatesSnapshot(t: DocumentTemplate[]): string {
   return JSON.stringify(t);
 }
@@ -85,8 +85,12 @@ function SetupWorkspaceInner() {
   const meta = pageMeta["/admin/setup"];
 
   const rawTab = searchParams.get("tab");
-  const resolvedTab = rawTab ? (setupTabRedirect[rawTab] ?? rawTab) : "rates";
-  const activeTab: TabId = TABS.some((t) => t.id === resolvedTab) ? (resolvedTab as TabId) : "rates";
+  const rawSection = searchParams.get("section");
+  const location = useMemo(
+    () => resolveSetupLocation(rawTab, rawSection),
+    [rawTab, rawSection],
+  );
+  const canonicalHref = setupLocationHref(location);
 
   const [templates, setTemplates] = useState<DocumentTemplate[]>(defaultDocumentTemplates);
   const [savedTemplatesSnapshot, setSavedTemplatesSnapshot] = useState("");
@@ -96,6 +100,10 @@ function SetupWorkspaceInner() {
     defaultWalkthroughShareTemplates,
   );
   const [savedWalkthroughTemplatesSnapshot, setSavedWalkthroughTemplatesSnapshot] = useState("");
+  const [vendorTemplates, setVendorTemplates] = useState<VendorMessageTemplatesStore>(() =>
+    loadVendorMessageTemplates(),
+  );
+  const [savedVendorTemplatesSnapshot, setSavedVendorTemplatesSnapshot] = useState("");
   const [equipmentCatalog, setEquipmentCatalog] = useState<EquipmentCatalogItem[]>(() =>
     loadEquipmentCatalog(),
   );
@@ -127,6 +135,9 @@ function SetupWorkspaceInner() {
     const loadedWalkthrough = loadWalkthroughShareTemplates();
     setWalkthroughTemplates(loadedWalkthrough);
     setSavedWalkthroughTemplatesSnapshot(walkthroughShareTemplatesSnapshot(loadedWalkthrough));
+    const loadedVendorTemplates = loadVendorMessageTemplates();
+    setVendorTemplates(loadedVendorTemplates);
+    setSavedVendorTemplatesSnapshot(vendorMessageTemplatesSnapshot(loadedVendorTemplates));
     const loadedSchedule = loadPricingRateSchedule();
     setRateSchedule(loadedSchedule);
     setSavedRateScheduleSnapshot(scheduleSnapshot(loadedSchedule));
@@ -151,10 +162,11 @@ function SetupWorkspaceInner() {
       router.replace(SETUP_INTEGRATIONS_PATH);
       return;
     }
-    if (rawTab && rawTab !== resolvedTab) {
-      router.replace(`/admin/setup?tab=${resolvedTab}`, { scroll: false });
+    const currentHref = `/admin/setup?${searchParams.toString()}`;
+    if (currentHref !== canonicalHref) {
+      router.replace(canonicalHref, { scroll: false });
     }
-  }, [rawTab, resolvedTab, router]);
+  }, [rawTab, searchParams, canonicalHref, router]);
 
   const templatesDirty = useMemo(
     () => templatesSnapshot(templates) !== savedTemplatesSnapshot,
@@ -164,12 +176,15 @@ function SetupWorkspaceInner() {
   const messagesDirty = useMemo(
     () =>
       messageTemplatesSnapshot(messageTemplates) !== savedMessageTemplatesSnapshot ||
-      walkthroughShareTemplatesSnapshot(walkthroughTemplates) !== savedWalkthroughTemplatesSnapshot,
+      walkthroughShareTemplatesSnapshot(walkthroughTemplates) !== savedWalkthroughTemplatesSnapshot ||
+      vendorMessageTemplatesSnapshot(vendorTemplates) !== savedVendorTemplatesSnapshot,
     [
       messageTemplates,
       savedMessageTemplatesSnapshot,
       walkthroughTemplates,
       savedWalkthroughTemplatesSnapshot,
+      vendorTemplates,
+      savedVendorTemplatesSnapshot,
     ],
   );
 
@@ -188,8 +203,20 @@ function SetupWorkspaceInner() {
   const dirty =
     draftCtx.dirty || templatesDirty || messagesDirty || equipmentDirty || pricingDirty;
 
-  function setTab(tab: TabId) {
-    router.push(`/admin/setup?tab=${tab}`, { scroll: false });
+  function setLocation(next: SetupLocation) {
+    router.push(setupLocationHref(next), { scroll: false });
+  }
+
+  function setTopTab(tab: SetupTopTabId) {
+    setLocation(resolveSetupLocation(tab, null));
+  }
+
+  function setSalesSection(section: SetupSalesSectionId) {
+    setLocation({ tab: "sales", section });
+  }
+
+  function setOperationsSection(section: SetupOperationsSectionId) {
+    setLocation({ tab: "operations", section });
   }
 
   function saveAll() {
@@ -203,6 +230,8 @@ function SetupWorkspaceInner() {
       setSavedMessageTemplatesSnapshot(messageTemplatesSnapshot(messageTemplates));
       saveWalkthroughShareTemplates(walkthroughTemplates);
       setSavedWalkthroughTemplatesSnapshot(walkthroughShareTemplatesSnapshot(walkthroughTemplates));
+      saveVendorMessageTemplates(vendorTemplates);
+      setSavedVendorTemplatesSnapshot(vendorMessageTemplatesSnapshot(vendorTemplates));
     }
     if (equipmentDirty || pricingDirty) {
       const effectiveFrom = new Date().toISOString().slice(0, 10);
@@ -239,6 +268,9 @@ function SetupWorkspaceInner() {
     const loadedWalkthrough = loadWalkthroughShareTemplates();
     setWalkthroughTemplates(loadedWalkthrough);
     setSavedWalkthroughTemplatesSnapshot(walkthroughShareTemplatesSnapshot(loadedWalkthrough));
+    const loadedVendorTemplates = loadVendorMessageTemplates();
+    setVendorTemplates(loadedVendorTemplates);
+    setSavedVendorTemplatesSnapshot(vendorMessageTemplatesSnapshot(loadedVendorTemplates));
     const loadedSchedule = loadPricingRateSchedule();
     setRateSchedule(loadedSchedule);
     setSavedRateScheduleSnapshot(scheduleSnapshot(loadedSchedule));
@@ -263,14 +295,19 @@ function SetupWorkspaceInner() {
     return <p className="text-sm text-slate-500">Loading setup…</p>;
   }
 
+  const salesSection = salesSectionFromLocation(location);
+  const operationsSection = operationsSectionFromLocation(location);
+
   return (
     <div className="space-y-6 pb-20">
       <ModulePage title={meta.title} description={meta.description} />
 
-      <TabBar tabs={TABS} activeTab={activeTab} onChange={setTab} />
+      <TabBar tabs={SETUP_TOP_TABS} activeTab={location.tab} onChange={setTopTab} />
 
-      {activeTab === "rates" && (
-        <RatesCatalogTab
+      {location.tab === "sales" ? (
+        <SalesSetupTab
+          section={salesSection}
+          onSectionChange={setSalesSection}
           hourlySettings={hourlySettings}
           onHourlySettingsChange={(patch) =>
             setHourlySettings((prev) => normalizeHourlyQuoteSettings({ ...prev, ...patch }))
@@ -282,23 +319,26 @@ function SetupWorkspaceInner() {
           catalog={equipmentCatalog}
           onCatalogChange={setEquipmentCatalog}
           schedule={rateSchedule}
+          templates={templates}
+          onTemplatesChange={setTemplates}
         />
-      )}
-      {activeTab === "pipeline" && <PipelineTab />}
-      {activeTab === "leads" && <LeadsTab />}
-      {activeTab === "move-types" && <MoveTypesTab />}
-      {activeTab === "documents" && <TemplatesTab templates={templates} onChange={setTemplates} />}
-      {activeTab === "messages" && (
+      ) : null}
+      {location.tab === "operations" ? (
+        <OperationsSetupTab section={operationsSection} onSectionChange={setOperationsSection} />
+      ) : null}
+      {location.tab === "messages" ? (
         <MessageTemplatesTab
           templates={messageTemplates}
           onChange={setMessageTemplates}
           walkthroughTemplates={walkthroughTemplates}
           onWalkthroughChange={setWalkthroughTemplates}
+          vendorTemplates={vendorTemplates}
+          onVendorTemplatesChange={setVendorTemplates}
         />
-      )}
-      {activeTab === "automations" && <AutomationsTab />}
-      {activeTab === "terminology" && <TerminologyTab />}
-      {activeTab === "crew-app" && <CrewAppTab />}
+      ) : null}
+      {location.tab === "automations" ? <AutomationsTab /> : null}
+      {location.tab === "terminology" ? <TerminologyTab /> : null}
+      {location.tab === "mobile-app" ? <CrewAppTab /> : null}
 
       <AdminSaveBar dirty={dirty} onSave={saveAll} onDiscard={discardAll} />
     </div>

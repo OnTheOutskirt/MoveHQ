@@ -6,6 +6,7 @@ import type { MoveActivity, MoveRecord } from "@/lib/moves/types";
 import { cn } from "@/lib/utils";
 import {
   Calendar,
+  FileText,
   FileUp,
   Mail,
   MapPin,
@@ -23,14 +24,9 @@ const ACTION_ICONS: Record<string, LucideIcon> = {
   document: FileUp,
   crew: Users,
   "book-walkthrough": Calendar,
-  "check-quote": Phone,
-  "send-reminder": MessageSquare,
-  "collect-deposit": MessageSquare,
-  "send-contract": MessageSquare,
-  "confirm-move": MessageSquare,
-  "ops-handoff": MessageSquare,
-  "collect-payment": MessageSquare,
-  "final-invoice": MessageSquare,
+  "add-follow-up": Calendar,
+  "view-profitability": FileText,
+  "view-portal": MessageSquare,
 };
 
 type MoveDetailActivitySidebarProps = {

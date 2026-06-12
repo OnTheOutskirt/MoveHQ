@@ -77,6 +77,20 @@ function writeStore(store: Store): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
 }
 
+export function defaultUserPreferences(
+  userName?: string,
+  userEmail?: string,
+  workspaceRole: WorkspaceRole = "owner",
+): UserPreferences {
+  const persona = userName ? undefined : REAL_ADMIN_PERSONA;
+  return defaultPreferences(
+    userName ?? persona?.name ?? REAL_ADMIN_PERSONA.name,
+    persona?.phone,
+    userEmail ?? persona?.email ?? REAL_ADMIN_PERSONA.email,
+    workspaceRole,
+  );
+}
+
 export function readUserPreferences(
   userId: string,
   userName?: string,
@@ -86,12 +100,7 @@ export function readUserPreferences(
   const persona =
     userId === REAL_ADMIN_PERSONA.id ? REAL_ADMIN_PERSONA : undefined;
   const role = workspaceRole ?? persona?.workspaceRole ?? "owner";
-  const defaults = defaultPreferences(
-    userName ?? persona?.name ?? REAL_ADMIN_PERSONA.name,
-    persona?.phone,
-    userEmail ?? persona?.email ?? REAL_ADMIN_PERSONA.email,
-    role,
-  );
+  const defaults = defaultUserPreferences(userName, userEmail, role);
   const stored = readStore()[userId];
   const merged = {
     ...defaults,

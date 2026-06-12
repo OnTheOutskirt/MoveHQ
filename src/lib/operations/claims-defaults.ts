@@ -135,7 +135,12 @@ clm4 = {
 clm4 = { ...clm4, ...applyAcknowledgementSent(clm4, "email", "Claim received — repair partner assigned") };
 clm4 = {
   ...clm4,
-  ...applyVendorPackageSent(clm4, "vendor-movebees", "Claim package emailed to MoveBees"),
+  ...applyVendorPackageSent(
+    clm4,
+    "claim_repairs",
+    "vendor-movebees",
+    "Claim package emailed to MoveBees",
+  ),
 };
 
 /** CLM-1028 — completed goodwill credit */

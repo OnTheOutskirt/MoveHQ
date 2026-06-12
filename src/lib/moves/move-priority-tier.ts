@@ -98,7 +98,7 @@ export const leadChannelLabels: Record<LeadChannel, string> = {
   referral_realtor: "Realtor referral",
   referral_senior_living: "Senior living referral",
   referral_business: "Business referral",
-  referral_other: "Referral",
+  referral_other: "Family / Friend",
   google: "Google / internet search",
   google_maps: "Google Maps",
   facebook: "Facebook",

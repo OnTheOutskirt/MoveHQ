@@ -110,7 +110,7 @@ const LEAD_SOURCE_SEED: FieldCatalogEntry[] = [
   { id: "referral_realtor", label: "Realtor referral", isHot: true, builtIn: true },
   { id: "referral_senior_living", label: "Senior living referral", isHot: true, builtIn: true },
   { id: "referral_business", label: "Business referral", isHot: true, builtIn: true },
-  { id: "referral_other", label: "Referral", isHot: true, builtIn: true },
+  { id: "referral_other", label: "Family / Friend", isHot: true, builtIn: true },
   { id: "google", label: "Google / internet search", builtIn: true },
   { id: "google_maps", label: "Google Maps", builtIn: true },
   { id: "facebook", label: "Facebook", builtIn: true },
@@ -172,6 +172,28 @@ const PRIORITY_TIER_SEED: FieldCatalogEntry[] = [
   { id: "Q4", label: "Q4 Low Priority", shortCode: "Q4", meaning: "Cold source + lower value (under $2k)", badgeClass: "bg-slate-200 text-slate-700", builtIn: true },
 ];
 
+const REFERRAL_TYPE_SEED: FieldCatalogEntry[] = [
+  { id: "realtor", label: "Realtor", description: "Listing agents and buyer/seller referrals", badgeClass: "bg-amber-50 text-amber-900", builtIn: true },
+  { id: "storage_facility", label: "Storage facility", description: "Self-storage or warehouse partners", badgeClass: "bg-orange-50 text-orange-900", builtIn: true },
+  { id: "developer", label: "Developer", description: "Residential or commercial developers", badgeClass: "bg-sky-50 text-sky-900", builtIn: true },
+  { id: "restoration_company", label: "Restoration company", description: "Water/fire damage and rebuild referrals", badgeClass: "bg-rose-50 text-rose-900", builtIn: true },
+  { id: "senior_living", label: "Senior living", description: "Communities and transition coordinators", badgeClass: "bg-teal-50 text-teal-800", builtIn: true },
+  { id: "insurance", label: "Insurance", description: "Adjusters and insurance partners", badgeClass: "bg-indigo-50 text-indigo-900", builtIn: true },
+  { id: "apartment_complex", label: "Apartment complex", description: "Property managers and apartment community referrals", badgeClass: "bg-lime-50 text-lime-900", builtIn: true },
+  { id: "business", label: "Business referrer", description: "Other businesses that send leads", badgeClass: "bg-violet-50 text-violet-800", builtIn: true },
+  { id: "other", label: "Other referral", description: "Misc. referral sources", badgeClass: "bg-slate-100 text-slate-700", builtIn: true },
+];
+
+const VENDOR_TYPE_SEED: FieldCatalogEntry[] = [
+  { id: "truck_fleet", label: "Truck fleet", description: "Rental trucks and fleet partners", badgeClass: "bg-slate-100 text-slate-800", builtIn: true },
+  { id: "claim_repairs", label: "Claim repairs", description: "MoveBees, AHM, Shamrock claims, etc.", badgeClass: "bg-rose-50 text-rose-900", builtIn: true },
+  { id: "operations_materials", label: "Operations / materials", description: "Bubble wrap, packing materials, supplies", badgeClass: "bg-orange-50 text-orange-900", builtIn: true },
+  { id: "special_services", label: "Special services", description: "Crating, playgrounds, pool table, special-order packing", badgeClass: "bg-violet-50 text-violet-800", builtIn: true },
+  { id: "hr_vendors", label: "HR vendors", description: "Benefits, chaplain, and employee services", badgeClass: "bg-teal-50 text-teal-800", builtIn: true },
+  { id: "crew_vendors", label: "Crew vendors", description: "Subcontract crew and labor partners", badgeClass: "bg-brand-50 text-brand-800", builtIn: true },
+  { id: "fleet_repair", label: "Fleet repair", description: "Repair fleet, lift gate, truck maintenance", badgeClass: "bg-indigo-50 text-indigo-900", builtIn: true },
+];
+
 export function defaultFieldCatalog(): FieldCatalogSettings {
   return {
     pipelineStages: PIPELINE_STAGE_SEED.map((s) => ({ ...s })),
@@ -181,6 +203,8 @@ export function defaultFieldCatalog(): FieldCatalogSettings {
     moveTypes: MOVE_TYPE_SEED.map((s) => ({ ...s })),
     priorityTiers: PRIORITY_TIER_SEED.map((s) => ({ ...s })),
     discountReasons: DISCOUNT_REASON_SEED.map((s) => ({ ...s })),
+    referralTypes: REFERRAL_TYPE_SEED.map((s) => ({ ...s })),
+    vendorTypes: VENDOR_TYPE_SEED.map((s) => ({ ...s })),
     lostReasons: [
       ...UNQUALIFIED_LOST_REASONS.map((r) => ({
         id: r.id,
@@ -275,6 +299,10 @@ export function normalizeFieldCatalog(raw: Partial<FieldCatalogSettings> | undef
     priorityTiers: mergeEntries(defaults.priorityTiers, raw.priorityTiers),
     lostReasons: mergeEntries(defaults.lostReasons, raw.lostReasons),
     discountReasons: mergeDiscountReasons(defaults.discountReasons, raw.discountReasons),
+    referralTypes: mergeEntries(defaults.referralTypes, raw.referralTypes).filter(
+      (entry) => entry.id !== "attorney",
+    ),
+    vendorTypes: mergeEntries(defaults.vendorTypes, raw.vendorTypes),
   };
 }
 
@@ -286,7 +314,9 @@ export function fieldCatalogEntryCount(catalog: FieldCatalogSettings): number {
     catalog.leadSources.length +
     catalog.moveTypes.length +
     catalog.lostReasons.length +
-    catalog.discountReasons.length
+    catalog.discountReasons.length +
+    catalog.referralTypes.length +
+    catalog.vendorTypes.length
   );
 }
 

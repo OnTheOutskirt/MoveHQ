@@ -149,3 +149,10 @@ export function resolveFollowUpSource(followUp: MoveFollowUp): FollowUpSource {
   if (followUp.type === "custom") return "manual";
   return "automation";
 }
+
+/** User-facing origin — manual tasks vs pipeline/automation (incl. date-triggered rules). */
+export type FollowUpOriginKind = "manual" | "automated";
+
+export function followUpOriginKind(followUp: MoveFollowUp): FollowUpOriginKind {
+  return resolveFollowUpSource(followUp) === "manual" ? "manual" : "automated";
+}

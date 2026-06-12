@@ -14,10 +14,12 @@ type QuoteChannelBadgeProps = {
     | "quoteChannel"
     | "source"
     | "leadChannel"
-    | "intakeProgress"
+    | "conditionStatus"
     | "pipelineStage"
     | "quoteAmount"
     | "bookingReviewStatus"
+    | "websiteIntake"
+    | "sentQuote"
   >;
   /** Show web intake progress chip alongside quote channel (web AI only). */
   showIntakeProgress?: boolean;

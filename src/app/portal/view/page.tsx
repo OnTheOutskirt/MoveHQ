@@ -1,8 +1,13 @@
 "use client";
 
 import { DocumentPortalPreview } from "@/components/admin/setup/document-templates/DocumentPortalPreview";
+import { PortalViewChrome } from "@/components/portal/PortalViewChrome";
 import { useMoves } from "@/components/moves/MovesProvider";
 import { useSettings } from "@/components/providers/SettingsProvider";
+import {
+  buildCustomerPortalHomePath,
+  isStaffPortalPreview,
+} from "@/lib/moves/customer-portal-home";
 import {
   buildDocumentTemplateVars,
   getTemplateForKind,
@@ -12,10 +17,11 @@ import { computeMoveDeposit } from "@/lib/moves/move-deposit";
 import { resolveDocumentAccentColor } from "@/lib/settings/document-accent";
 import { loadDocumentTemplates } from "@/lib/settings/storage";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef } from "react";
 
 export default function PortalViewPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const { settings } = useSettings();
   const {
@@ -27,6 +33,7 @@ export default function PortalViewPage() {
 
   const moveId = searchParams.get("move");
   const kind: DocumentSendKind = searchParams.get("kind") === "contract" ? "contract" : "quote";
+  const staffPreview = isStaffPortalPreview(searchParams);
   const viewedRef = useRef<string | null>(null);
 
   const move = useMemo(
@@ -57,6 +64,10 @@ export default function PortalViewPage() {
     [template, settings.branding.accentColor],
   );
 
+  const portalHomeHref = moveId
+    ? buildCustomerPortalHomePath(moveId, { staffPreview })
+    : undefined;
+
   useEffect(() => {
     if (!moveId || viewedRef.current === `${moveId}-${kind}`) return;
     viewedRef.current = `${moveId}-${kind}`;
@@ -75,7 +86,7 @@ export default function PortalViewPage() {
   }
 
   return (
-    <div className="mx-auto min-h-dvh w-full max-w-lg bg-white shadow-sm">
+    <PortalViewChrome moveId={moveId} staffPreview={staffPreview}>
       <DocumentPortalPreview
         portal={template.portal}
         vars={templateVars}
@@ -84,19 +95,23 @@ export default function PortalViewPage() {
         accentColor={accent}
         companyName={settings.branding.companyName}
         interactive
-        viewport="mobile"
+        viewport="desktop"
         moveId={moveId}
+        portalHomeHref={portalHomeHref}
         onQuoteBookRequested={() => recordQuoteBookingRequested(moveId)}
-        onContractCompleted={() =>
-          recordContractSignedWithDeposit(moveId, deposit?.depositDue ?? 0)
-        }
+        onContractCompleted={() => {
+          recordContractSignedWithDeposit(moveId, deposit?.depositDue ?? 0);
+          if (portalHomeHref) {
+            router.push(portalHomeHref);
+          }
+        }}
       />
-      <p className="border-t border-slate-100 px-4 py-3 text-center text-[11px] text-slate-400">
+      <p className="border-t border-slate-100 px-4 py-3 text-center text-[11px] text-slate-400 sm:px-6">
         {settings.branding.companyName} ·{" "}
         <Link href={`tel:${settings.company.phone}`} className="text-brand-600 hover:underline">
           {settings.company.phone || "Contact us"}
         </Link>
       </p>
-    </div>
+    </PortalViewChrome>
   );
 }

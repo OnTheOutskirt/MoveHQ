@@ -3,6 +3,7 @@
 import { GlobalSearch } from "@/components/layout/GlobalSearch";
 import { NotificationsMenu } from "@/components/layout/NotificationsMenu";
 import { OfficeTimeClockMenu } from "@/components/layout/OfficeTimeClockMenu";
+import { ReportFeedbackMenu } from "@/components/layout/ReportFeedbackMenu";
 import { UserProfileMenu } from "@/components/layout/UserProfileMenu";
 import { useMovesActions } from "@/components/moves/MovesProvider";
 import { Button } from "@/components/ui/Button";
@@ -39,6 +40,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
       </div>
 
       <div className="ml-auto flex shrink-0 items-center gap-2">
+        <ReportFeedbackMenu />
         <OfficeTimeClockMenu />
         <NotificationsMenu />
         <div className="hidden h-8 w-px bg-slate-200 sm:block" />

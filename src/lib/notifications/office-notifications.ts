@@ -25,6 +25,7 @@ import { NOTIFICATION_ROLE_DEFAULTS } from "./notification-types";
 export type { OfficeNotification, OfficeNotificationCategory };
 
 const READ_STORAGE_KEY = "jm-office-notifications-read-v1";
+export const OFFICE_NOTIFICATIONS_UPDATED_EVENT = "jm-office-notifications-updated";
 
 const CUSTOMER_DOCUMENT_EVENTS = new Set([
   "viewed",
@@ -47,6 +48,7 @@ function readDismissedStore(): Record<string, true> {
 function writeDismissedStore(store: Record<string, true>): void {
   if (typeof window === "undefined") return;
   localStorage.setItem(READ_STORAGE_KEY, JSON.stringify(store));
+  window.dispatchEvent(new Event(OFFICE_NOTIFICATIONS_UPDATED_EVENT));
 }
 
 export function getDismissedNotificationIds(): Set<string> {

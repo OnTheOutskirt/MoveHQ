@@ -1,10 +1,17 @@
 "use client";
 
 import { MessageTemplateBar } from "@/components/communications/MessageTemplateBar";
+import { VendorMessageTemplateBar } from "@/components/communications/VendorMessageTemplateBar";
 import { useClaims } from "@/components/providers/ClaimsProvider";
+import { useSettings } from "@/components/providers/SettingsProvider";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { buildMessageTemplateContextFromMove } from "@/lib/communications/message-templates";
+import {
+  buildClaimVendorTemplateContext,
+  fillVendorEmailTemplate,
+  getVendorTypeTemplate,
+} from "@/lib/communications/vendor-message-templates";
 import { formatMoveDate } from "@/lib/moves/format";
 import type { MoveRecord } from "@/lib/moves/types";
 import {
@@ -13,8 +20,12 @@ import {
   CLAIM_STATUS_LABELS,
   formatClaimMoney,
 } from "@/lib/operations/claims";
-import { claimVendorLabel } from "@/lib/operations/claims-vendors";
-import { CLAIM_VENDORS } from "@/lib/operations/claims-vendors";
+import { claimVendorContact, claimVendorLabel } from "@/lib/operations/claims-vendors";
+import { catalogVendorTypeLabel } from "@/lib/settings/field-catalog-runtime";
+import {
+  listVendorDirectoryOptions,
+  vendorDirectoryOptionMatchesVendorType,
+} from "@/lib/people/vendors";
 import {
   applyAcknowledgementSent,
   applyCloseout,
@@ -270,9 +281,7 @@ function ActiveStepForm({
       );
     case "select_vendor":
     case "send_to_vendor":
-      return (
-        <VendorSendStep claim={claim} templateContext={templateContext} onPatch={onPatch} />
-      );
+      return <VendorSendStep claim={claim} move={move} onPatch={onPatch} />;
     case "waiting_vendor":
       return <VendorWaitStep claim={claim} onPatch={onPatch} />;
     case "propose_resolution":
@@ -468,39 +477,119 @@ function AcknowledgementStep({
 
 function VendorSendStep({
   claim,
-  templateContext,
+  move,
   onPatch,
 }: {
   claim: MoveClaim;
-  templateContext: Record<string, string>;
+  move?: MoveRecord;
   onPatch: (patch: Partial<MoveClaim>) => void;
 }) {
-  const [vendorId, setVendorId] = useState(claim.vendorId ?? "");
+  const { settings } = useSettings();
+  const vendorTypes = settings.fieldCatalog.vendorTypes;
+  const defaultVendorTypeId = vendorTypes[0]?.id ?? "special_services";
+
+  const [vendorTypeId, setVendorTypeId] = useState(
+    claim.vendorTypeId ?? defaultVendorTypeId,
+  );
+  const [vendorDirectoryId, setVendorDirectoryId] = useState(claim.vendorId ?? "");
+  const [emailSubject, setEmailSubject] = useState("");
   const [draft, setDraft] = useState("");
-  const selectedVendor = CLAIM_VENDORS.find((v) => v.id === vendorId);
+
+  const vendorOptions = useMemo(
+    () => listVendorDirectoryOptions(vendorTypeId),
+    [vendorTypeId],
+  );
+
+  const vendorTemplateContext = useMemo(
+    () =>
+      buildClaimVendorTemplateContext({
+        claim,
+        move,
+        vendorTypeId,
+        vendorDirectoryId: vendorDirectoryId || undefined,
+      }),
+    [claim, move, vendorTypeId, vendorDirectoryId],
+  );
+
+  useEffect(() => {
+    setVendorTypeId(claim.vendorTypeId ?? defaultVendorTypeId);
+    setVendorDirectoryId(claim.vendorId ?? "");
+    setEmailSubject("");
+    setDraft("");
+  }, [claim.id, claim.vendorTypeId, claim.vendorId, defaultVendorTypeId]);
+
+  useEffect(() => {
+    if (
+      vendorDirectoryId &&
+      !vendorDirectoryOptionMatchesVendorType(vendorDirectoryId, vendorTypeId)
+    ) {
+      setVendorDirectoryId("");
+    }
+  }, [vendorTypeId, vendorDirectoryId]);
+
+  useEffect(() => {
+    const template = getVendorTypeTemplate(vendorTypeId);
+    const filled = fillVendorEmailTemplate(template, vendorTemplateContext);
+    setEmailSubject(filled.subject);
+    setDraft(filled.body);
+  }, [vendorTypeId, claim.id, vendorDirectoryId]);
+
+  const selectedContact = claimVendorContact(vendorDirectoryId || undefined);
 
   return (
     <div className="space-y-3">
-      <select
-        value={vendorId}
-        onChange={(e) => setVendorId(e.target.value)}
-        className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm"
-      >
-        <option value="">Select repair vendor…</option>
-        {CLAIM_VENDORS.map((v) => (
-          <option key={v.id} value={v.id}>
-            {v.name} — {v.specialty}
-          </option>
-        ))}
-      </select>
-      {selectedVendor ? (
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="block">
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+            Vendor type
+          </span>
+          <select
+            value={vendorTypeId}
+            onChange={(e) => {
+              setVendorTypeId(e.target.value);
+              setVendorDirectoryId("");
+            }}
+            className="mt-1 w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm"
+          >
+            {vendorTypes.map((entry) => (
+              <option key={entry.id} value={entry.id}>
+                {entry.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block">
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+            Vendor
+          </span>
+          <select
+            value={vendorDirectoryId}
+            onChange={(e) => setVendorDirectoryId(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm"
+          >
+            <option value="">
+              {vendorOptions.length === 0 ? "No vendors for this type" : "Select vendor…"}
+            </option>
+            {vendorOptions.map((vendor) => (
+              <option key={vendor.id} value={vendor.id}>
+                {vendor.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      {vendorDirectoryId ? (
         <div className="rounded-lg border border-slate-200 bg-white p-2.5 text-xs text-slate-600">
-          <p className="font-medium text-slate-800">{selectedVendor.name}</p>
-          <p className="mt-0.5">{selectedVendor.specialty}</p>
-          <p className="mt-1">{selectedVendor.contactEmail}</p>
-          {selectedVendor.portalUrl ? (
+          <p className="font-medium text-slate-800">{claimVendorLabel(vendorDirectoryId)}</p>
+          <p className="mt-0.5">{catalogVendorTypeLabel(vendorTypeId)}</p>
+          {selectedContact.email ? <p className="mt-1">{selectedContact.email}</p> : null}
+          {selectedContact.phone ? <p>{selectedContact.phone}</p> : null}
+          {selectedContact.specialty ? (
+            <p className="mt-1 text-slate-500">{selectedContact.specialty}</p>
+          ) : null}
+          {selectedContact.portalUrl ? (
             <a
-              href={selectedVendor.portalUrl}
+              href={selectedContact.portalUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="mt-1 inline-flex items-center gap-1 text-brand-600 hover:underline"
@@ -511,13 +600,27 @@ function VendorSendStep({
           ) : null}
         </div>
       ) : null}
-      <MessageTemplateBar
+      <VendorMessageTemplateBar
+        vendorTypeId={vendorTypeId}
         channel="email"
-        category="ops"
-        context={templateContext}
+        context={vendorTemplateContext}
         onApply={setDraft}
-        onApplyEmail={({ body }) => setDraft(body)}
+        onApplyEmail={({ subject, body }) => {
+          setEmailSubject(subject);
+          setDraft(body);
+        }}
       />
+      <label className="block">
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+          Email subject
+        </span>
+        <input
+          type="text"
+          value={emailSubject}
+          onChange={(e) => setEmailSubject(e.target.value)}
+          className="mt-1 w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm"
+        />
+      </label>
       <textarea
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
@@ -528,12 +631,14 @@ function VendorSendStep({
       <Button
         type="button"
         size="sm"
-        disabled={!vendorId}
+        disabled={!vendorDirectoryId}
         onClick={() => {
           const summary =
-            draft.trim() || `Claim package sent to ${claimVendorLabel(vendorId)}`;
-          onPatch(applyVendorPackageSent(claim, vendorId, summary));
+            draft.trim() ||
+            `Claim package emailed to ${claimVendorLabel(vendorDirectoryId)} — ${emailSubject.trim() || "vendor referral"}`;
+          onPatch(applyVendorPackageSent(claim, vendorTypeId, vendorDirectoryId, summary));
           setDraft("");
+          setEmailSubject("");
         }}
       >
         Send to vendor & start tracking

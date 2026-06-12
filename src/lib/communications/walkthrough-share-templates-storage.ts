@@ -8,7 +8,12 @@ import { WALKTHROUGH_SHARE_TEMPLATES_UPDATED_EVENT } from "./walkthrough-share-t
 
 const STORAGE_KEY = "jm-walkthrough-share-templates-v1";
 
-const KINDS: WalkthroughShareKind[] = ["scheduling", "virtual_meeting", "liveswitch"];
+const KINDS: WalkthroughShareKind[] = [
+  "scheduling",
+  "virtual_meeting",
+  "liveswitch",
+  "confirmation",
+];
 
 function normalizeSet(raw: unknown, fallback: WalkthroughShareTemplateSet): WalkthroughShareTemplateSet {
   if (!raw || typeof raw !== "object") return { ...fallback };

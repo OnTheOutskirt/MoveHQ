@@ -158,6 +158,7 @@ export function commitPeople(rows: ImportRowPreview[], ctx: ImportContext): Impo
       name: data.name.trim(),
       kind,
       referralType,
+      vendorType: null,
       phone: data.phone.trim() || null,
       email: data.email.trim() || null,
       organizationId,

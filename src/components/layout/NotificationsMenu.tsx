@@ -4,6 +4,7 @@ import { useClaims } from "@/components/providers/ClaimsProvider";
 import { useInventory } from "@/components/providers/InventoryProvider";
 import { useUserPreferences } from "@/components/providers/UserPreferencesProvider";
 import { useMoves } from "@/components/moves/MovesProvider";
+import { useClientHydrated } from "@/lib/hooks/use-client-hydrated";
 import {
   buildOfficeNotifications,
   dismissAllNotifications,
@@ -11,6 +12,7 @@ import {
   filterUnreadNotifications,
   getDismissedNotificationIds,
   NOTIFICATIONS_FOLLOW_UPS_HREF,
+  OFFICE_NOTIFICATIONS_UPDATED_EVENT,
   unreadNotificationCount,
   type OfficeNotification,
 } from "@/lib/notifications/office-notifications";
@@ -32,7 +34,7 @@ import {
   Truck,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 const CATEGORY_ICONS = {
   follow_up: CalendarClock,
@@ -43,6 +45,34 @@ const CATEGORY_ICONS = {
   new_lead: Sparkles,
 } as const;
 
+const EMPTY_DISMISSED = new Set<string>();
+let dismissedSnapshotKey = "";
+let dismissedSnapshotSet: Set<string> = EMPTY_DISMISSED;
+
+function dismissedSnapshot(): Set<string> {
+  const next = getDismissedNotificationIds();
+  const key = [...next].sort().join("|");
+  if (key === dismissedSnapshotKey) return dismissedSnapshotSet;
+  dismissedSnapshotKey = key;
+  dismissedSnapshotSet = key ? next : EMPTY_DISMISSED;
+  return dismissedSnapshotSet;
+}
+
+function dismissedServerSnapshot(): Set<string> {
+  return EMPTY_DISMISSED;
+}
+
+function subscribeDismissedNotifications(onStoreChange: () => void) {
+  if (typeof window === "undefined") return () => {};
+  const onUpdate = () => onStoreChange();
+  window.addEventListener(OFFICE_NOTIFICATIONS_UPDATED_EVENT, onUpdate);
+  window.addEventListener("storage", onUpdate);
+  return () => {
+    window.removeEventListener(OFFICE_NOTIFICATIONS_UPDATED_EVENT, onUpdate);
+    window.removeEventListener("storage", onUpdate);
+  };
+}
+
 export function NotificationsMenu() {
   const { user } = useSession();
   const persona = getOfficePersona(user.id);
@@ -50,13 +80,15 @@ export function NotificationsMenu() {
   const { claims } = useClaims();
   const { stockLines } = useInventory();
   const { preferences } = useUserPreferences();
+  const hydrated = useClientHydrated();
   const [open, setOpen] = useState(false);
-  const [dismissed, setDismissed] = useState<Set<string>>(() => new Set());
   const rootRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    setDismissed(getDismissedNotificationIds());
-  }, [open, moves, claims, stockLines]);
+  const dismissed = useSyncExternalStore(
+    subscribeDismissedNotifications,
+    dismissedSnapshot,
+    dismissedServerSnapshot,
+  );
 
   const allNotifications = useMemo(
     () =>
@@ -77,6 +109,7 @@ export function NotificationsMenu() {
   );
 
   const unreadCount = unreadNotificationCount(allNotifications, dismissed);
+  const displayCount = hydrated ? unreadCount : 0;
 
   useEffect(() => {
     if (!open) return;
@@ -96,15 +129,13 @@ export function NotificationsMenu() {
     };
   }, [open]);
 
-  function handleDismiss(id: string) {
+  const handleDismiss = useCallback((id: string) => {
     dismissNotification(id);
-    setDismissed(getDismissedNotificationIds());
-  }
+  }, []);
 
-  function handleDismissAll() {
+  const handleDismissAll = useCallback(() => {
     dismissAllNotifications(unread.map((n) => n.id));
-    setDismissed(getDismissedNotificationIds());
-  }
+  }, [unread]);
 
   const visible = open ? unread.slice(0, 15) : [];
 
@@ -117,13 +148,16 @@ export function NotificationsMenu() {
         aria-expanded={open}
         aria-haspopup="true"
         aria-label={
-          unreadCount > 0 ? `${unreadCount} unread notifications` : "Notifications"
+          hydrated && displayCount > 0
+            ? `${displayCount} unread notifications`
+            : "Notifications"
         }
+        suppressHydrationWarning
       >
         <Bell className="h-4 w-4" />
-        {unreadCount > 0 ? (
+        {displayCount > 0 ? (
           <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-brand-600 px-1 text-[10px] font-bold text-white">
-            {unreadCount > 9 ? "9+" : unreadCount}
+            {displayCount > 9 ? "9+" : displayCount}
           </span>
         ) : null}
       </button>

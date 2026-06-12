@@ -12,6 +12,7 @@ import { mergeTerminology } from "@/lib/terminology/normalize";
 import type { TerminologySettings } from "@/lib/terminology/types";
 import type { LeadRoutingSettings } from "@/lib/settings/lead-routing-rules";
 import type { MoveTypeRulesSettings } from "@/lib/settings/move-type-rules";
+import type { OpsPrepRulesSettings } from "@/lib/settings/ops-prep-rules";
 import type { PriorityTierRulesSettings } from "@/lib/settings/priority-tier-rules";
 import type { AppSettings } from "@/lib/settings/types";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
@@ -30,6 +31,7 @@ type SettingsContextValue = {
   updatePipelineAutomations: (patch: Partial<PipelineAutomationSettings>) => void;
   updateLeadRouting: (patch: Partial<LeadRoutingSettings>) => void;
   updateMoveTypeRules: (patch: Partial<MoveTypeRulesSettings>) => void;
+  updateOpsPrepRules: (patch: Partial<OpsPrepRulesSettings>) => void;
   replaceSettings: (next: AppSettings) => void;
   resetSettings: () => void;
   isReady: boolean;
@@ -191,6 +193,26 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     );
   }, []);
 
+  const updateOpsPrepRules = useCallback((patch: Partial<OpsPrepRulesSettings>) => {
+    setSettings((prev) =>
+      commit({
+        ...prev,
+        opsPrepRules: {
+          ...prev.opsPrepRules,
+          ...patch,
+          jobDayHotel: patch.jobDayHotel
+            ? { ...prev.opsPrepRules.jobDayHotel, ...patch.jobDayHotel }
+            : prev.opsPrepRules.jobDayHotel,
+          crewLodging: patch.crewLodging
+            ? { ...prev.opsPrepRules.crewLodging, ...patch.crewLodging }
+            : prev.opsPrepRules.crewLodging,
+          vendorTypes: patch.vendorTypes ?? prev.opsPrepRules.vendorTypes,
+          builtIn: patch.builtIn ?? prev.opsPrepRules.builtIn,
+        },
+      }),
+    );
+  }, []);
+
   const replaceSettings = useCallback((next: AppSettings) => {
     setSettings(commit(next));
   }, []);
@@ -214,6 +236,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       updatePipelineAutomations,
       updateLeadRouting,
       updateMoveTypeRules,
+      updateOpsPrepRules,
       replaceSettings,
       resetSettings,
       isReady,
@@ -232,6 +255,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       updatePipelineAutomations,
       updateLeadRouting,
       updateMoveTypeRules,
+      updateOpsPrepRules,
       replaceSettings,
       resetSettings,
       isReady,

@@ -16,7 +16,7 @@ const meta = pageMeta["/inbox"];
 const FILTER_PILLS: { id: InboxFilter; label: string }[] = [
   { id: "all", label: "All" },
   { id: "unread", label: "Unread" },
-  { id: "needs_reply", label: "Needs reply" },
+  { id: "needs_reply", label: "Awaiting response" },
   { id: "call", label: "Calls" },
   { id: "sms", label: "SMS" },
   { id: "email", label: "Email" },
@@ -59,6 +59,13 @@ export function InboxWorkspace() {
     <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
       <PageHeader title={meta.title} />
 
+      <p className="shrink-0 text-sm text-slate-600">
+        One thread per move — calls, texts, and email together.{" "}
+        <span className="font-medium text-slate-800">Awaiting response</span> means the customer
+        sent the last message and your team has not replied since (outbound SMS, email, or logged
+        call note after that inbound).
+      </p>
+
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           {FILTER_PILLS.map((pill) => (
@@ -82,7 +89,7 @@ export function InboxWorkspace() {
         </div>
 
         <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-3">
-          <p className="text-sm text-slate-500 whitespace-nowrap">
+          <p className="whitespace-nowrap text-sm text-slate-500">
             {summary.unread > 0 ? (
               <span className="font-medium text-brand-700">{summary.unread} unread</span>
             ) : (
@@ -91,7 +98,9 @@ export function InboxWorkspace() {
             {summary.needsReply > 0 ? (
               <>
                 <span className="text-slate-300"> · </span>
-                <span className="font-medium text-amber-800">{summary.needsReply} need reply</span>
+                <span className="font-medium text-amber-800">
+                  {summary.needsReply} awaiting response
+                </span>
               </>
             ) : null}
           </p>

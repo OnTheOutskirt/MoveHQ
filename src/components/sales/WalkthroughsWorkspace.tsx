@@ -43,7 +43,6 @@ import {
 } from "@/lib/moves/walkthroughs";
 
 import type { MoveRecord } from "@/lib/moves/types";
-import { cn } from "@/lib/utils";
 
 import { CalendarOff, CalendarPlus, MapPin, Settings2, Video } from "lucide-react";
 
@@ -53,15 +52,12 @@ import { useCallback, useMemo, useState } from "react";
 
 
 
-type WalkthroughFilter = "all" | "needs" | "scheduled";
 type AvailabilityTab = "in_person" | "virtual" | "time_off";
 
 export function WalkthroughsWorkspace() {
   const { user } = useSession();
   const assigneeKey = user.assignedRep || user.name;
   const { moves } = useMoves();
-
-  const [filter, setFilter] = useState<WalkthroughFilter>("all");
 
   const [assignee, setAssignee] = useState<string>("all");
 
@@ -95,24 +91,12 @@ export function WalkthroughsWorkspace() {
 
 
   const rows = useMemo(() => {
-
-    let items = buildWalkthroughListItems(moves);
-
-    if (filter === "needs") {
-
-      items = items.filter((item) => item.needsScheduling);
-
-    } else if (filter === "scheduled") {
-
-      items = items.filter((item) => !item.needsScheduling && item.walkthrough);
-
-    }
-
+    let items = buildWalkthroughListItems(moves).filter(
+      (item) => !item.needsScheduling && item.walkthrough,
+    );
     items = filterWalkthroughsByAssignee(items, assignee);
-
     return sortWalkthroughListItems(items);
-
-  }, [moves, filter, assignee]);
+  }, [moves, assignee]);
 
 
 
@@ -180,56 +164,7 @@ export function WalkthroughsWorkspace() {
 
     <div className="space-y-4">
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-
-        <div className="flex flex-wrap items-center gap-2">
-
-          {(
-
-            [
-
-              ["all", "All"],
-
-              ["needs", "Needs scheduling"],
-
-              ["scheduled", "Scheduled"],
-
-            ] as const
-
-          ).map(([id, label]) => (
-
-            <button
-
-              key={id}
-
-              type="button"
-
-              onClick={() => setFilter(id)}
-
-              className={cn(
-
-                "rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors",
-
-                filter === id
-
-                  ? "border-brand-600 bg-brand-50 text-brand-800"
-
-                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
-
-              )}
-
-            >
-
-              {label}
-
-            </button>
-
-          ))}
-
-        </div>
-
-
-
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
         <div className="flex flex-wrap items-center gap-2">
 
           <label className="flex items-center gap-2 text-sm text-slate-600">
@@ -307,7 +242,8 @@ export function WalkthroughsWorkspace() {
 
           <CardContent className="py-12 text-center text-sm text-slate-500">
 
-            No walkthroughs match this view. Moves in Waiting with a walkthrough substage appear here.
+            No scheduled walkthroughs
+            {assignee !== "all" ? ` for ${assignee}` : ""}. Book one with Schedule walkthrough.
 
           </CardContent>
 
@@ -334,8 +270,6 @@ export function WalkthroughsWorkspace() {
                   <th className="px-4 py-3">Type</th>
 
                   <th className="px-4 py-3">Location</th>
-
-                  <th className="px-4 py-3">Status</th>
 
                   <th className="px-4 py-3 text-right">Actions</th>
 
@@ -520,19 +454,14 @@ function WalkthroughRow({
 
 }) {
 
-  const { move, walkthrough, needsScheduling } = item;
-
+  const { move, walkthrough } = item;
   const location =
-
     walkthrough?.location ??
-
     move.intake.origin.cityStateZip ??
-
     move.originAddress ??
-
     "TBD";
 
-
+  if (!walkthrough) return null;
 
   return (
 
@@ -557,149 +486,43 @@ function WalkthroughRow({
       </td>
 
       <td className="px-4 py-3 text-slate-700">
-
-        {walkthrough ? (
-
-          <>
-
-            <span className="font-medium">{formatMoveDate(walkthrough.scheduledDate)}</span>
-
-            <span className="text-slate-500"> · {walkthrough.startTime}</span>
-
-          </>
-
-        ) : move.preferredDate ? (
-
-          <span className="text-slate-500">
-
-            Target {formatMoveDate(move.preferredDate)}
-
-          </span>
-
-        ) : (
-
-          <span className="text-slate-400">Not scheduled</span>
-
-        )}
-
+        <span className="font-medium">{formatMoveDate(walkthrough.scheduledDate)}</span>
+        <span className="text-slate-500"> · {walkthrough.startTime}</span>
       </td>
 
-      <td className="px-4 py-3 text-slate-700">
-
-        {walkthrough?.assignedTo ?? move.assignedRep}
-
-      </td>
+      <td className="px-4 py-3 text-slate-700">{walkthrough.assignedTo}</td>
 
       <td className="px-4 py-3">
-
-        {walkthrough ? (
-
-          <span className="inline-flex items-center gap-1 text-slate-600">
-
-            {walkthrough.mode === "virtual" ? (
-
-              <Video className="h-3.5 w-3.5" />
-
-            ) : (
-
-              <MapPin className="h-3.5 w-3.5" />
-
-            )}
-
-            {formatWalkthroughMode(walkthrough.mode)}
-
-          </span>
-
-        ) : (
-
-          <span className="text-slate-400">—</span>
-
-        )}
-
+        <span className="inline-flex items-center gap-1 text-slate-600">
+          {walkthrough.mode === "virtual" ? (
+            <Video className="h-3.5 w-3.5" />
+          ) : (
+            <MapPin className="h-3.5 w-3.5" />
+          )}
+          {formatWalkthroughMode(walkthrough.mode)}
+        </span>
       </td>
 
       <td className="max-w-[12rem] truncate px-4 py-3 text-slate-600" title={location}>
-
         {location}
-
-      </td>
-
-      <td className="px-4 py-3">
-
-        <span
-
-          className={cn(
-
-            "inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase",
-
-            needsScheduling
-
-              ? "bg-amber-100 text-amber-900"
-
-              : "bg-emerald-100 text-emerald-800",
-
-          )}
-
-        >
-
-          {needsScheduling ? "Needs scheduling" : "Scheduled"}
-
-        </span>
-
       </td>
 
       <td className="px-4 py-3 text-right">
-
         <div className="flex items-center justify-end gap-2">
-
-          {needsScheduling ? (
-
-            <button
-
-              type="button"
-
-              onClick={onSchedule}
-
-              className="text-sm font-medium text-brand-600 hover:text-brand-800"
-
-            >
-
-              Schedule
-
-            </button>
-
-          ) : (
-
-            <button
-
-              type="button"
-
-              onClick={onSchedule}
-
-              className="text-sm font-medium text-slate-600 hover:text-slate-900"
-
-            >
-
-              Reschedule
-
-            </button>
-
-          )}
-
-          <Link
-
-            href={salesMovePath(move.id)}
-
-            className="text-sm font-medium text-slate-500 hover:text-slate-800"
-
+          <button
+            type="button"
+            onClick={onSchedule}
+            className="text-sm font-medium text-slate-600 hover:text-slate-900"
           >
-
+            Reschedule
+          </button>
+          <Link
+            href={salesMovePath(move.id)}
+            className="text-sm font-medium text-slate-500 hover:text-slate-800"
+          >
             Open
-
           </Link>
-
         </div>
-
       </td>
 
     </tr>

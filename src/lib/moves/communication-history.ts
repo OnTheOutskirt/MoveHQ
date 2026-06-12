@@ -16,7 +16,6 @@ const ACTION_ACTIVITY_TYPES: Partial<Record<HistoryQuickActionId, MoveActivityTy
   email: ["email"],
   note: ["note"],
   sms: [],
-  "follow-up": ["follow_up"],
 };
 
 function matchesSmsActivity(activity: MoveActivity): boolean {
@@ -152,7 +151,5 @@ export function communicationHistoryLabel(action: HistoryQuickActionId): string 
       return "Email history";
     case "note":
       return "Notes";
-    case "follow-up":
-      return "Follow-ups";
   }
 }

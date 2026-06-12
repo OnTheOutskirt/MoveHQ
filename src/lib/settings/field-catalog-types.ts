@@ -52,6 +52,10 @@ export type FieldCatalogSettings = {
   priorityTiers: FieldCatalogEntry[];
   lostReasons: FieldCatalogEntry[];
   discountReasons: DiscountReasonEntry[];
+  /** Referral partner categories — Directory → Contacts (referral) and referral metrics. */
+  referralTypes: FieldCatalogEntry[];
+  /** Vendor categories — Directory → Contacts (vendor) and vendor workflows. */
+  vendorTypes: FieldCatalogEntry[];
 };
 
 export type FieldCatalogGroup = keyof FieldCatalogSettings;

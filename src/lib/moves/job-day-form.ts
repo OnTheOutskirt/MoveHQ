@@ -5,6 +5,7 @@ import {
   syncLegacyLocationNotes,
 } from "./job-day-locations";
 import { FLEXIBLE_ARRIVAL_WINDOW } from "@/lib/day-share/arrival-windows";
+import { DAY_SHARE_CAPACITY, fractionUnits } from "@/lib/day-share/units";
 import { defaultCrewDepartureLabel } from "@/lib/moves/crew-departure";
 import {
   arrivalWindowsEquivalent,
@@ -16,11 +17,13 @@ import { fractionLabel } from "@/lib/day-share/labels";
 import { isJobDayFirstStop, jobDaySharePeriod } from "./job-day-schedule";
 import type {
   JobDayFraction,
+  JobDayCrewHotel,
   JobDayLocation,
   JobDayService,
   MoveJobDay,
   MoveRecord,
 } from "./types";
+import { JOB_DAY_FRACTIONS } from "./types";
 
 /** Soft cap for job days per move (UI); can be raised later. */
 export const MAX_JOB_DAYS_PER_MOVE = 10;
@@ -69,6 +72,86 @@ export function coerceFollowOnDayFraction(
   return DEFAULT_FOLLOW_ON_DAY_FRACTION;
 }
 
+/** Default crew hours for a full day — scaled by day-share fraction. */
+export const DEFAULT_FULL_DAY_HOURS = 8;
+
+export function defaultHoursForDayFraction(fraction: JobDayFraction): number {
+  const hours = (DEFAULT_FULL_DAY_HOURS * fractionUnits(fraction)) / DAY_SHARE_CAPACITY;
+  return Math.round(hours * 2) / 2;
+}
+
+export function formatJobDayHoursValue(hours: number): string {
+  return Number.isInteger(hours) ? String(hours) : hours.toFixed(1);
+}
+
+export function defaultHoursStringForDayFraction(fraction: JobDayFraction): string {
+  return formatJobDayHoursValue(defaultHoursForDayFraction(fraction));
+}
+
+/** Map estimated crew hours to the closest day-share fraction. */
+export function dayFractionForEstimatedHours(
+  hours: number,
+  isFirstJobOfDay: boolean,
+): JobDayFraction {
+  const options = isFirstJobOfDay
+    ? JOB_DAY_FRACTIONS
+    : JOB_DAY_FRACTIONS.filter((fraction) => fraction !== "long");
+
+  let best: JobDayFraction = options[0] ?? DEFAULT_FOLLOW_ON_DAY_FRACTION;
+  let bestDiff = Infinity;
+
+  for (const fraction of options) {
+    const diff = Math.abs(defaultHoursForDayFraction(fraction) - hours);
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      best = fraction;
+    }
+  }
+
+  return best;
+}
+
+export function dayFractionMatchesEstimatedHours(
+  dayFraction: JobDayFraction,
+  hours: number,
+  isFirstJobOfDay: boolean,
+): boolean {
+  return (
+    dayFraction ===
+    dayFractionForEstimatedHours(hours, isFirstJobOfDay)
+  );
+}
+
+export function syncDayFractionFromEstimatedHours(
+  values: Pick<JobDayFormValues, "hoursEstimated" | "isFirstJobOfDay" | "dayFraction">,
+): JobDayFraction {
+  const parsed = parseHours(values.hoursEstimated);
+  const hours = parsed ?? defaultHoursForDayFraction(values.dayFraction);
+  return coerceFollowOnDayFraction(
+    dayFractionForEstimatedHours(hours, values.isFirstJobOfDay),
+    values.isFirstJobOfDay,
+  );
+}
+
+export function resolveDayFractionManualOverride(
+  day: Pick<
+    MoveJobDay,
+    "dayFraction" | "hoursEstimated" | "isFirstJobOfDay" | "dayFractionOverride"
+  >,
+): boolean {
+  if (day.dayFractionOverride === true) return true;
+  if (day.dayFractionOverride === false) return false;
+
+  const isFirstJobOfDay = isJobDayFirstStop(day);
+  const dayFraction = coerceFollowOnDayFraction(day.dayFraction ?? "long", isFirstJobOfDay);
+  const hours = day.hoursEstimated ?? defaultHoursForDayFraction(dayFraction);
+  return !dayFractionMatchesEstimatedHours(dayFraction, hours, isFirstJobOfDay);
+}
+
+export function jobDayFractionOptionLabel(fraction: JobDayFraction): string {
+  return JOB_DAY_FRACTION_OPTIONS.find((opt) => opt.id === fraction)?.label ?? fraction;
+}
+
 export type JobDayFormValues = {
   date: string;
   services: JobDayService[];
@@ -77,6 +160,8 @@ export type JobDayFormValues = {
   truckCount: string;
   hoursEstimated: string;
   dayFraction: JobDayFraction;
+  /** When true, day length is manual and does not follow est. hours. */
+  dayFractionManualOverride: boolean;
   /** Crew's first stop that day — shop departure + calculated morning arrival. */
   isFirstJobOfDay: boolean;
   /** Crew shop departure — display label (e.g. "7:15 AM"). */
@@ -85,6 +170,12 @@ export type JobDayFormValues = {
   arrivalWindow: string;
   /** When false, arrival is recalculated from departure and drive time (or 11–4 for follow-on). */
   arrivalWindowManual: boolean;
+  crewHotelNeeded: boolean;
+  crewHotelMoverCount: string;
+  crewHotelRoomCount: string;
+  crewHotelRoomRate: string;
+  crewHotelPerDiem: string;
+  crewHotelClientCharge: string;
 };
 
 export type JobDayDefaultsContext = {
@@ -143,6 +234,36 @@ export function duplicateJobDayFormValues(
   };
 }
 
+function crewHotelToFormValues(hotel: JobDayCrewHotel | undefined): Pick<
+  JobDayFormValues,
+  | "crewHotelNeeded"
+  | "crewHotelMoverCount"
+  | "crewHotelRoomCount"
+  | "crewHotelRoomRate"
+  | "crewHotelPerDiem"
+  | "crewHotelClientCharge"
+> {
+  return {
+    crewHotelNeeded: hotel?.needed === true,
+    crewHotelMoverCount: hotel?.moverCount != null ? String(hotel.moverCount) : "",
+    crewHotelRoomCount: hotel?.roomCount != null ? String(hotel.roomCount) : "",
+    crewHotelRoomRate: hotel?.roomRate != null ? String(hotel.roomRate) : "",
+    crewHotelPerDiem: hotel?.perDiemPerMover != null ? String(hotel.perDiemPerMover) : "",
+    crewHotelClientCharge: hotel?.clientCharge != null ? String(hotel.clientCharge) : "",
+  };
+}
+
+function emptyCrewHotelFormValues(): ReturnType<typeof crewHotelToFormValues> {
+  return {
+    crewHotelNeeded: false,
+    crewHotelMoverCount: "",
+    crewHotelRoomCount: "",
+    crewHotelRoomRate: "",
+    crewHotelPerDiem: "",
+    crewHotelClientCharge: "",
+  };
+}
+
 export function jobDayToFormValues(
   day: MoveJobDay,
   context?: JobDayFormContext,
@@ -157,6 +278,11 @@ export function jobDayToFormValues(
   const departureWindow = isFirstJobOfDay
     ? day.departureWindow ?? defaultCrewDepartureLabel(context?.defaults)
     : "";
+  const hoursEstimated =
+    day.hoursEstimated != null
+      ? String(day.hoursEstimated)
+      : defaultHoursStringForDayFraction(dayFraction);
+  const dayFractionManualOverride = resolveDayFractionManualOverride(day);
 
   const baseValues: JobDayFormValues = {
     date: day.date,
@@ -164,12 +290,14 @@ export function jobDayToFormValues(
     locations,
     crewSize: day.crewSize != null ? String(day.crewSize) : "",
     truckCount: truckCount != null ? String(truckCount) : "",
-    hoursEstimated: day.hoursEstimated != null ? String(day.hoursEstimated) : "",
+    hoursEstimated,
     dayFraction,
+    dayFractionManualOverride,
     isFirstJobOfDay,
     departureWindow,
     arrivalWindow: day.arrivalWindow?.trim() ?? "",
     arrivalWindowManual: false,
+    ...crewHotelToFormValues(day.crewHotel),
   };
 
   if (!context?.move) {
@@ -334,7 +462,7 @@ export function createDefaultJobDay(
     locations,
     crewSize,
     truckCount: 1,
-    hoursEstimated: 8,
+    hoursEstimated: defaultHoursForDayFraction("long"),
     dayFraction: "long",
     isFirstJobOfDay: true,
     dayPeriod: "morning",
@@ -355,6 +483,23 @@ function parseHours(value: string): number | undefined {
   const n = parseFloat(value.trim());
   if (Number.isNaN(n) || n < 0) return undefined;
   return n;
+}
+
+function formValuesToCrewHotel(values: JobDayFormValues): JobDayCrewHotel | undefined {
+  if (!values.crewHotelNeeded) return undefined;
+  const moverCount = parsePositiveInt(values.crewHotelMoverCount);
+  const roomCount = parsePositiveInt(values.crewHotelRoomCount);
+  const roomRate = parseHours(values.crewHotelRoomRate);
+  const perDiemPerMover = parseHours(values.crewHotelPerDiem);
+  const clientCharge = parseHours(values.crewHotelClientCharge);
+  return {
+    needed: true,
+    moverCount,
+    roomCount,
+    roomRate,
+    perDiemPerMover,
+    clientCharge,
+  };
 }
 
 export function formValuesToJobDay(
@@ -408,6 +553,7 @@ export function formValuesToJobDay(
     hoursEstimated: hours,
     hoursActual: existing?.hoursActual,
     dayFraction,
+    dayFractionOverride: values.dayFractionManualOverride,
     isFirstJobOfDay,
     dayPeriod,
     arrivalWindow,
@@ -415,6 +561,7 @@ export function formValuesToJobDay(
     durationLabel,
     dispatchNotes: existing?.dispatchNotes,
     accessNotes: existing?.accessNotes,
+    crewHotel: formValuesToCrewHotel(values),
   };
 
   return { ...draft, ...syncLegacyLocationNotes(draft) };

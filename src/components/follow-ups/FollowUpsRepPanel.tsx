@@ -1,26 +1,26 @@
 "use client";
 
-import { FollowUpTaskDetail } from "@/components/follow-ups/FollowUpTaskDetail";
-import { FollowUpTaskRow } from "@/components/follow-ups/FollowUpTaskRow";
-import { TabBar } from "@/components/shared/TabBar";
+import { FollowUpListRow } from "@/components/follow-ups/FollowUpListRow";
+import { FollowUpOriginFilterBar } from "@/components/follow-ups/FollowUpOriginFilterBar";
+import { MoveQuickActionSidebar } from "@/components/moves/detail/MoveQuickActionSidebar";
+import { useMoves } from "@/components/moves/MovesProvider";
+import type { FollowUpComposerChannel } from "@/lib/moves/follow-up-display";
+import { moveRouteLabel } from "@/lib/moves/format";
 import {
-  FOLLOW_UP_TABS,
+  followUpOriginCountsForRep,
   followUpQueueForRep,
   followUpSummaryForRep,
-  followUpTabCountsForRep,
   groupFollowUpQueue,
   type FollowUpBucket,
-  type FollowUpQueueItem,
-  type FollowUpTabId,
 } from "@/lib/moves/follow-ups";
+import type { FollowUpOriginKind } from "@/lib/moves/follow-up-display";
+import type { MoveQuickActionId } from "@/lib/moves/quick-actions";
 import type { MoveRecord } from "@/lib/moves/types";
+import { salesMovePath } from "@/lib/navigation/routes";
 import { cn } from "@/lib/utils";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
-const BUCKET_SECTION: Record<
-  FollowUpBucket,
-  { title: string; accent: string }
-> = {
+const BUCKET_SECTION: Record<FollowUpBucket, { title: string; accent: string }> = {
   overdue: {
     title: "Overdue",
     accent: "border-amber-300 bg-amber-50/60",
@@ -41,139 +41,126 @@ type FollowUpsRepPanelProps = {
 };
 
 export function FollowUpsRepPanel({ rep, moves }: FollowUpsRepPanelProps) {
-  const [activeTab, setActiveTab] = useState<FollowUpTabId>("follow_ups");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const { updateFollowUpStatus } = useMoves();
+  const [originFilter, setOriginFilter] = useState<FollowUpOriginKind>("manual");
+  const [composerMoveId, setComposerMoveId] = useState<string | null>(null);
+  const [composerAction, setComposerAction] = useState<MoveQuickActionId | null>(null);
 
-  const tabCounts = useMemo(() => followUpTabCountsForRep(moves, rep), [moves, rep]);
+  const originCounts = useMemo(() => followUpOriginCountsForRep(moves, rep), [moves, rep]);
   const summary = useMemo(() => followUpSummaryForRep(moves, rep), [moves, rep]);
 
-  const tabs = useMemo(
-    () =>
-      FOLLOW_UP_TABS.map((tab) => ({
-        ...tab,
-        label: `${tab.label} (${tabCounts[tab.id]})`,
-      })),
-    [tabCounts],
-  );
-
   const queueItems = useMemo(
-    () => followUpQueueForRep(moves, rep, activeTab),
-    [moves, rep, activeTab],
+    () => followUpQueueForRep(moves, rep, originFilter),
+    [moves, rep, originFilter],
   );
 
   const grouped = useMemo(() => groupFollowUpQueue(queueItems), [queueItems]);
 
-  const selectedItem = useMemo(
-    () => queueItems.find((item) => item.followUp.id === selectedId) ?? queueItems[0] ?? null,
-    [queueItems, selectedId],
+  const composerMove = useMemo(
+    () => (composerMoveId ? moves.find((move) => move.id === composerMoveId) ?? null : null),
+    [composerMoveId, moves],
   );
 
-  useEffect(() => {
-    setSelectedId(null);
-  }, [rep, activeTab]);
+  function openComposer(move: MoveRecord, channel: FollowUpComposerChannel) {
+    setComposerMoveId(move.id);
+    setComposerAction(channel);
+  }
+
+  function closeComposer() {
+    setComposerAction(null);
+    setComposerMoveId(null);
+  }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="shrink-0 border-b border-slate-100 px-4 py-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h2 className="text-sm font-semibold text-slate-900">{rep}</h2>
-            <p className="text-xs text-slate-500">
-              {summary.total} open
-              {summary.overdue > 0 ? (
-                <span className="font-medium text-amber-800"> · {summary.overdue} overdue</span>
-              ) : null}
-            </p>
-          </div>
-          <div className="flex gap-2 text-center text-[10px]">
-            <MiniStat label="Overdue" value={summary.overdue} urgent={summary.overdue > 0} />
-            <MiniStat label="Today" value={summary.today} />
-            <MiniStat label="Upcoming" value={summary.upcoming} />
-          </div>
-        </div>
-      </div>
-
-      <TabBar
-        tabs={tabs}
-        activeTab={activeTab}
-        onChange={(tab) => setActiveTab(tab as FollowUpTabId)}
-      />
-
-      <div className="flex min-h-0 flex-1 overflow-hidden">
-        <div
-          className={cn(
-            "flex min-h-0 w-full flex-col overflow-hidden border-slate-200 lg:w-[52%] lg:border-r",
-            selectedItem ? "hidden lg:flex" : "flex",
-          )}
-        >
-          <div className="min-h-0 flex-1 overflow-y-auto p-3">
-            {queueItems.length === 0 ? (
-              <p className="px-2 py-8 text-center text-sm text-slate-500">
-                No {FOLLOW_UP_TABS.find((t) => t.id === activeTab)?.label.toLowerCase()} for{" "}
-                {rep.split(" ")[0]} right now.
+    <>
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="shrink-0 border-b border-slate-100 px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-900">{rep}</h2>
+              <p className="text-xs text-slate-500">
+                {summary.total} open
+                {summary.overdue > 0 ? (
+                  <span className="font-medium text-amber-800"> · {summary.overdue} overdue</span>
+                ) : null}
               </p>
-            ) : (
-              <div className="space-y-6">
-                {(["overdue", "today", "upcoming"] as const).map((bucket) => {
-                  const items = grouped[bucket];
-                  if (items.length === 0) return null;
-                  const cfg = BUCKET_SECTION[bucket];
-                  return (
-                    <section key={bucket}>
-                      <div className={cn("mb-2 rounded-md border px-3 py-1.5", cfg.accent)}>
-                        <h3 className="text-xs font-semibold text-slate-900">
-                          {cfg.title}
-                          <span className="ml-1.5 font-normal text-slate-600">
-                            ({items.length})
-                          </span>
-                        </h3>
-                      </div>
-                      <ul className="space-y-2">
-                        {items.map((item) => (
-                          <li key={item.followUp.id}>
-                            <FollowUpTaskRow
-                              item={item}
-                              selected={selectedItem?.followUp.id === item.followUp.id}
-                              onSelect={() => setSelectedId(item.followUp.id)}
-                            />
-                          </li>
-                        ))}
-                      </ul>
-                    </section>
-                  );
-                })}
-              </div>
-            )}
+            </div>
+            <div className="flex gap-2 text-center text-[10px]">
+              <MiniStat label="Overdue" value={summary.overdue} urgent={summary.overdue > 0} />
+              <MiniStat label="Today" value={summary.today} />
+              <MiniStat label="Upcoming" value={summary.upcoming} />
+            </div>
           </div>
+
+          <FollowUpOriginFilterBar
+            className="mt-3"
+            value={originFilter}
+            onChange={setOriginFilter}
+            counts={{
+              manual: originCounts.manual,
+              automated: originCounts.automated,
+            }}
+          />
         </div>
 
-        <div
-          className={cn(
-            "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-white",
-            selectedItem ? "flex" : "hidden lg:flex",
-          )}
-        >
-          {selectedItem ? (
-            <>
-              <div className="flex shrink-0 items-center border-b border-slate-100 px-3 py-2 lg:hidden">
-                <button
-                  type="button"
-                  onClick={() => setSelectedId(null)}
-                  className="text-sm font-medium text-brand-600"
-                >
-                  ← Back to list
-                </button>
-              </div>
-              <FollowUpTaskDetail item={selectedItem} />
-            </>
+        <div className="min-h-0 flex-1 overflow-y-auto p-3">
+          {queueItems.length === 0 ? (
+            <p className="px-2 py-8 text-center text-sm text-slate-500">
+              No open {originFilter} follow-ups for {rep.split(" ")[0]}.
+            </p>
           ) : (
-            <div className="flex flex-1 items-center justify-center p-8 text-center text-sm text-slate-500">
-              Select a follow-up to see move details and next steps.
+            <div className="space-y-6">
+              {(["overdue", "today", "upcoming"] as const).map((bucket) => {
+                const items = grouped[bucket];
+                if (items.length === 0) return null;
+                const cfg = BUCKET_SECTION[bucket];
+                return (
+                  <section key={bucket}>
+                    <div className={cn("mb-2 rounded-md border px-3 py-1.5", cfg.accent)}>
+                      <h3 className="text-xs font-semibold text-slate-900">
+                        {cfg.title}
+                        <span className="ml-1.5 font-normal text-slate-600">({items.length})</span>
+                      </h3>
+                    </div>
+                    <ul className="space-y-2">
+                      {items.map((item) => (
+                        <FollowUpListRow
+                          key={item.followUp.id}
+                          followUp={item.followUp}
+                          moveContext={{
+                            customerName: item.move.customerName,
+                            route: moveRouteLabel(
+                              item.move.originAddress,
+                              item.move.destinationAddress,
+                            ),
+                            moveHref: salesMovePath(item.move.id),
+                          }}
+                          onOpenChannel={(channel) => openComposer(item.move, channel)}
+                          onComplete={() =>
+                            updateFollowUpStatus(item.move.id, item.followUp.id, "completed")
+                          }
+                          onSkip={() =>
+                            updateFollowUpStatus(item.move.id, item.followUp.id, "skipped")
+                          }
+                        />
+                      ))}
+                    </ul>
+                  </section>
+                );
+              })}
             </div>
           )}
         </div>
       </div>
-    </div>
+
+      {composerMove && composerAction ? (
+        <MoveQuickActionSidebar
+          move={composerMove}
+          action={composerAction}
+          onClose={closeComposer}
+        />
+      ) : null}
+    </>
   );
 }
 

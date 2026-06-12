@@ -4,6 +4,12 @@ import {
   fillWalkthroughShareSms,
   type WalkthroughShareKind,
 } from "@/lib/communications/walkthrough-share-templates";
+import { formatMoveDate } from "@/lib/moves/format";
+import { buildWalkthroughCancelUrl } from "@/lib/moves/walkthrough-scheduling-link";
+import {
+  formatWalkthroughMode,
+  resolveMoveWalkthrough,
+} from "@/lib/moves/walkthroughs";
 import { ROUTES } from "@/lib/navigation/routes";
 import type { MoveRecord } from "./types";
 
@@ -53,6 +59,11 @@ function walkthroughShareContext(
   linkUrl: string,
   assignee?: string,
   slotLabel?: string,
+  extra?: {
+    cancelLinkUrl?: string;
+    walkthroughMode?: "in_person" | "virtual";
+    walkthroughLocation?: string;
+  },
 ) {
   return buildWalkthroughShareFillContext({
     customerName: move.customerName,
@@ -60,7 +71,37 @@ function walkthroughShareContext(
     linkUrl,
     assignee,
     slotLabel,
+    cancelLinkUrl: extra?.cancelLinkUrl,
+    walkthroughMode: extra?.walkthroughMode,
+    walkthroughLocation: extra?.walkthroughLocation,
   });
+}
+
+export function buildWalkthroughConfirmationCancelUrl(
+  origin: string,
+  moveId: string,
+): string {
+  return buildWalkthroughCancelUrl(origin, { moveId });
+}
+
+export function walkthroughConfirmationSlotLabel(
+  scheduledDate: string,
+  startTime: string,
+): string {
+  return `${formatMoveDate(scheduledDate)} at ${startTime}`;
+}
+
+export function walkthroughConfirmationShareLinks(
+  origin: string,
+  move: MoveRecord,
+): { cancelUrl: string; slotLabel: string; assignee: string } | null {
+  const wt = resolveMoveWalkthrough(move);
+  if (!wt || wt.status !== "scheduled") return null;
+  return {
+    cancelUrl: buildWalkthroughConfirmationCancelUrl(origin, move.id),
+    slotLabel: walkthroughConfirmationSlotLabel(wt.scheduledDate, wt.startTime),
+    assignee: wt.assignedTo,
+  };
 }
 
 export function walkthroughShareEmailSubject(
@@ -69,10 +110,11 @@ export function walkthroughShareEmailSubject(
   linkUrl = "",
   assignee?: string,
   slotLabel?: string,
+  extra?: Parameters<typeof walkthroughShareContext>[4],
 ): string {
   return fillWalkthroughShareEmail(
     kind,
-    walkthroughShareContext(move, linkUrl, assignee, slotLabel),
+    walkthroughShareContext(move, linkUrl, assignee, slotLabel, extra),
   ).subject;
 }
 
@@ -82,10 +124,11 @@ export function walkthroughShareEmailBody(
   linkUrl: string,
   assignee?: string,
   slotLabel?: string,
+  extra?: Parameters<typeof walkthroughShareContext>[4],
 ): string {
   return fillWalkthroughShareEmail(
     kind,
-    walkthroughShareContext(move, linkUrl, assignee, slotLabel),
+    walkthroughShareContext(move, linkUrl, assignee, slotLabel, extra),
   ).body;
 }
 
@@ -95,10 +138,11 @@ export function walkthroughShareSmsBody(
   linkUrl: string,
   assignee?: string,
   slotLabel?: string,
+  extra?: Parameters<typeof walkthroughShareContext>[4],
 ): string {
   return fillWalkthroughShareSms(
     kind,
-    walkthroughShareContext(move, linkUrl, assignee, slotLabel),
+    walkthroughShareContext(move, linkUrl, assignee, slotLabel, extra),
   );
 }
 
@@ -110,11 +154,18 @@ export function walkthroughShareActivityLabel(kind: WalkthroughShareKind): strin
       return "Virtual meeting link";
     case "liveswitch":
       return "LiveSwitch self-film link";
+    case "confirmation":
+      return "Walkthrough confirmation";
     default:
       return "Walkthrough link";
   }
 }
 
 export function walkthroughUsesInlineComposer(kind: WalkthroughShareKind): boolean {
-  return kind === "scheduling" || kind === "liveswitch" || kind === "virtual_meeting";
+  return (
+    kind === "scheduling" ||
+    kind === "liveswitch" ||
+    kind === "virtual_meeting" ||
+    kind === "confirmation"
+  );
 }

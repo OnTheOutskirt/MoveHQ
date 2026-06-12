@@ -267,6 +267,7 @@ export function scheduledFollowUpsForMove(move: MoveRecord): AutomationFollowUpD
 }
 
 export function mergeAutomationFollowUps(move: MoveRecord, stage: PipelineStageId): MoveRecord {
+  if (move.automationsSuppressed) return move;
   const existingIds = new Set(move.followUps.map((f) => f.id));
   const drafts = [...followUpsForStageEnter(move, stage), ...scheduledFollowUpsForMove(move)];
   const toAdd = drafts

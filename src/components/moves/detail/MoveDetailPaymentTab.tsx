@@ -1,6 +1,7 @@
 "use client";
 
 import { DetailSection } from "@/components/moves/detail/DetailSection";
+import { ManualPhonePaymentPanel } from "@/components/moves/detail/ManualPhonePaymentPanel";
 import { useSettings } from "@/components/providers/SettingsProvider";
 import { computeMoveDeposit } from "@/lib/moves/move-deposit";
 import { formatQuote } from "@/lib/moves/format";
@@ -60,13 +61,11 @@ export function MoveDetailPaymentTab({ move }: MoveDetailPaymentTabProps) {
       </div>
 
       <p className="text-sm text-slate-600">
-        Deposit is collected when the customer signs the contract — use Send contract from the quote
-        section or quick actions.
+        Customers can also pay through the portal when you send a quote or contract. Use the form
+        below when you are on the phone and need to key in a card.
       </p>
 
-      <div className="mt-4 rounded-lg border border-dashed border-slate-200 bg-slate-50/50 px-4 py-6 text-center text-sm text-slate-500">
-        Card, ACH, and check recording — coming soon
-      </div>
+      <ManualPhonePaymentPanel move={move} deposit={deposit} />
     </DetailSection>
   );
 }

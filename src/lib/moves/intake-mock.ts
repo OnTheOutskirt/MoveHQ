@@ -210,14 +210,14 @@ const INTAKE_BY_ID: Partial<Record<string, Partial<FlatRateIntake>>> = {
     thirdPartyServices: [
       {
         id: "tps-mv-nc-crating",
-        serviceTypeId: "crating",
+        serviceTypeId: "special_services",
         vendorDirectoryId: "person:person-shamrock-dispatch",
         notes: "Baby grand — crate at origin before load",
         estimatedCost: 1850,
       },
       {
         id: "tps-mv-nc-piano",
-        serviceTypeId: "piano",
+        serviceTypeId: "special_services",
         vendorDirectoryId: "person:person-shamrock-dispatch",
         notes: "Specialty haul on linehaul day if needed",
       },

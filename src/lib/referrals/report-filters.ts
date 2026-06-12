@@ -3,7 +3,7 @@ import {
   rollupReferralStatsByOrganization,
 } from "./referral-metrics";
 import type { MoveRecord } from "@/lib/moves/types";
-import type { ReferralPartnerCategory, ReferralPartnerStats } from "./types";
+import type { ReferralPartnerStats } from "./types";
 
 export type ReferralReportPeriodId =
   | "this_month"
@@ -20,7 +20,8 @@ export const REFERRAL_REPORT_PERIODS: { id: ReferralReportPeriodId; label: strin
   { id: "custom", label: "Custom" },
 ];
 
-export type ReferralReportCategory = ReferralPartnerCategory | "all";
+/** Field-catalog referral type id, or all types. */
+export type ReferralReportCategory = string | "all";
 
 export type ReferralReportGroupBy = "person" | "organization";
 
@@ -33,63 +34,24 @@ export type ReferralReportFilters = {
   search: string;
 };
 
-export const REFERRAL_CATEGORY_OPTIONS: {
-  id: ReferralReportCategory;
-  label: string;
-  description: string;
-}[] = [
-  { id: "all", label: "All referrals", description: "Every referral lead source" },
-  {
-    id: "realtor",
-    label: "Realtors",
-    description: "Listing agents and brokerages",
-  },
-  {
-    id: "senior_living",
-    label: "Senior living",
-    description: "Communities and transition coordinators",
-  },
-  {
-    id: "business",
-    label: "Business",
-    description: "Commercial and business referrers",
-  },
-  { id: "other", label: "Other", description: "Misc. referral sources" },
-];
-
-export const REFERRAL_CATEGORY_LABELS: Record<ReferralPartnerCategory, string> = {
-  realtor: "Realtor",
-  senior_living: "Senior living",
-  business: "Business",
-  other: "Other",
-};
-
 export function defaultGroupByForCategory(
   category: ReferralReportCategory,
 ): ReferralReportGroupBy {
-  switch (category) {
-    case "senior_living":
-    case "business":
-      return "organization";
-    case "realtor":
-      return "person";
-    default:
-      return "person";
+  if (category === "all") return "person";
+  if (
+    category === "senior_living" ||
+    category === "business" ||
+    category === "storage_facility" ||
+    category === "developer" ||
+    category === "restoration_company"
+  ) {
+    return "organization";
   }
+  return "person";
 }
 
-export function groupByLabel(
-  category: ReferralReportCategory,
-  groupBy: ReferralReportGroupBy,
-): string {
-  if (groupBy === "organization") {
-    if (category === "realtor") return "By brokerage";
-    if (category === "senior_living") return "By community";
-    return "By organization";
-  }
-  if (category === "realtor") return "By realtor";
-  if (category === "senior_living") return "By coordinator";
-  return "By contact";
+export function groupByLabel(groupBy: ReferralReportGroupBy): string {
+  return groupBy === "organization" ? "By organization" : "By contact";
 }
 
 function toDateKey(d: Date): string {
@@ -172,7 +134,7 @@ export function applyReferralReportFilters(
   let stats = collectReferralPartnerStats(moves, { dateFrom: start, dateTo: end });
 
   if (filters.category !== "all") {
-    stats = stats.filter((s) => s.category === filters.category);
+    stats = stats.filter((s) => s.referralTypeId === filters.category);
   }
 
   const q = filters.search.trim().toLowerCase();

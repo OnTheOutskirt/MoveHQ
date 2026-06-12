@@ -1,5 +1,5 @@
 import type { MoveRecord } from "@/lib/moves/types";
-import { getClaimVendor } from "./claims-vendors";
+import { claimVendorLabel } from "./claims-vendors";
 import type {
   ClaimCategory,
   ClaimChecklistId,
@@ -311,7 +311,8 @@ export function applyAcknowledgementSent(
 
 export function applyVendorPackageSent(
   claim: MoveClaim,
-  vendorId: string,
+  vendorTypeId: string,
+  vendorDirectoryId: string,
   summary: string,
 ): Partial<MoveClaim> {
   let checklist = claim.checklist;
@@ -320,17 +321,18 @@ export function applyVendorPackageSent(
   checklist = checklist.map((item) =>
     item.id === "waiting_vendor" ? { ...item, done: false, doneAt: undefined } : item,
   );
-  const vendor = getClaimVendor(vendorId);
+  const vendorName = claimVendorLabel(vendorDirectoryId);
   const commsLog = appendCommsLog(claim.commsLog, {
     channel: "vendor",
     direction: "outbound",
     summary,
-    recipient: vendor?.name ?? vendorId,
+    recipient: vendorName,
   });
   const due = new Date();
   due.setDate(due.getDate() + 5);
   return workflowPatch(claim, {
-    vendorId,
+    vendorTypeId,
+    vendorId: vendorDirectoryId,
     checklist,
     commsLog,
     vendorSentAt: new Date().toISOString(),
@@ -397,7 +399,7 @@ export function applyCloseout(claim: MoveClaim, input: CloseoutInput): Partial<M
 }
 
 function claimVendorName(vendorId: string | undefined): string {
-  return getClaimVendor(vendorId)?.name ?? "Vendor";
+  return claimVendorLabel(vendorId) === "No vendor selected" ? "Vendor" : claimVendorLabel(vendorId);
 }
 
 function moveOrigin(move: MoveRecord): string {

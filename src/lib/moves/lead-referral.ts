@@ -89,7 +89,35 @@ export function referralPartnerLabel(channel: LeadChannel): string {
       return "senior living contact";
     case "referral_business":
       return "business contact";
+    case "referral_other":
+      return "person";
     default:
       return "referral partner";
   }
+}
+
+export const REFERRAL_UNKNOWN_CONTACT_ID_SUFFIX = "-referral-unknown";
+
+export function isUnknownReferralContact(person: MoveLinkedPerson): boolean {
+  return person.id.endsWith(REFERRAL_UNKNOWN_CONTACT_ID_SUFFIX);
+}
+
+export function buildUnknownReferralContact(
+  moveId: string,
+  role: LinkedPersonRole,
+): MoveLinkedPerson {
+  return {
+    id: `${moveId}${REFERRAL_UNKNOWN_CONTACT_ID_SUFFIX}`,
+    name: "Unknown",
+    role,
+  };
+}
+
+export type ReferralContactResolution = "unset" | "unknown" | "linked";
+
+export function referralContactResolution(move: MoveRecord): ReferralContactResolution {
+  const contact = referralContactForLeadSource(move);
+  if (!contact) return "unset";
+  if (isUnknownReferralContact(contact)) return "unknown";
+  return "linked";
 }

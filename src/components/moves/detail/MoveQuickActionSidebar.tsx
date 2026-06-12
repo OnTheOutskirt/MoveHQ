@@ -7,6 +7,7 @@ import {
 import { EmailDraftProvider } from "@/components/communications/EmailDraftProvider";
 import { EmailOpenMailHeaderButton } from "@/components/communications/EmailOpenMailHeaderButton";
 import { BookWalkthroughPanel } from "@/components/moves/detail/quick-actions/BookWalkthroughPanel";
+import { AddFollowUpTaskPanel } from "@/components/moves/detail/quick-actions/AddFollowUpTaskPanel";
 import {
   useWalkthroughComposeSidebarChrome,
   type WalkthroughComposeState,
@@ -51,6 +52,7 @@ export function MoveQuickActionSidebar({ move, action, onClose }: MoveQuickActio
   }, [moves, move.assignedRep]);
 
   const isBookWalkthrough = action === "book-walkthrough";
+  const isAddFollowUp = action === "add-follow-up";
   const walkthroughComposeChrome = useWalkthroughComposeSidebarChrome(
     move,
     isBookWalkthrough ? walkthroughCompose : null,
@@ -69,7 +71,7 @@ export function MoveQuickActionSidebar({ move, action, onClose }: MoveQuickActio
   const showHistory = quickActionHasHistory(action) && !isWalkthroughComposing;
   const history = showHistory ? getCommunicationHistory(move, action) : [];
 
-  const composer = !isBookWalkthrough && !isWalkthroughComposing ? (
+  const composer = !isBookWalkthrough && !isAddFollowUp && !isWalkthroughComposing ? (
     <QuickActionComposer action={action} move={move} />
   ) : null;
 
@@ -94,7 +96,8 @@ export function MoveQuickActionSidebar({ move, action, onClose }: MoveQuickActio
     </div>
   );
 
-  const usesHistoryLayout = isWalkthroughComposing || showHistory || isBookWalkthrough;
+  const usesHistoryLayout =
+    isWalkthroughComposing || showHistory || isBookWalkthrough || isAddFollowUp;
 
   const sidebar = (
     <DetailSidebar
@@ -133,6 +136,8 @@ export function MoveQuickActionSidebar({ move, action, onClose }: MoveQuickActio
           onScheduled={onClose}
           onCompose={setWalkthroughCompose}
         />
+      ) : isAddFollowUp ? (
+        <AddFollowUpTaskPanel move={move} onSaved={onClose} />
       ) : showHistory ? (
         <QuickActionHistoryFeed action={action} items={history} />
       ) : (
@@ -165,14 +170,7 @@ function StageActionSummary({
   move: MoveRecord;
 }) {
   const copy: Partial<Record<MoveQuickActionId, string>> = {
-    "check-quote": "Log outreach about the open estimate and nudge toward a decision.",
-    "send-reminder": "Automated reminders can also run — use this for a personal touch.",
-    "collect-deposit": "Record deposit once received — updates contract readiness.",
-    "send-contract": "Sends the e-sign packet; you’ll be notified when it’s signed.",
-    "confirm-move": "Sends move-day confirmation to the shipper and logs it on the job.",
-    "ops-handoff": "Posts scope notes to dispatch without leaving this move.",
-    "collect-payment": "Apply final payment against the move balance.",
-    "final-invoice": "Review line items, then email the closing invoice.",
+    "add-follow-up": "Schedule a one-off task for this move — shown in follow-ups and the overview.",
   };
 
   const text = copy[action];

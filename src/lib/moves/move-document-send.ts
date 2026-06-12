@@ -11,8 +11,10 @@ export function moveHasCreatedQuote(move: MoveRecord): boolean {
 export function buildMoveDocumentPortalUrl(
   moveId: string,
   kind: DocumentSendKind,
+  options?: { staffPreview?: boolean },
 ): string {
   const params = new URLSearchParams({ move: moveId, kind });
+  if (options?.staffPreview) params.set("staff", "1");
   return `/portal/view?${params.toString()}`;
 }
 

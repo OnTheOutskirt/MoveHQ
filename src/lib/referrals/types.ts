@@ -51,12 +51,6 @@ export type ReferralTouch = {
   createdAt: string;
 };
 
-export type ReferralPartnerCategory =
-  | "realtor"
-  | "senior_living"
-  | "business"
-  | "other";
-
 export type ReferralPartnerStats = {
   key: ReferralPartnerKey;
   partnerType: ReferralPartnerType;
@@ -65,7 +59,8 @@ export type ReferralPartnerStats = {
   subtitle?: string;
   organizationName?: string;
   organizationId?: string;
-  category: ReferralPartnerCategory;
+  /** Referral type id from Setup → Pipelines & fields (field catalog). */
+  referralTypeId: string;
   referralCount: number;
   bookedCount: number;
   completedCount: number;

@@ -2,6 +2,7 @@
 
 import { MoveListView } from "@/components/moves/MoveListView";
 import { MovePipelineBoard } from "@/components/moves/MovePipelineBoard";
+import { useGuardedPipelineStageChange } from "@/components/moves/hooks/use-guarded-pipeline-stage-change";
 import { useMoves } from "@/components/moves/MovesProvider";
 import { useWorkspace } from "@/components/providers/WorkspaceProvider";
 import { useMovesFilters } from "@/components/moves/hooks/use-moves-filters";
@@ -16,10 +17,11 @@ import { useState } from "react";
 const meta = pageMeta["/sales/moves"];
 
 export function MovesWorkspace() {
-  const { updateMovePipelineStage, openNewMoveDialog } = useMoves();
+  const { openNewMoveDialog } = useMoves();
+  const { requestStageChange, pipelineStageChangeDialogs } = useGuardedPipelineStageChange();
   const { isAllLocationsView, hasMultipleLocations, activeLocation, config } = useWorkspace();
   const filters = useMovesFilters();
-  const { filteredMoves, repFilter, quoteChannelFilter } = filters;
+  const { filteredMoves, repFilter, hasActiveFilters } = filters;
   const [view, setView] = useState<MovesViewMode>("pipeline");
 
   const isEmpty = filteredMoves.length === 0;
@@ -34,7 +36,7 @@ export function MovesWorkspace() {
     <div className="space-y-4">
       <PageHeader
         title={meta.title}
-        description={`${locationHint} · Pipeline board and list — filter by salesperson and quote source.`}
+        description={`${locationHint} · Pipeline board and list — filter by salesperson, quote source, and quote type.`}
         actions={
           <Button type="button" size="sm" onClick={openNewMoveDialog}>
             <Plus className="h-4 w-4" />
@@ -48,20 +50,21 @@ export function MovesWorkspace() {
       <div className="min-w-0">
         {isEmpty ? (
           <p className="rounded-lg border border-dashed border-slate-200 py-12 text-center text-sm text-slate-500">
-            {repFilter !== "all" && quoteChannelFilter !== "all"
+            {repFilter !== "all" && hasActiveFilters
               ? "No moves match these filters."
               : repFilter !== "all"
                 ? "No moves for this salesperson."
-                : quoteChannelFilter !== "all"
-                  ? "No moves match this quote source."
+                : hasActiveFilters
+                  ? "No moves match these filters."
                   : "No moves in the pipeline."}
           </p>
         ) : view === "pipeline" ? (
-          <MovePipelineBoard moves={filteredMoves} onStageChange={updateMovePipelineStage} />
+          <MovePipelineBoard moves={filteredMoves} onStageChange={requestStageChange} />
         ) : (
           <MoveListView moves={filteredMoves} />
         )}
       </div>
+      {pipelineStageChangeDialogs}
     </div>
   );
 }

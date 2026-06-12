@@ -1,6 +1,8 @@
 "use client";
 
 import { useEmployeeHrDocs } from "@/components/providers/EmployeeHrDocsProvider";
+import { useTeamMembers } from "@/components/providers/TeamMembersProvider";
+import { useSession } from "@/components/providers/SessionProvider";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { DetailSidebar } from "@/components/ui/DetailSidebar";
@@ -10,10 +12,12 @@ import {
   EMPLOYEE_HR_DOC_KINDS,
   EMPLOYEE_HR_DOC_STATUS_LABELS,
   EMPLOYEE_HR_DOC_STATUSES,
+  teamMembersForHrDocumentation,
   type EmployeeHrDoc,
   type EmployeeHrDocKind,
   type EmployeeHrDocStatus,
 } from "@/lib/team/employee-hr-docs-types";
+import { memberDisplayName } from "@/lib/team/types";
 import { cn } from "@/lib/utils";
 import { AlertTriangle, ClipboardList, FileWarning, Plus, Target } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -174,15 +178,26 @@ function HrDocFormSidebar({
   onClose: () => void;
   onSubmit: (draft: HrDocDraft) => void;
 }) {
+  const { user } = useSession();
+  const { members } = useTeamMembers();
+  const managers = useMemo(() => teamMembersForHrDocumentation(members), [members]);
+  const defaultManager = useMemo(() => {
+    const match = managers.find(
+      (member) => member.email.toLowerCase() === user.email.toLowerCase(),
+    );
+    return match ? memberDisplayName(match) : managers[0] ? memberDisplayName(managers[0]) : "";
+  }, [managers, user.email]);
+
   const [kind, setKind] = useState<EmployeeHrDocKind>(initial?.kind ?? "write_up");
   const [docTitle, setDocTitle] = useState(initial?.title ?? "");
   const [date, setDate] = useState(initial?.date ?? new Date().toISOString().slice(0, 10));
   const [description, setDescription] = useState(initial?.description ?? "");
   const [followUpDate, setFollowUpDate] = useState(initial?.followUpDate ?? "");
   const [status, setStatus] = useState<EmployeeHrDocStatus>(initial?.status ?? "active");
-  const [documentedBy, setDocumentedBy] = useState(initial?.documentedBy ?? "");
+  const [documentedBy, setDocumentedBy] = useState(initial?.documentedBy ?? defaultManager);
 
-  const canSave = docTitle.trim().length > 0 && description.trim().length > 0;
+  const canSave =
+    docTitle.trim().length > 0 && description.trim().length > 0 && documentedBy.trim().length > 0;
 
   return (
     <DetailSidebar
@@ -274,13 +289,26 @@ function HrDocFormSidebar({
           </select>
         </label>
         <label className="block">
-          <span className="text-xs font-medium text-slate-600">Documented by</span>
-          <input
+          <span className="text-xs font-medium text-slate-600">Manager</span>
+          <select
             value={documentedBy}
             onChange={(e) => setDocumentedBy(e.target.value)}
             className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-            placeholder="Manager name"
-          />
+          >
+            <option value="">Select manager…</option>
+            {managers.map((member) => {
+              const name = memberDisplayName(member);
+              return (
+                <option key={member.id} value={name}>
+                  {name}
+                </option>
+              );
+            })}
+            {initial?.documentedBy &&
+            !managers.some((member) => memberDisplayName(member) === initial.documentedBy) ? (
+              <option value={initial.documentedBy}>{initial.documentedBy}</option>
+            ) : null}
+          </select>
         </label>
         <label className="block">
           <span className="text-xs font-medium text-slate-600">Details</span>
@@ -330,7 +358,7 @@ function HrDocViewSidebar({
         <dl className="grid gap-3 rounded-lg border border-slate-200 bg-slate-50/60 p-3 text-xs">
           {doc.documentedBy ? (
             <div>
-              <dt className="font-semibold uppercase tracking-wide text-slate-500">Documented by</dt>
+              <dt className="font-semibold uppercase tracking-wide text-slate-500">Manager</dt>
               <dd className="mt-0.5 text-slate-800">{doc.documentedBy}</dd>
             </div>
           ) : null}

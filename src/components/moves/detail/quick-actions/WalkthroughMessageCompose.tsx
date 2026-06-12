@@ -24,6 +24,9 @@ type WalkthroughMessageComposeProps = {
   linkUrl: string;
   assignee?: string;
   slotLabel?: string;
+  cancelLinkUrl?: string;
+  walkthroughMode?: "in_person" | "virtual";
+  walkthroughLocation?: string;
   onClose: () => void;
 };
 
@@ -34,19 +37,30 @@ export function WalkthroughMessageCompose({
   linkUrl,
   assignee,
   slotLabel,
+  cancelLinkUrl,
+  walkthroughMode,
+  walkthroughLocation,
   onClose,
 }: WalkthroughMessageComposeProps) {
   const { recordWalkthroughLinkSent } = useMovesActions();
   const [templateRevision, setTemplateRevision] = useState(0);
+  const shareExtra = useMemo(
+    () => ({
+      cancelLinkUrl: cancelLinkUrl ?? linkUrl,
+      walkthroughMode,
+      walkthroughLocation,
+    }),
+    [cancelLinkUrl, linkUrl, walkthroughMode, walkthroughLocation],
+  );
   const defaults = useMemo(
     () => ({
-      subject: walkthroughShareEmailSubject(kind, move, linkUrl, assignee, slotLabel),
+      subject: walkthroughShareEmailSubject(kind, move, linkUrl, assignee, slotLabel, shareExtra),
       body:
         channel === "email"
-          ? walkthroughShareEmailBody(kind, move, linkUrl, assignee, slotLabel)
-          : walkthroughShareSmsBody(kind, move, linkUrl, assignee, slotLabel),
+          ? walkthroughShareEmailBody(kind, move, linkUrl, assignee, slotLabel, shareExtra)
+          : walkthroughShareSmsBody(kind, move, linkUrl, assignee, slotLabel, shareExtra),
     }),
-    [kind, move, linkUrl, assignee, slotLabel, channel, templateRevision],
+    [kind, move, linkUrl, assignee, slotLabel, channel, templateRevision, shareExtra],
   );
   const [subject, setSubject] = useState(defaults.subject);
   const [body, setBody] = useState(defaults.body);

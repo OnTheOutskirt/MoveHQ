@@ -2,99 +2,27 @@
 
 import { useFleet } from "@/components/providers/FleetProvider";
 import { Button } from "@/components/ui/Button";
+import { DetailSidebar } from "@/components/ui/DetailSidebar";
 import { formatTruckInline } from "@/lib/operations/fleet";
-import { cn } from "@/lib/utils";
 import { CalendarOff, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 export function TrucksOutOfServiceTab() {
   const { trucks, truckOutages, addTruckOutage, removeTruckOutage } = useFleet();
-  const [truckId, setTruckId] = useState(trucks[0]?.id ?? "");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [reason, setReason] = useState("");
-
-  const forTruck = truckOutages.filter((o) => o.truckId === truckId);
-
-  function handleAdd(e: React.FormEvent) {
-    e.preventDefault();
-    if (!truckId || !startDate || !reason.trim()) return;
-    addTruckOutage({
-      truckId,
-      startDate,
-      endDate: endDate || startDate,
-      reason: reason.trim(),
-    });
-    setStartDate("");
-    setEndDate("");
-    setReason("");
-  }
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="space-y-6">
-      <p className="text-sm text-slate-600">
-        Schedule when a truck is out of service (repairs, rental return, etc.). Multiple blocks per
-        truck are supported. Dispatch can use this later to hide unavailable units.
-      </p>
-
-      <form
-        onSubmit={handleAdd}
-        className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
-      >
-        <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-          <CalendarOff className="h-4 w-4 text-slate-500" />
-          Add out-of-service period
-        </h3>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="sm:col-span-2">
-            <label className="block text-xs font-semibold uppercase text-slate-500">Truck</label>
-            <select
-              value={truckId}
-              onChange={(e) => setTruckId(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-            >
-              {trucks.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {formatTruckInline(t)}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-semibold uppercase text-slate-500">Start</label>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold uppercase text-slate-500">End</label>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-            />
-          </div>
-          <div className="sm:col-span-2 lg:col-span-4">
-            <label className="block text-xs font-semibold uppercase text-slate-500">Reason</label>
-            <input
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="Body shop, engine repair…"
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              required
-            />
-          </div>
-        </div>
-        <Button type="submit" size="sm" className="mt-4">
-          <Plus className="h-4 w-4" />
-          Add period
+    <>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-slate-600">
+          Block trucks from dispatch when they are in the shop, on rental return, or otherwise
+          unavailable. Multiple date ranges per truck are supported.
+        </p>
+        <Button type="button" size="sm" onClick={() => setSidebarOpen(true)}>
+          <CalendarOff className="h-4 w-4" />
+          Mark out of service
         </Button>
-      </form>
+      </div>
 
       <div className="rounded-xl border border-slate-200 bg-white">
         <div className="border-b border-slate-100 px-4 py-2.5">
@@ -135,11 +63,120 @@ export function TrucksOutOfServiceTab() {
         )}
       </div>
 
-      {truckId && forTruck.length > 0 ? (
-        <p className="text-xs text-slate-500">
-          Selected truck has {forTruck.length} outage block{forTruck.length === 1 ? "" : "s"}.
-        </p>
-      ) : null}
-    </div>
+      <DetailSidebar
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        title="Out of service"
+        description="Schedule when a truck should be hidden from dispatch."
+        widthClassName="max-w-md"
+      >
+        <OutOfServiceForm
+          trucks={trucks}
+          onCancel={() => setSidebarOpen(false)}
+          onSave={(data) => {
+            addTruckOutage(data);
+            setSidebarOpen(false);
+          }}
+        />
+      </DetailSidebar>
+    </>
+  );
+}
+
+function OutOfServiceForm({
+  trucks,
+  onSave,
+  onCancel,
+}: {
+  trucks: ReturnType<typeof useFleet>["trucks"];
+  onSave: (data: { truckId: string; startDate: string; endDate: string; reason: string }) => void;
+  onCancel: () => void;
+}) {
+  const [truckId, setTruckId] = useState(trucks[0]?.id ?? "");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [reason, setReason] = useState("");
+
+  return (
+    <form
+      className="space-y-4"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!truckId || !startDate || !reason.trim()) return;
+        onSave({
+          truckId,
+          startDate,
+          endDate: endDate || startDate,
+          reason: reason.trim(),
+        });
+      }}
+    >
+      <div>
+        <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+          Truck
+        </label>
+        <select
+          value={truckId}
+          onChange={(e) => setTruckId(e.target.value)}
+          className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+          required
+        >
+          {trucks.map((t) => (
+            <option key={t.id} value={t.id}>
+              {formatTruckInline(t)}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div>
+          <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Start
+          </label>
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+            End
+          </label>
+          <input
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+          Reason
+        </label>
+        <input
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          placeholder="Body shop, engine repair…"
+          className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+          required
+        />
+      </div>
+
+      <div className="flex gap-2 pt-2">
+        <Button type="button" variant="secondary" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button type="submit">
+          <Plus className="h-4 w-4" />
+          Add period
+        </Button>
+      </div>
+    </form>
   );
 }

@@ -15,6 +15,7 @@ import {
   buildDocumentMoveContents,
   serializeMoveContents,
 } from "@/lib/settings/document-move-contents";
+import { sumCrewHotelClientCharges } from "@/lib/moves/job-day-crew-hotel";
 import { renderDocumentRichHtml } from "@/lib/settings/document-rich-text";
 import {
   formatInventoryBasisLabel,
@@ -127,7 +128,7 @@ export function buildDocumentTemplateVars(
       ? flatQuoteCoreAmount(displayAmount, move.intake.liabilityPremium ?? 0)
       : null;
   const flatAllIn =
-    flatCore != null ? flatCore + valuation.premium : null;
+    flatCore != null ? flatCore + valuation.premium + sumCrewHotelClientCharges(move) : null;
 
   const ballparkHours = resolveBallparkHours(move);
   const hourlyBallparkCore =
@@ -142,7 +143,9 @@ export function buildDocumentTemplateVars(
         )
       : null;
   const hourlyBallparkTotal =
-    hourlyBallparkCore != null ? hourlyBallparkCore + valuation.premium : null;
+    hourlyBallparkCore != null
+      ? hourlyBallparkCore + valuation.premium + sumCrewHotelClientCharges(move)
+      : null;
   const hourlyBallparkOriginalCore =
     move.quoteType === "hourly" &&
     ballparkHours &&

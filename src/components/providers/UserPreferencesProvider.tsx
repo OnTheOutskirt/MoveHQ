@@ -3,6 +3,7 @@
 import { useSession } from "@/components/providers/SessionProvider";
 import { getOfficePersona } from "@/lib/session/personas";
 import {
+  defaultUserPreferences,
   readUserPreferences,
   writeUserPreferences,
   type UserPreferences,
@@ -28,7 +29,7 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
   const { user } = useSession();
   const persona = getOfficePersona(user.id);
   const [preferences, setPreferences] = useState<UserPreferences>(() =>
-    readUserPreferences(user.id, user.name, user.email, persona.workspaceRole),
+    defaultUserPreferences(user.name, user.email, persona.workspaceRole),
   );
   const [hydrated, setHydrated] = useState(false);
 

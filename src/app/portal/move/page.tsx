@@ -1,10 +1,12 @@
 "use client";
 
 import { CrewFeedbackPortal } from "@/components/portal/CrewFeedbackPortal";
+import { ClientPortalShell } from "@/components/portal/ClientPortalShell";
 import { MoveCustomerPortalHub } from "@/components/portal/MoveCustomerPortalHub";
 import { useMoves } from "@/components/moves/MovesProvider";
 import { useSettings } from "@/components/providers/SettingsProvider";
 import { useWorkspace } from "@/components/providers/WorkspaceProvider";
+import { isStaffPortalPreview } from "@/lib/moves/customer-portal-home";
 import { shouldShowCrewFeedbackPortal } from "@/lib/moves/move-customer-portal";
 import { useSearchParams } from "next/navigation";
 import { useMemo } from "react";
@@ -17,6 +19,7 @@ export default function MoveCustomerPortalPage() {
 
   const moveId = searchParams.get("move");
   const previewFeedback = searchParams.get("preview") === "feedback";
+  const staffPreview = isStaffPortalPreview(searchParams);
 
   const move = useMemo(
     () => (moveId ? getMoveById(moveId) : undefined),
@@ -38,25 +41,42 @@ export default function MoveCustomerPortalPage() {
 
   if (showFeedback) {
     return (
-      <CrewFeedbackPortal
-        move={move}
+      <ClientPortalShell
         companyName={settings.branding.companyName}
         logoDataUrl={settings.branding.logoDataUrl}
         accentColor={settings.branding.accentColor}
-        googleReviewMinStars={settings.defaults.postMoveGoogleReviewMinStars}
-        locations={config.locations}
-        existingFeedback={move.crewFeedback}
-        onSubmit={(rating, comment) => recordCrewFeedback(moveId, rating, comment)}
-      />
+        subtitle="Move feedback"
+        staffPreview={staffPreview}
+        maxWidthClass="max-w-2xl"
+      >
+        <CrewFeedbackPortal
+          move={move}
+          companyName={settings.branding.companyName}
+          accentColor={settings.branding.accentColor}
+          googleReviewMinStars={settings.defaults.postMoveGoogleReviewMinStars}
+          locations={config.locations}
+          existingFeedback={move.crewFeedback}
+          onSubmit={(rating, comment) => recordCrewFeedback(moveId, rating, comment)}
+          staffPreview={staffPreview}
+        />
+      </ClientPortalShell>
     );
   }
 
   return (
-    <MoveCustomerPortalHub
-      move={move}
+    <ClientPortalShell
       companyName={settings.branding.companyName}
       logoDataUrl={settings.branding.logoDataUrl}
       accentColor={settings.branding.accentColor}
-    />
+      staffPreview={staffPreview}
+      maxWidthClass="max-w-2xl"
+    >
+      <MoveCustomerPortalHub
+        move={move}
+        companyName={settings.branding.companyName}
+        accentColor={settings.branding.accentColor}
+        staffPreview={staffPreview}
+      />
+    </ClientPortalShell>
   );
 }

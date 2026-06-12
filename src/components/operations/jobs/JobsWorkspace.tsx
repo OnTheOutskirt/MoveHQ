@@ -9,6 +9,7 @@ import { toDateKey } from "@/lib/calendar/date-utils";
 import { getJobFieldPacket } from "@/lib/operations/job-field-packet";
 import type { OpsJobDayRow } from "@/lib/operations/ops-jobs";
 import { useMoves } from "@/components/moves/MovesProvider";
+import { useSettings } from "@/components/providers/SettingsProvider";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { usePersistedState } from "@/lib/hooks/use-persisted-state";
 import {
@@ -33,6 +34,7 @@ function normalizeView(stored: string): OpsJobsView {
 
 export function JobsWorkspace() {
   const { moves } = useMoves();
+  const { settings } = useSettings();
   const today = useMemo(() => new Date(), []);
   const [storedView, setStoredView] = usePersistedState<string>(
     "jm-tab-/operations/jobs-view",
@@ -51,7 +53,10 @@ export function JobsWorkspace() {
     () => filterOpsJobDays(allRows, view, today, selectedDateKey),
     [allRows, view, today, selectedDateKey],
   );
-  const prepTasks = useMemo(() => collectOpsPrepTasks(moves, today), [moves, today]);
+  const prepTasks = useMemo(
+    () => collectOpsPrepTasks(moves, { today, rules: settings.opsPrepRules }),
+    [moves, today, settings.opsPrepRules],
+  );
 
   useEffect(() => {
     setView(normalizeView(storedView));
@@ -128,7 +133,7 @@ export function JobsWorkspace() {
           ) : null}
         </div>
 
-        <OpsPrepPanel tasks={prepTasks} />
+        <OpsPrepPanel derivedTasks={prepTasks} moves={moves} />
       </div>
 
       <JobFieldPacketSidebar packet={openPacket} onClose={() => setPacketRow(null)} />

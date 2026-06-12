@@ -1,7 +1,9 @@
+import { sumCrewHotelClientCharges } from "@/lib/moves/job-day-crew-hotel";
 import {
   equipmentMaterialsCost,
   normalizeEquipmentSupplies,
 } from "@/lib/moves/equipment-supplies";
+import { sumLodgingActualCostsForMove } from "@/lib/operations/ops-prep-storage";
 import type { MoveJobDay, MoveRecord } from "./types";
 
 /** Internal cost assumptions — replace with settings / payroll later. */
@@ -112,14 +114,15 @@ function resolveActualHours(move: MoveRecord): number | null {
 }
 
 function resolveEstimatedRevenue(move: MoveRecord, totalHours: number): number {
+  const lodging = sumCrewHotelClientCharges(move);
   if (move.quoteType === "hourly" && move.quoteAmount != null) {
-    return Math.round(move.quoteAmount * totalHours);
+    return Math.round(move.quoteAmount * totalHours) + lodging;
   }
   if (move.quoteType === "flat" && move.quoteAmount != null) {
-    return move.quoteAmount;
+    return move.quoteAmount + lodging;
   }
   const est = move.intake.estimatedMoveValue;
-  return typeof est === "number" && est > 0 ? est : 0;
+  return (typeof est === "number" && est > 0 ? est : 0) + lodging;
 }
 
 function resolveActualRevenue(move: MoveRecord, estimatedRevenue: number): number | null {
@@ -259,6 +262,17 @@ function buildCostLines(
       label: "Liability / valuation premium",
       estimated: liabilityEst,
       actual: closed ? liabilityEst : null,
+    });
+  }
+
+  const lodgingClient = sumCrewHotelClientCharges(move);
+  const lodgingActual = sumLodgingActualCostsForMove(move.id);
+  if (lodgingClient > 0 || lodgingActual > 0) {
+    lines.push({
+      category: "other",
+      label: "Crew lodging (hotels)",
+      estimated: Math.round(lodgingClient * 0.72),
+      actual: lodgingActual > 0 ? lodgingActual : closed ? Math.round(lodgingClient * 0.72) : null,
     });
   }
 

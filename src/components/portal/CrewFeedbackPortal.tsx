@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/Button";
+import { buildCustomerPortalHomePath, isStaffPortalPreview } from "@/lib/moves/customer-portal-home";
 import {
   googleReviewUrlForMove,
   shouldOfferGoogleReview,
@@ -10,6 +11,7 @@ import type { MoveCrewFeedback, MoveRecord } from "@/lib/moves/types";
 import type { WorkspaceLocation } from "@/lib/workspace/types";
 import { cn } from "@/lib/utils";
 import { Clock, ExternalLink, Heart, MessageSquareHeart, Sparkles, Star, Users } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 
 function GoogleMark({ className }: { className?: string }) {
@@ -162,6 +164,7 @@ type CrewFeedbackPortalProps = {
   locations: WorkspaceLocation[];
   existingFeedback?: MoveCrewFeedback | null;
   onSubmit: (rating: number, comment: string) => void;
+  staffPreview?: boolean;
 };
 
 function StarPicker({
@@ -212,12 +215,14 @@ function ThankYouPanel({
   googleReviewUrl,
   googleReviewMinStars,
   accentColor,
+  portalHomeHref,
 }: {
   feedback: MoveCrewFeedback;
   companyName: string;
   googleReviewUrl: string;
   googleReviewMinStars: GoogleReviewMinStars;
   accentColor: string;
+  portalHomeHref?: string;
 }) {
   const showGoogle = shouldOfferGoogleReview(
     feedback.rating,
@@ -259,6 +264,15 @@ function ThankYouPanel({
           us improve.
         </p>
       )}
+
+      {portalHomeHref ? (
+        <Link
+          href={portalHomeHref}
+          className="flex w-full items-center justify-center rounded-lg border border-slate-200 bg-white py-2.5 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50"
+        >
+          Return to your portal
+        </Link>
+      ) : null}
     </div>
   );
 }
@@ -266,12 +280,12 @@ function ThankYouPanel({
 export function CrewFeedbackPortal({
   move,
   companyName,
-  logoDataUrl,
   accentColor,
   googleReviewMinStars,
   locations,
   existingFeedback,
   onSubmit,
+  staffPreview = false,
 }: CrewFeedbackPortalProps) {
   const [rating, setRating] = useState(existingFeedback?.rating ?? 0);
   const [comment, setComment] = useState(existingFeedback?.comment ?? "");
@@ -299,39 +313,20 @@ export function CrewFeedbackPortal({
   }
 
   const firstName = move.customerName.split(/\s+/)[0] ?? "there";
+  const portalHomeHref = buildCustomerPortalHomePath(move.id, { staffPreview });
 
   return (
-    <div className="mx-auto min-h-dvh w-full max-w-lg bg-white">
-      <header className="border-b border-slate-100 px-5 py-4">
-        <div className="flex items-center gap-3">
-          {logoDataUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={logoDataUrl} alt="" className="h-9 w-9 rounded-lg object-contain" />
-          ) : (
-            <div
-              className="flex h-9 w-9 items-center justify-center rounded-lg text-sm font-bold text-white"
-              style={{ backgroundColor: accentColor }}
-            >
-              {companyName.charAt(0)}
-            </div>
-          )}
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-slate-900">{companyName}</p>
-            <p className="text-xs text-slate-500">Move feedback</p>
-          </div>
-        </div>
-      </header>
-
-      <main className="px-5 py-6">
-        {feedback ? (
-          <ThankYouPanel
-            feedback={feedback}
-            companyName={companyName}
-            googleReviewUrl={googleReviewUrl}
-            googleReviewMinStars={googleReviewMinStars}
-            accentColor={accentColor}
-          />
-        ) : (
+    <div className="px-5 py-6">
+      {feedback ? (
+        <ThankYouPanel
+          feedback={feedback}
+          companyName={companyName}
+          googleReviewUrl={googleReviewUrl}
+          googleReviewMinStars={googleReviewMinStars}
+          accentColor={accentColor}
+          portalHomeHref={portalHomeHref}
+        />
+      ) : (
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <h1 className="text-xl font-semibold text-slate-900">
@@ -390,7 +385,6 @@ export function CrewFeedbackPortal({
             </p>
           </form>
         )}
-      </main>
     </div>
   );
 }

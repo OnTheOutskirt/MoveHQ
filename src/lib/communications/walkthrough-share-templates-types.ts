@@ -1,4 +1,8 @@
-export type WalkthroughShareKind = "scheduling" | "virtual_meeting" | "liveswitch";
+export type WalkthroughShareKind =
+  | "scheduling"
+  | "virtual_meeting"
+  | "liveswitch"
+  | "confirmation";
 
 export type WalkthroughShareTemplateSet = {
   emailSubject: string;
@@ -19,6 +23,9 @@ export type WalkthroughShareFillContext = {
   slot: string;
   slot_sentence: string;
   slot_sms: string;
+  cancelLink: string;
+  mode: string;
+  location_line: string;
 };
 
 export const WALKTHROUGH_SHARE_KIND_OPTIONS: {
@@ -41,6 +48,11 @@ export const WALKTHROUGH_SHARE_KIND_OPTIONS: {
     label: "LiveSwitch self-film",
     description: "Customer films items on their own — no rep on the link.",
   },
+  {
+    id: "confirmation",
+    label: "Booking confirmation",
+    description: "Sent after a walkthrough is booked — includes cancel link.",
+  },
 ];
 
 export const WALKTHROUGH_SHARE_MERGE_FIELDS = [
@@ -54,6 +66,9 @@ export const WALKTHROUGH_SHARE_MERGE_FIELDS = [
   { token: "{{slot}}", label: "Booked slot label (virtual meetings)" },
   { token: "{{slot_sentence}}", label: "Virtual intro sentence (email)" },
   { token: "{{slot_sms}}", label: "Virtual phrasing for SMS" },
+  { token: "{{cancelLink}}", label: "Customer cancel link (confirmation)" },
+  { token: "{{mode}}", label: "Walkthrough type — In person or Virtual" },
+  { token: "{{location_line}}", label: "Location or video-call line (confirmation email)" },
 ] as const;
 
 export const WALKTHROUGH_SHARE_TEMPLATES_UPDATED_EVENT = "jm-walkthrough-share-templates-updated";

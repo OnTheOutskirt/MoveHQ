@@ -68,6 +68,7 @@ export function WebsiteQueueBoard({ moves }: WebsiteQueueBoardProps) {
                   </span>
                 </div>
                 <p className="mt-1 text-xs leading-snug text-slate-600">{config.description}</p>
+                <p className="mt-1 text-[10px] leading-snug text-slate-500">{config.exitHint}</p>
               </div>
 
               <div className="flex flex-1 flex-col gap-2 p-2">

@@ -1,3 +1,8 @@
+import {
+  resolveVendorDirectoryLabel,
+  resolveVendorDirectoryOption,
+} from "@/lib/people/vendors";
+
 export type ClaimVendor = {
   id: string;
   name: string;
@@ -8,7 +13,7 @@ export type ClaimVendor = {
   notes?: string;
 };
 
-/** Third-party vendors for damage repair, restoration, and specialty claims. */
+/** Legacy demo vendors — kept for older claim rows stored before directory integration. */
 export const CLAIM_VENDORS: ClaimVendor[] = [
   {
     id: "vendor-movebees",
@@ -50,6 +55,34 @@ export function getClaimVendor(id: string | undefined): ClaimVendor | undefined 
   return CLAIM_VENDORS.find((v) => v.id === id);
 }
 
-export function claimVendorLabel(id: string | undefined): string {
-  return getClaimVendor(id)?.name ?? "No vendor selected";
+export function claimVendorLabel(vendorDirectoryId: string | undefined): string {
+  if (!vendorDirectoryId) return "No vendor selected";
+  const label = resolveVendorDirectoryLabel(vendorDirectoryId);
+  if (label) return label;
+  return getClaimVendor(vendorDirectoryId)?.name ?? vendorDirectoryId;
+}
+
+export function claimVendorContact(vendorDirectoryId: string | undefined): {
+  email: string | null;
+  phone: string | null;
+  portalUrl?: string;
+  specialty?: string;
+} {
+  const option = resolveVendorDirectoryOption(vendorDirectoryId);
+  if (option) {
+    return {
+      email: option.email,
+      phone: option.phone,
+    };
+  }
+  const legacy = getClaimVendor(vendorDirectoryId);
+  if (legacy) {
+    return {
+      email: legacy.contactEmail,
+      phone: legacy.phone ?? null,
+      portalUrl: legacy.portalUrl,
+      specialty: legacy.specialty,
+    };
+  }
+  return { email: null, phone: null };
 }

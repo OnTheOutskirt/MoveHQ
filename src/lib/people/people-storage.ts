@@ -35,12 +35,17 @@ export function listAllPeople(): PersonRecord[] {
   const custom = readCustomPeople();
   const byId = new Map<string, PersonRecord>();
   for (const person of MOCK_PEOPLE) {
-    byId.set(person.id, person);
+    byId.set(person.id, normalizeReferralType(person));
   }
   for (const person of custom) {
-    byId.set(person.id, person);
+    byId.set(person.id, normalizeReferralType(person));
   }
   return [...byId.values()];
+}
+
+function normalizeReferralType(person: PersonRecord): PersonRecord {
+  if ((person.referralType as string | null) !== "attorney") return person;
+  return { ...person, referralType: "apartment_complex" };
 }
 
 export function getStoredPersonById(id: string): PersonRecord | undefined {
@@ -76,6 +81,7 @@ export function addCustomPerson(input: NewPersonInput): PersonRecord {
     name: input.name.trim(),
     kind: input.kind ?? "lead",
     referralType: null,
+    vendorType: null,
     phone: input.phone?.trim() || null,
     email: input.email?.trim() || null,
     organizationId: null,

@@ -7,6 +7,10 @@ import { MoveDetailBackLink } from "@/components/moves/detail/MoveDetailBackLink
 import { MoveDetailScrollProvider } from "@/components/moves/detail/MoveDetailScrollContext";
 import { MoveDetailMain } from "@/components/moves/detail/MoveDetailMain";
 import { MoveDetailOverviewCard } from "@/components/moves/detail/MoveDetailOverviewCard";
+import { MoveFollowUpsSidebar } from "@/components/moves/detail/MoveFollowUpsPanel";
+import { MoveCrewFeedbackPanel } from "@/components/moves/detail/MoveCrewFeedbackPanel";
+import { MoveScheduledWalkthroughPanel } from "@/components/moves/detail/MoveScheduledWalkthroughPanel";
+import { WebIntakeQueuePanel } from "@/components/moves/detail/WebBookingReviewPanel";
 import { MoveContactSidebar } from "@/components/moves/detail/MoveContactSidebar";
 import { MoveDetailRightRail } from "@/components/moves/detail/MoveDetailRightRail";
 import {
@@ -14,7 +18,13 @@ import {
   useMoveSendDocument,
 } from "@/components/moves/detail/MoveSendDocumentProvider";
 import { MoveQuickActionSidebar } from "@/components/moves/detail/MoveQuickActionSidebar";
+import type { FollowUpComposerChannel } from "@/lib/moves/follow-up-display";
 import type { MoveDetailMainTabId, MoveQuickActionId } from "@/lib/moves/detail-layout";
+import { buildMoveCustomerPortalPath } from "@/lib/moves/move-customer-portal";
+import {
+  isExternalQuickAction,
+  isNavigationQuickAction,
+} from "@/lib/moves/quick-actions";
 import type { MoveRecord } from "@/lib/moves/types";
 import { ROUTES } from "@/lib/navigation/routes";
 
@@ -31,9 +41,9 @@ export function MoveDetailView({ move }: MoveDetailViewProps) {
 }
 
 function MoveDetailViewBody({ move }: { move: MoveRecord }) {
-  const { openSendContract } = useMoveSendDocument();
   const [contactOpen, setContactOpen] = useState(false);
   const [quickAction, setQuickAction] = useState<MoveQuickActionId | null>(null);
+  const [followUpsOpen, setFollowUpsOpen] = useState(false);
   const [mainTab, setMainTab] = useState<MoveDetailMainTabId>("move-plan");
 
   function scrollToMainTabs() {
@@ -51,25 +61,48 @@ function MoveDetailViewBody({ move }: { move: MoveRecord }) {
   }
 
   function handleQuickAction(action: MoveQuickActionId) {
-    if (action === "send-contract") {
-      openSendContract();
+    if (isExternalQuickAction(action)) {
+      window.open(
+        buildMoveCustomerPortalPath(move.id, { staffPreview: true }),
+        "_blank",
+        "noopener,noreferrer",
+      );
       return;
     }
-    if (action === "collect-payment") {
-      setMainTab("payment");
+
+    if (isNavigationQuickAction(action)) {
+      setMainTab("profitability");
       scrollToMainTabs();
+      return;
     }
+
     setQuickAction(action);
+  }
+
+  function openAddFollowUp() {
+    setFollowUpsOpen(false);
+    setQuickAction("add-follow-up");
+  }
+
+  function openFollowUpChannel(channel: FollowUpComposerChannel) {
+    setFollowUpsOpen(false);
+    setQuickAction(channel);
   }
 
   return (
     <>
       <div className="-m-4 flex min-h-0 flex-col lg:-m-6 lg:h-[calc(100vh-4rem)] lg:flex-row">
         <MoveDetailScrollProvider className="min-h-0 min-w-0 flex-1 overflow-x-hidden lg:overflow-y-auto">
-          <MoveDetailBackLink />
+          <MoveDetailBackLink move={move} />
 
           <div className="space-y-3 px-4 py-3 lg:px-5">
             <MoveDetailOverviewCard move={move} onOpenMovePlan={openMovePlan} />
+            <MoveScheduledWalkthroughPanel
+              move={move}
+              onReschedule={() => setQuickAction("book-walkthrough")}
+            />
+            <WebIntakeQueuePanel move={move} />
+            <MoveCrewFeedbackPanel move={move} />
           </div>
 
           <MoveDetailMain move={move} activeTab={mainTab} onTabChange={setMainTab} />
@@ -80,6 +113,8 @@ function MoveDetailViewBody({ move }: { move: MoveRecord }) {
             move={move}
             onOpenContact={() => setContactOpen(true)}
             onQuickAction={handleQuickAction}
+            onSeeAllFollowUps={() => setFollowUpsOpen(true)}
+            onOpenFollowUpChannel={openFollowUpChannel}
           />
         </div>
       </div>
@@ -88,6 +123,14 @@ function MoveDetailViewBody({ move }: { move: MoveRecord }) {
         move={move}
         open={contactOpen}
         onClose={() => setContactOpen(false)}
+      />
+
+      <MoveFollowUpsSidebar
+        move={move}
+        open={followUpsOpen}
+        onClose={() => setFollowUpsOpen(false)}
+        onAddFollowUp={openAddFollowUp}
+        onOpenChannel={openFollowUpChannel}
       />
 
       <MoveQuickActionSidebar

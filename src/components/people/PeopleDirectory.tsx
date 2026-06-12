@@ -1,18 +1,25 @@
 "use client";
 
 import { DirectoryContactActions } from "@/components/people/DirectoryContactActions";
+import {
+  DirectoryKindFilters,
+  type DirectoryKindFilter,
+} from "@/components/people/DirectoryKindFilters";
+import { useSettings } from "@/components/providers/SettingsProvider";
 import { DataTable, type Column } from "@/components/ui/DataTable";
 import { getOrganizationForPerson } from "@/lib/people/mock-data";
 import { listAllPeople } from "@/lib/people/people-storage";
 import {
   personKindConfig,
-  personKindLabel,
   personTypeDisplay,
-  referralPartnerTypeConfig,
+  vendorTypeConfig,
 } from "@/lib/people/display";
-import type { PersonKind, PersonRecord, ReferralPartnerType } from "@/lib/people/types";
-import { REFERRAL_PARTNER_TYPES } from "@/lib/people/types";
-import { cn } from "@/lib/utils";
+import type { PersonRecord } from "@/lib/people/types";
+import type { FieldCatalogEntry } from "@/lib/settings/field-catalog-types";
+import {
+  catalogReferralTypeBadge,
+  catalogVendorTypeBadge,
+} from "@/lib/settings/field-catalog-runtime";
 import { ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
 
@@ -20,39 +27,59 @@ type PeopleDirectoryProps = {
   onSelectPerson: (person: PersonRecord) => void;
 };
 
-type KindFilter = "all" | PersonKind;
+function referralTypeBadge(id: string, entries: FieldCatalogEntry[]): string {
+  return entries.find((e) => e.id === id)?.badgeClass ?? catalogReferralTypeBadge(id);
+}
+
+function vendorTypeBadge(id: string, entries: FieldCatalogEntry[]): string {
+  return (
+    entries.find((e) => e.id === id)?.badgeClass ??
+    vendorTypeConfig[id]?.badge ??
+    catalogVendorTypeBadge(id)
+  );
+}
 
 export function PeopleDirectory({ onSelectPerson }: PeopleDirectoryProps) {
+  const { settings } = useSettings();
+  const referralTypes = settings.fieldCatalog.referralTypes;
+  const vendorTypes = settings.fieldCatalog.vendorTypes;
   const [search, setSearch] = useState("");
-  const [kindFilter, setKindFilter] = useState<KindFilter>("all");
-  const [referralTypeFilter, setReferralTypeFilter] = useState<ReferralPartnerType | "all">("all");
+  const [kindFilter, setKindFilter] = useState<DirectoryKindFilter>("all");
+  const [referralTypeFilter, setReferralTypeFilter] = useState<string | "all">("all");
+  const [vendorTypeFilter, setVendorTypeFilter] = useState<string | "all">("all");
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return listAllPeople().filter((p) => {
-      if (kindFilter !== "all" && p.kind !== kindFilter) return false;
-      if (
-        kindFilter === "referral" &&
-        referralTypeFilter !== "all" &&
-        p.referralType !== referralTypeFilter
-      ) {
-        return false;
-      }
-      if (!q) return true;
-      const org = getOrganizationForPerson(p);
-      const referralLabel =
-        p.kind === "referral" && p.referralType
-          ? referralPartnerTypeConfig[p.referralType].label
-          : "";
-      return (
-        p.name.toLowerCase().includes(q) ||
-        (p.email?.toLowerCase().includes(q) ?? false) ||
-        (p.phone?.includes(q) ?? false) ||
-        (org?.name.toLowerCase().includes(q) ?? false) ||
-        referralLabel.toLowerCase().includes(q)
-      );
-    }).sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
-  }, [search, kindFilter, referralTypeFilter]);
+    return listAllPeople()
+      .filter((p) => {
+        if (kindFilter !== "all" && p.kind !== kindFilter) return false;
+        if (
+          kindFilter === "referral" &&
+          referralTypeFilter !== "all" &&
+          p.referralType !== referralTypeFilter
+        ) {
+          return false;
+        }
+        if (
+          kindFilter === "vendor" &&
+          vendorTypeFilter !== "all" &&
+          p.vendorType !== vendorTypeFilter
+        ) {
+          return false;
+        }
+        if (!q) return true;
+        const org = getOrganizationForPerson(p);
+        const typeLabel = personTypeDisplay(p);
+        return (
+          p.name.toLowerCase().includes(q) ||
+          (p.email?.toLowerCase().includes(q) ?? false) ||
+          (p.phone?.includes(q) ?? false) ||
+          (org?.name.toLowerCase().includes(q) ?? false) ||
+          typeLabel.toLowerCase().includes(q)
+        );
+      })
+      .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+  }, [search, kindFilter, referralTypeFilter, vendorTypeFilter]);
 
   const columns = useMemo<Column<PersonRecord>[]>(
     () => [
@@ -66,9 +93,7 @@ export function PeopleDirectory({ onSelectPerson }: PeopleDirectoryProps) {
             className="group flex w-full min-w-0 items-center gap-1 text-left"
           >
             <div className="min-w-0 flex-1">
-              <p className="font-medium text-slate-900 group-hover:text-brand-700">
-                {p.name}
-              </p>
+              <p className="font-medium text-slate-900 group-hover:text-brand-700">{p.name}</p>
               {p.title ? <p className="text-xs text-slate-500">{p.title}</p> : null}
               {p.email ? <p className="truncate text-xs text-slate-400">{p.email}</p> : null}
             </div>
@@ -83,15 +108,19 @@ export function PeopleDirectory({ onSelectPerson }: PeopleDirectoryProps) {
           const label = personTypeDisplay(p);
           const badge =
             p.kind === "referral" && p.referralType
-              ? referralPartnerTypeConfig[p.referralType].badge
-              : personKindConfig[p.kind].badge;
+              ? referralTypeBadge(p.referralType, referralTypes)
+              : p.kind === "vendor" && p.vendorType
+                ? vendorTypeBadge(p.vendorType, vendorTypes)
+                : personKindConfig[p.kind].badge;
           return (
             <div className="space-y-0.5">
               <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-semibold ${badge}`}>
                 {label}
               </span>
-              {p.kind === "referral" && p.referralType ? (
+              {p.kind === "referral" ? (
                 <p className="text-[10px] text-slate-500">Referral contact</p>
+              ) : p.kind === "vendor" ? (
+                <p className="text-[10px] text-slate-500">Vendor contact</p>
               ) : null}
             </div>
           );
@@ -131,16 +160,8 @@ export function PeopleDirectory({ onSelectPerson }: PeopleDirectoryProps) {
         ),
       },
     ],
-    [onSelectPerson],
+    [onSelectPerson, referralTypes, vendorTypes],
   );
-
-  const kindPills: { id: KindFilter; label: string }[] = [
-    { id: "all", label: "All" },
-    ...(["customer", "lead", "referral", "vendor", "other"] as PersonKind[]).map((k) => ({
-      id: k as KindFilter,
-      label: personKindLabel(k),
-    })),
-  ];
 
   return (
     <div className="space-y-4">
@@ -154,58 +175,16 @@ export function PeopleDirectory({ onSelectPerson }: PeopleDirectoryProps) {
         />
       </div>
 
-      <div className="flex flex-wrap gap-1.5">
-        {kindPills.map(({ id, label }) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => {
-              setKindFilter(id);
-              if (id !== "referral") setReferralTypeFilter("all");
-            }}
-            className={cn(
-              "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-              kindFilter === id
-                ? "border-brand-500 bg-brand-50 text-brand-800"
-                : "border-slate-200 bg-white text-slate-600 hover:border-slate-300",
-            )}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {kindFilter === "referral" ? (
-        <div className="flex flex-wrap gap-1.5 border-l-2 border-amber-200 pl-3">
-          <button
-            type="button"
-            onClick={() => setReferralTypeFilter("all")}
-            className={cn(
-              "rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition-colors",
-              referralTypeFilter === "all"
-                ? "border-amber-500 bg-amber-50 text-amber-900"
-                : "border-slate-200 bg-white text-slate-600",
-            )}
-          >
-            All referral types
-          </button>
-          {REFERRAL_PARTNER_TYPES.map((rt) => (
-            <button
-              key={rt}
-              type="button"
-              onClick={() => setReferralTypeFilter(rt)}
-              className={cn(
-                "rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition-colors",
-                referralTypeFilter === rt
-                  ? referralPartnerTypeConfig[rt].badge
-                  : "border-slate-200 bg-white text-slate-600 hover:border-slate-300",
-              )}
-            >
-              {referralPartnerTypeConfig[rt].label}
-            </button>
-          ))}
-        </div>
-      ) : null}
+      <DirectoryKindFilters
+        kindFilter={kindFilter}
+        onKindFilterChange={setKindFilter}
+        referralTypeFilter={referralTypeFilter}
+        onReferralTypeFilterChange={setReferralTypeFilter}
+        vendorTypeFilter={vendorTypeFilter}
+        onVendorTypeFilterChange={setVendorTypeFilter}
+        referralTypes={referralTypes}
+        vendorTypes={vendorTypes}
+      />
 
       <DataTable
         columns={columns}

@@ -17,6 +17,10 @@ import { Button } from "@/components/ui/Button";
 import { formatLostMoveSummary, lostQualificationBadgeClass } from "@/lib/moves/lost-reasons";
 import { formatQuote } from "@/lib/moves/format";
 import {
+  shouldShowOverviewBookingReviewPill,
+  shouldShowOverviewConditionPill,
+} from "@/lib/moves/acquisition";
+import {
   bookingReviewConfig,
   conditionStatusConfig,
 } from "@/lib/moves/move-condition";
@@ -46,8 +50,10 @@ export function MoveDetailSummaryHeader({ move, className }: MoveDetailSummaryHe
   const est = getMoveEstimatedValue(move);
   const nextFu = getNextOpenFollowUp(move);
   const condCfg = conditionStatusConfig[move.conditionStatus];
+  const showConditionPill = shouldShowOverviewConditionPill(move);
+  const showReviewPill = shouldShowOverviewBookingReviewPill(move);
   const reviewCfg =
-    move.bookingReviewStatus !== "not_required"
+    showReviewPill && move.bookingReviewStatus !== "not_required"
       ? bookingReviewConfig[move.bookingReviewStatus]
       : null;
 
@@ -90,9 +96,11 @@ export function MoveDetailSummaryHeader({ move, className }: MoveDetailSummaryHe
             <QuadrantBadge move={move} />
             <LocationBadge locationId={move.locationId} />
             <QuoteChannelBadge move={move} showIntakeProgress />
-            <span className={cn("rounded px-2 py-0.5 text-[10px] font-semibold", condCfg.badge)}>
-              {condCfg.label}
-            </span>
+            {showConditionPill ? (
+              <span className={cn("rounded px-2 py-0.5 text-[10px] font-semibold", condCfg.badge)}>
+                {condCfg.label}
+              </span>
+            ) : null}
             {reviewCfg ? (
               <span className={cn("rounded px-2 py-0.5 text-[10px] font-semibold", reviewCfg.badge)}>
                 {reviewCfg.label}

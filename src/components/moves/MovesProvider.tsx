@@ -3,7 +3,17 @@
 import { NewMoveDialog } from "@/components/moves/NewMoveDialog";
 import { useSession } from "@/components/providers/SessionProvider";
 import { useWorkspace } from "@/components/providers/WorkspaceProvider";
+import {
+  cancelAutomatedFollowUpsOnMove,
+  openAutomatedFollowUps,
+} from "@/lib/moves/cancel-automated-follow-ups";
+import { applyAcquisitionFields, approveWebsiteBookingReview, dismissWebsiteQueueMove, websiteQueueConfig, type WebsiteQueueId } from "@/lib/moves/acquisition";
 import { buildNewMoveFromPerson } from "@/lib/moves/create-move";
+import { duplicateMoveRecord } from "@/lib/moves/duplicate-move";
+import {
+  type ManualPhonePaymentInput,
+  manualPhonePaymentPurposeLabel,
+} from "@/lib/moves/manual-phone-payment";
 import { ensureMovesHaveRateSnapshots, lockMoveRatesOnContract } from "@/lib/pricing/rate-snapshot";
 import {
   initialMovesState,
@@ -37,7 +47,7 @@ import { loadSettings } from "@/lib/settings/storage";
 import { loadWorkspaceConfig } from "@/lib/workspace/storage";
 import type { DocumentSendKind } from "@/lib/moves/document-template-render";
 import { relabelJobDaysByDate } from "@/lib/moves/job-day-form";
-import { CHANNEL_TO_ROLES } from "@/lib/moves/lead-referral";
+import { CHANNEL_TO_ROLES, isUnknownReferralContact } from "@/lib/moves/lead-referral";
 import { applyIntakeToMove } from "@/lib/moves/sync-move-intake";
 import { applyMoveTypeRuleToMove, moveMatchesCatalogType } from "@/lib/settings/move-type-migration";
 import type { FieldCatalogSettings } from "@/lib/settings/field-catalog-types";
@@ -49,7 +59,12 @@ import type { FlatRateIntake } from "@/lib/moves/flat-rate-intake";
 import { linkPersonToMove } from "@/lib/people/people-storage";
 import type { PersonRecord } from "@/lib/people/types";
 import {
+  createFollowUp,
+  syncFollowUpDue,
+} from "@/lib/moves/move-follow-ups";
+import {
   scheduleWalkthroughOnMove,
+  cancelWalkthroughOnMove,
   type WalkthroughScheduleDraft,
 } from "@/lib/moves/walkthroughs";
 import type {
@@ -63,6 +78,7 @@ import type {
   MoveSentDocument,
   PipelineStageId,
   WaitingSubstage,
+  FollowUpStatus,
 } from "@/lib/moves/types";
 import {
   createContext,
@@ -75,10 +91,23 @@ import {
   type ReactNode,
 } from "react";
 
+import type { FollowUpChannel } from "@/lib/moves/types";
+
+export type AddFollowUpTaskInput = {
+  title: string;
+  dueAt: string;
+  channel: Exclude<FollowUpChannel, "task">;
+  notes?: string;
+};
+
 type MovesContextValue = {
   moves: MoveRecord[];
   getMoveById: (id: string) => MoveRecord | undefined;
-  updateMovePipelineStage: (moveId: string, stage: PipelineStageId) => void;
+  updateMovePipelineStage: (
+    moveId: string,
+    stage: PipelineStageId,
+    options?: { waitingSubstage?: WaitingSubstage },
+  ) => void;
   updateWaitingSubstage: (moveId: string, substage: WaitingSubstage) => void;
   markAsLost: (moveId: string, payload: MarkLostPayload) => void;
   reopenMove: (moveId: string) => void;
@@ -107,9 +136,12 @@ type MovesContextValue = {
   recordMoveDocumentViewed: (moveId: string, kind: DocumentSendKind) => void;
   recordQuoteBookingRequested: (moveId: string) => void;
   recordContractSignedWithDeposit: (moveId: string, depositAmount: number) => void;
+  recordPortalInventoryChangeRequest: (moveId: string, message: string) => void;
   recordCrewFeedback: (moveId: string, rating: number, comment: string) => void;
   updateLeadChannel: (moveId: string, channel: LeadChannel) => void;
   createMove: (person: PersonRecord) => string;
+  duplicateMove: (moveId: string) => string;
+  deleteMove: (moveId: string) => void;
   openNewMoveDialog: () => void;
   closeNewMoveDialog: () => void;
   scheduleWalkthrough: (
@@ -117,6 +149,20 @@ type MovesContextValue = {
     draft: WalkthroughScheduleDraft,
     actor?: string,
   ) => void;
+  cancelWalkthrough: (
+    moveId: string,
+    options?: { actor?: string; cancelledBy?: "staff" | "customer" },
+  ) => void;
+  cancelAutomatedFollowUps: (moveId: string) => void;
+  addFollowUpTask: (moveId: string, input: AddFollowUpTaskInput) => void;
+  updateFollowUpStatus: (
+    moveId: string,
+    followUpId: string,
+    status: Exclude<FollowUpStatus, "open">,
+  ) => void;
+  recordManualPhonePayment: (moveId: string, input: ManualPhonePaymentInput) => void;
+  approveWebsiteBookingReview: (moveId: string) => void;
+  clearFromWebsiteQueue: (moveId: string, queue: WebsiteQueueId) => void;
   recordWalkthroughLinkSent: (
     moveId: string,
     assignee: string,
@@ -148,10 +194,7 @@ function hydrateMovesFromSession(companyId: string): MoveRecord[] {
 export function MovesProvider({ children }: { children: ReactNode }) {
   const { user } = useSession();
   const { filterByActiveScope, locationIdForNewRecords, config } = useWorkspace();
-  const [allMoves, setAllMoves] = useState<MoveRecord[]>(() => {
-    if (typeof window === "undefined") return initialMovesState();
-    return readMovesSession() ?? initialMovesState();
-  });
+  const [allMoves, setAllMoves] = useState<MoveRecord[]>(initialMovesState);
   const [newMoveDialogOpen, setNewMoveDialogOpen] = useState(false);
   const persistFingerprintRef = useRef("");
 
@@ -248,18 +291,25 @@ export function MovesProvider({ children }: { children: ReactNode }) {
     return { ...move, sentContract: { ...base, ...patch } };
   }
 
-  const updateMovePipelineStage = useCallback((moveId: string, stage: PipelineStageId) => {
-    setAllMoves((prev) =>
-      prev.map((move) => {
-        if (move.id !== moveId || isMoveLost(move) || move.pipelineStage === stage) return move;
-        const next = applyPipelineStage(move, stage);
-        return appendActivity(
-          next,
-          `Pipeline → ${moveStageDisplayLabel(next)}`,
-        );
-      }),
-    );
-  }, []);
+  const updateMovePipelineStage = useCallback(
+    (
+      moveId: string,
+      stage: PipelineStageId,
+      options?: { waitingSubstage?: WaitingSubstage },
+    ) => {
+      setAllMoves((prev) =>
+        prev.map((move) => {
+          if (move.id !== moveId || isMoveLost(move) || move.pipelineStage === stage) return move;
+          const next = applyPipelineStage(move, stage, options?.waitingSubstage);
+          return appendActivity(
+            next,
+            `Pipeline → ${moveStageDisplayLabel(next)}`,
+          );
+        }),
+      );
+    },
+    [],
+  );
 
   const updateWaitingSubstage = useCallback((moveId: string, substage: WaitingSubstage) => {
     setAllMoves((prev) =>
@@ -610,6 +660,24 @@ export function MovesProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  const recordPortalInventoryChangeRequest = useCallback((moveId: string, message: string) => {
+    const trimmed = message.trim();
+    if (!trimmed) return;
+
+    const now = new Date().toISOString();
+    setAllMoves((prev) =>
+      prev.map((move) => {
+        if (move.id !== moveId) return move;
+        return appendActivity(
+          move,
+          `Customer requested inventory change via portal: ${trimmed}`,
+          now,
+          { type: "note" },
+        );
+      }),
+    );
+  }, []);
+
   const recordCrewFeedback = useCallback(
     (moveId: string, rating: number, comment: string) => {
       const now = new Date().toISOString();
@@ -708,9 +776,12 @@ export function MovesProvider({ children }: { children: ReactNode }) {
               p.name === person.name,
           );
         if (same) return move;
+        const summary = isUnknownReferralContact(person)
+          ? "Referral source marked as unknown"
+          : `Lead source contact set to ${person.name}`;
         return appendActivity(
           { ...move, linkedPeople: [...kept, person] },
-          `Lead source contact set to ${person.name}`,
+          summary,
         );
       }),
     );
@@ -730,6 +801,152 @@ export function MovesProvider({ children }: { children: ReactNode }) {
     },
     [user.name],
   );
+
+  const cancelWalkthrough = useCallback(
+    (
+      moveId: string,
+      options?: { actor?: string; cancelledBy?: "staff" | "customer" },
+    ) => {
+      setAllMoves((prev) =>
+        prev.map((move) => {
+          if (move.id !== moveId || isMoveLost(move)) return move;
+          return cancelWalkthroughOnMove(move, {
+            actor: options?.actor ?? user.name,
+            cancelledBy: options?.cancelledBy ?? "staff",
+          });
+        }),
+      );
+    },
+    [user.name],
+  );
+
+  const cancelAutomatedFollowUps = useCallback((moveId: string) => {
+    setAllMoves((prev) =>
+      prev.map((move) => {
+        if (move.id !== moveId) return move;
+        const openAuto = openAutomatedFollowUps(move);
+        if (openAuto.length === 0 && move.automationsSuppressed) return move;
+        const next = cancelAutomatedFollowUpsOnMove(move);
+        return appendActivity(
+          next,
+          `Cancelled ${openAuto.length} automated follow-up${openAuto.length === 1 ? "" : "s"}`,
+          undefined,
+          { type: "follow_up", actor: user.name },
+        );
+      }),
+    );
+  }, [user.name]);
+
+  const addFollowUpTask = useCallback(
+    (moveId: string, input: AddFollowUpTaskInput) => {
+      setAllMoves((prev) =>
+        prev.map((move) => {
+          if (move.id !== moveId || isMoveLost(move)) return move;
+          const followUp = createFollowUp(move, {
+            type: "custom",
+            title: input.title.trim() || "Follow up",
+            dueAt: input.dueAt,
+            assignedTo: move.assignedRep,
+            channel: input.channel,
+            status: "open",
+            linkedStage: move.pipelineStage,
+            source: "manual",
+            notes: input.notes?.trim() || undefined,
+          });
+          const next = syncFollowUpDue({
+            ...move,
+            followUps: [...move.followUps, followUp],
+            updatedAt: new Date().toISOString(),
+          });
+          return appendActivity(next, `Follow-up task added: ${followUp.title}`, undefined, {
+            type: "follow_up",
+            actor: user.name,
+          });
+        }),
+      );
+    },
+    [user.name],
+  );
+
+  const updateFollowUpStatus = useCallback(
+    (moveId: string, followUpId: string, status: Exclude<FollowUpStatus, "open">) => {
+      setAllMoves((prev) =>
+        prev.map((move) => {
+          if (move.id !== moveId) return move;
+          const target = move.followUps.find((f) => f.id === followUpId);
+          if (!target || target.status !== "open") return move;
+
+          const followUps = move.followUps.map((f) =>
+            f.id === followUpId ? { ...f, status } : f,
+          );
+          const next = syncFollowUpDue({ ...move, followUps });
+          const verb = status === "completed" ? "completed" : "skipped";
+          return appendActivity(next, `Follow-up ${verb}: ${target.title}`, undefined, {
+            type: "follow_up",
+            actor: user.name,
+          });
+        }),
+      );
+    },
+    [user.name],
+  );
+
+  const recordManualPhonePayment = useCallback(
+    (moveId: string, input: ManualPhonePaymentInput) => {
+      const now = new Date().toISOString();
+      setAllMoves((prev) =>
+        prev.map((move) => {
+          if (move.id !== moveId || isMoveLost(move)) return move;
+
+          let next: MoveRecord = move;
+          if (input.purpose === "deposit" && move.sentContract) {
+            next = patchSentDocument(move, "contract", {
+              depositPaidAt: now,
+              depositAmount: input.amount,
+            });
+            if (!["booked", "completed"].includes(next.pipelineStage)) {
+              next = applyPipelineStage(next, "booked");
+            }
+          }
+
+          const noteSuffix = input.note ? ` — ${input.note}` : "";
+          return appendActivity(
+            next,
+            `${manualPhonePaymentPurposeLabel(input.purpose)} charged over phone — $${input.amount.toLocaleString()} (Stripe ·••• ${input.last4})${noteSuffix}`,
+            now,
+            { type: "note", actor: user.name },
+          );
+        }),
+      );
+    },
+    [user.name],
+  );
+
+  const approveWebsiteBookingReviewAction = useCallback((moveId: string) => {
+    setAllMoves((prev) =>
+      prev.map((move) => {
+        if (move.id !== moveId) return move;
+        const next = approveWebsiteBookingReview(move);
+        if (next.bookingReviewStatus === move.bookingReviewStatus) return move;
+        return appendActivity(next, "Web booking marked reviewed — cleared from AI Web Quotes queue");
+      }),
+    );
+  }, []);
+
+  const clearFromWebsiteQueue = useCallback((moveId: string, queue: WebsiteQueueId) => {
+    setAllMoves((prev) =>
+      prev.map((move) => {
+        if (move.id !== moveId) return move;
+        const next = dismissWebsiteQueueMove(move, queue);
+        if (next === move) return move;
+        const summary =
+          queue === "booked_review"
+            ? "Web booking marked reviewed — cleared from AI Web Quotes queue"
+            : `Marked handled — cleared from AI Web Quotes (${websiteQueueConfig[queue].label})`;
+        return appendActivity(next, summary);
+      }),
+    );
+  }, []);
 
   const recordWalkthroughLinkSent = useCallback(
     (moveId: string, assignee: string, linkUrl: string, linkModeLabel?: string) => {
@@ -795,6 +1012,28 @@ export function MovesProvider({ children }: { children: ReactNode }) {
     [config.company.id, locationIdForNewRecords, user.name, user.assignedRep],
   );
 
+  const duplicateMove = useCallback(
+    (moveId: string): string => {
+      let createdId = "";
+      setAllMoves((prev) => {
+        const source = prev.find((m) => m.id === moveId);
+        if (!source) return prev;
+        const copy = duplicateMoveRecord(source, prev, user.name);
+        createdId = copy.id;
+        if (source.contactId) {
+          linkPersonToMove(source.contactId, copy.id);
+        }
+        return [copy, ...prev];
+      });
+      return createdId;
+    },
+    [user.name],
+  );
+
+  const deleteMove = useCallback((moveId: string) => {
+    setAllMoves((prev) => prev.filter((m) => m.id !== moveId));
+  }, []);
+
   const importMoves = useCallback((imported: MoveRecord[]) => {
     if (imported.length === 0) return;
     setAllMoves((prev) => {
@@ -838,12 +1077,22 @@ export function MovesProvider({ children }: { children: ReactNode }) {
       recordMoveDocumentViewed,
       recordQuoteBookingRequested,
       recordContractSignedWithDeposit,
+      recordPortalInventoryChangeRequest,
       recordCrewFeedback,
       updateLeadChannel,
       createMove,
+      duplicateMove,
+      deleteMove,
       openNewMoveDialog,
       closeNewMoveDialog,
       scheduleWalkthrough,
+      cancelWalkthrough,
+      cancelAutomatedFollowUps,
+      addFollowUpTask,
+      updateFollowUpStatus,
+      recordManualPhonePayment,
+      approveWebsiteBookingReview: approveWebsiteBookingReviewAction,
+      clearFromWebsiteQueue,
       recordWalkthroughLinkSent,
       reassignMovesFromDeletedMoveType,
       importMoves,
@@ -869,12 +1118,22 @@ export function MovesProvider({ children }: { children: ReactNode }) {
       recordMoveDocumentViewed,
       recordQuoteBookingRequested,
       recordContractSignedWithDeposit,
+      recordPortalInventoryChangeRequest,
       recordCrewFeedback,
       updateLeadChannel,
       createMove,
+      duplicateMove,
+      deleteMove,
       openNewMoveDialog,
       closeNewMoveDialog,
       scheduleWalkthrough,
+      cancelWalkthrough,
+      cancelAutomatedFollowUps,
+      addFollowUpTask,
+      updateFollowUpStatus,
+      recordManualPhonePayment,
+      approveWebsiteBookingReviewAction,
+      clearFromWebsiteQueue,
       recordWalkthroughLinkSent,
       reassignMovesFromDeletedMoveType,
       importMoves,

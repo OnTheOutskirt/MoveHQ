@@ -24,6 +24,7 @@ import {
   writeJobFieldState,
 } from "@/lib/crew-app/job-field-storage";
 import { canCaptureFieldMedia } from "@/lib/crew-app/role-access";
+import { useCrewMobileCaptureEnabled } from "@/lib/crew-app/use-crew-mobile-capture";
 import { useFieldCaptureActions } from "@/lib/crew-app/use-field-capture";
 import type { CrewAppJob } from "@/lib/crew-app/types";
 import { SKIPPER_VIOLATION_LABELS } from "@/lib/operations/skipper-violations";
@@ -50,6 +51,7 @@ export function CrewFieldCapturePanel({
   subtitle = "Snap a photo, categorize it, and assign accountability — syncs to move record, claims, and crew profiles.",
 }: CrewFieldCapturePanelProps) {
   const { session } = useCrewApp();
+  const mobileCaptureEnabled = useCrewMobileCaptureEnabled();
   const { persistAndRoute, retryPendingForJob, defaultAssigneeId, isReady } =
     useFieldCaptureActions();
   const [media, setMedia] = useState(() => readJobFieldState(job.id).jobMedia);
@@ -67,7 +69,20 @@ export function CrewFieldCapturePanel({
     if (isReady) retryPendingForJob(job);
   }, [isReady, job, retryPendingForJob]);
 
-  const canCapture = canCaptureFieldMedia(session.jobRole);
+  const canCapture = canCaptureFieldMedia(session.jobRole) && mobileCaptureEnabled;
+
+  if (!mobileCaptureEnabled) {
+    if (media.length === 0) return null;
+    return (
+      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <p className="text-sm font-semibold text-slate-900">{title}</p>
+        <p className="mt-1 text-xs text-slate-500">
+          Photos captured on mobile appear here. Use a phone on the job to add new captures.
+        </p>
+        <MediaList media={media} className="mt-3" />
+      </section>
+    );
+  }
 
   if (!canCapture) {
     return variant === "full" ? (

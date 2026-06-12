@@ -1,8 +1,13 @@
 "use client";
 
+import { ClientPortalStaffBanner } from "@/components/portal/ClientPortalStaffBanner";
 import { QuoteBookingConfirmation } from "@/components/admin/setup/document-templates/QuoteBookingConfirmation";
 import { useMoves } from "@/components/moves/MovesProvider";
 import { useSettings } from "@/components/providers/SettingsProvider";
+import {
+  buildCustomerPortalHomePath,
+  isStaffPortalPreview,
+} from "@/lib/moves/customer-portal-home";
 import { resolveDocumentAccentColor } from "@/lib/settings/document-accent";
 import { defaultDocumentTemplate } from "@/lib/settings/document-template-normalize";
 import { loadDocumentTemplates } from "@/lib/settings/storage";
@@ -17,7 +22,10 @@ export default function QuoteBookingRequestedPage() {
   const moveId = searchParams.get("move");
   const moveDate = searchParams.get("moveDate") ?? undefined;
   const moveReference = searchParams.get("ref") ?? undefined;
-  const returnHref = searchParams.get("return") ?? "/portal/preview?kind=quote";
+  const staffPreview = isStaffPortalPreview(searchParams);
+  const portalHomeHref = moveId
+    ? buildCustomerPortalHomePath(moveId, { staffPreview })
+    : undefined;
 
   useEffect(() => {
     if (moveId) recordQuoteBookingRequested(moveId);
@@ -30,14 +38,17 @@ export default function QuoteBookingRequestedPage() {
   }, [settings.branding.accentColor]);
 
   return (
-    <div className="mx-auto w-full max-w-lg px-4 py-8 sm:py-12">
-      <QuoteBookingConfirmation
-        accentColor={accentColor}
-        companyName={settings.branding.companyName}
-        moveDate={moveDate}
-        moveReference={moveReference}
-        quoteHref={returnHref}
-      />
+    <div className="mx-auto min-h-dvh w-full max-w-2xl bg-white shadow-sm">
+      {staffPreview ? <ClientPortalStaffBanner /> : null}
+      <div className="px-4 py-8 sm:px-6 sm:py-12">
+        <QuoteBookingConfirmation
+          accentColor={accentColor}
+          companyName={settings.branding.companyName}
+          moveDate={moveDate}
+          moveReference={moveReference}
+          portalHomeHref={portalHomeHref}
+        />
+      </div>
     </div>
   );
 }

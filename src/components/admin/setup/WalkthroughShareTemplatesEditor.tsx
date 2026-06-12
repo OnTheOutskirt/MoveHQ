@@ -23,6 +23,9 @@ const PREVIEW_CONTEXT = buildWalkthroughShareFillContext({
   linkUrl: "https://moves.jonahsmovers.com/portal/walkthrough?move=demo",
   assignee: "Pat Kim",
   slotLabel: "Mon, Jun 9 at 10:00 AM",
+  cancelLinkUrl: "https://moves.jonahsmovers.com/portal/walkthrough/cancel?move=demo",
+  walkthroughMode: "in_person",
+  walkthroughLocation: "123 Main St, Boston MA",
 });
 
 type WalkthroughShareTemplatesEditorProps = {

@@ -9,6 +9,7 @@ import {
   jobDayTruckLine,
   serviceLabel,
 } from "@/lib/moves/job-day-display";
+import { resolveDayFractionManualOverride } from "@/lib/moves/job-day-form";
 import { fractionLabel, periodLabel } from "@/lib/day-share/labels";
 import { isJobDayFirstStop, jobDaySharePeriod } from "@/lib/moves/job-day-schedule";
 import type { MoveJobDay, MoveRecord } from "@/lib/moves/types";
@@ -40,6 +41,7 @@ export function MoveJobDayHorizontalCard({
   const truck = jobDayTruckLine(day);
   const services = day.services ?? [];
   const hasPlacement = onHold || onWaitlist;
+  const dayFractionOverridden = resolveDayFractionManualOverride(day);
   const cardAccentStyle = onHold
     ? {
         backgroundColor: colors.holdRowBg,
@@ -147,6 +149,11 @@ export function MoveJobDayHorizontalCard({
             ? "Follow-on"
             : periodLabel(jobDaySharePeriod(day))}{" "}
           · {fractionLabel(day.dayFraction)}
+          {dayFractionOverridden ? " · Overridden" : null}
+        </p>
+      ) : dayFractionOverridden ? (
+        <p className="mt-2 rounded-md bg-amber-50 px-2 py-1 text-[10px] font-medium text-amber-900">
+          Day length overridden
         </p>
       ) : null}
 

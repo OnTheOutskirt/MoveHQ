@@ -12,6 +12,7 @@ import { defaultPipelineCopySettings } from "@/lib/settings/pipeline-copy";
 import { defaultPipelineAutomations } from "@/lib/settings/pipeline-automation-rules";
 import { defaultLeadRoutingRules } from "@/lib/settings/lead-routing-rules";
 import { defaultMoveTypeRules } from "@/lib/settings/move-type-rules";
+import { defaultOpsPrepRules } from "@/lib/settings/ops-prep-rules";
 import { defaultPriorityTierRules } from "@/lib/settings/priority-tier-rules";
 import { DEFAULT_TERMINOLOGY } from "@/lib/terminology/defaults";
 import type { AppSettings } from "./types";
@@ -78,4 +79,5 @@ export const defaultSettings: AppSettings = {
   pipelineAutomations: defaultPipelineAutomations(),
   leadRouting: defaultLeadRoutingRules(),
   moveTypeRules: defaultMoveTypeRules(),
+  opsPrepRules: defaultOpsPrepRules(defaultFieldCatalog().vendorTypes),
 };

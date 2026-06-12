@@ -109,3 +109,27 @@ export function catalogLeadSourceIds(): string[] {
 export function catalogMoveTypeLabels(): string[] {
   return runtimeCatalog.moveTypes.map((m) => m.label);
 }
+
+export function catalogReferralTypeEntries(): FieldCatalogEntry[] {
+  return runtimeCatalog.referralTypes;
+}
+
+export function catalogVendorTypeEntries(): FieldCatalogEntry[] {
+  return runtimeCatalog.vendorTypes;
+}
+
+export function catalogReferralTypeLabel(id: string): string {
+  return findEntry("referralTypes", id)?.label ?? id.replace(/_/g, " ");
+}
+
+export function catalogReferralTypeBadge(id: string): string {
+  return findEntry("referralTypes", id)?.badgeClass ?? "bg-slate-100 text-slate-700";
+}
+
+export function catalogVendorTypeLabel(id: string): string {
+  return findEntry("vendorTypes", id)?.label ?? id.replace(/_/g, " ");
+}
+
+export function catalogVendorTypeBadge(id: string): string {
+  return findEntry("vendorTypes", id)?.badgeClass ?? "bg-violet-50 text-violet-800";
+}

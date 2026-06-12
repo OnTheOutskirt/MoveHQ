@@ -12,6 +12,7 @@ import type { FieldCatalogSettings } from "@/lib/settings/field-catalog-types";
 import type { PipelineAutomationSettings } from "@/lib/settings/pipeline-automation-rules";
 import type { LeadRoutingSettings } from "@/lib/settings/lead-routing-rules";
 import type { MoveTypeRulesSettings } from "@/lib/settings/move-type-rules";
+import type { OpsPrepRulesSettings } from "@/lib/settings/ops-prep-rules";
 import type { PriorityTierRulesSettings } from "@/lib/settings/priority-tier-rules";
 import type { TerminologySettings } from "@/lib/terminology/types";
 
@@ -93,6 +94,7 @@ export type AppSettings = {
   pipelineAutomations: PipelineAutomationSettings;
   leadRouting: LeadRoutingSettings;
   moveTypeRules: MoveTypeRulesSettings;
+  opsPrepRules: OpsPrepRulesSettings;
 };
 
 export type {

@@ -18,11 +18,14 @@ export function shouldShowCrewFeedbackPortal(
 
 export function buildMoveCustomerPortalPath(
   moveId: string,
-  options?: { previewFeedback?: boolean },
+  options?: { previewFeedback?: boolean; staffPreview?: boolean },
 ): string {
   const params = new URLSearchParams({ move: moveId });
   if (options?.previewFeedback) {
     params.set("preview", "feedback");
+  }
+  if (options?.staffPreview) {
+    params.set("staff", "1");
   }
   return `/portal/move?${params.toString()}`;
 }

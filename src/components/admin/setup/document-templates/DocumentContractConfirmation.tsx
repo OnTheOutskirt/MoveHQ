@@ -13,6 +13,7 @@ import {
   Truck,
 } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 
 type DocumentContractConfirmationProps = {
   vars: Record<string, string>;
@@ -22,6 +23,7 @@ type DocumentContractConfirmationProps = {
   compact?: boolean;
   framed?: boolean;
   viewport?: PortalPreviewViewport;
+  portalHomeHref?: string;
 };
 
 export function DocumentContractConfirmation({
@@ -32,6 +34,7 @@ export function DocumentContractConfirmation({
   compact,
   framed = false,
   viewport = "mobile",
+  portalHomeHref,
 }: DocumentContractConfirmationProps) {
   const phone = vars.company_phone || DEFAULT_DOCUMENT_CONTACT.phone;
   const email = vars.company_email || DEFAULT_DOCUMENT_CONTACT.email;
@@ -143,6 +146,16 @@ export function DocumentContractConfirmation({
           </ol>
         </section>
 
+        {portalHomeHref ? (
+          <Link
+            href={portalHomeHref}
+            className="flex w-full items-center justify-center rounded-xl py-3 text-sm font-semibold text-white shadow-sm transition hover:brightness-105"
+            style={{ backgroundColor: accentColor }}
+          >
+            Return to your portal
+          </Link>
+        ) : null}
+
         <div className="flex flex-col items-center gap-2 border-t border-slate-100 pt-4 text-center text-xs text-slate-600">
           {logoDataUrl ? (
             <div className="relative h-8 w-8 overflow-hidden rounded-lg">
@@ -184,7 +197,7 @@ function confirmationArticleClass({
     return "overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-sm";
   }
   if (viewport === "desktop") {
-    return "mx-auto w-full max-w-4xl overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-lg shadow-slate-200/50";
+    return "mx-auto w-full max-w-5xl overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-lg shadow-slate-200/50";
   }
   return "mx-auto w-full max-w-lg overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-lg shadow-slate-200/50";
 }

@@ -68,6 +68,14 @@ export function CrewAppTab() {
 
   return (
     <div className="space-y-6">
+      <div>
+        <h2 className="text-base font-semibold text-slate-900">Mobile apps</h2>
+        <p className="mt-1 text-sm text-slate-600">
+          Preview and configure field apps — crew, operations, and sales experiences will live
+          here as they roll out.
+        </p>
+      </div>
+
       <Card className="overflow-hidden">
         <CardHeader
           className="border-b border-slate-100"

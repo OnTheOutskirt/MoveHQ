@@ -50,6 +50,7 @@ type DocumentPortalPreviewProps = {
   viewport?: PortalPreviewViewport;
   /** Live move id — enables portal booking to advance pipeline. */
   moveId?: string;
+  portalHomeHref?: string;
   onQuoteBookRequested?: () => void;
   onContractCompleted?: () => void;
 };
@@ -69,6 +70,7 @@ export function DocumentPortalPreview({
   framed = false,
   viewport = "mobile",
   moveId,
+  portalHomeHref,
   onQuoteBookRequested,
   onContractCompleted,
 }: DocumentPortalPreviewProps) {
@@ -115,6 +117,7 @@ export function DocumentPortalPreview({
         compact={compact}
         framed={framed}
         viewport={viewport}
+        portalHomeHref={portalHomeHref}
       />
     );
   }
@@ -439,7 +442,7 @@ function portalArticleClass({
     return "overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-sm";
   }
   if (viewport === "desktop") {
-    return "mx-auto w-full max-w-4xl overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-lg shadow-slate-200/50";
+    return "mx-auto w-full max-w-5xl overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-lg shadow-slate-200/50";
   }
   return "mx-auto w-full max-w-lg overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-lg shadow-slate-200/50";
 }

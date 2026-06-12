@@ -5,6 +5,7 @@ import { SidebarInboxNav } from "@/components/layout/SidebarInboxNav";
 import { SidebarOperationsJobsNav } from "@/components/layout/SidebarOperationsJobsNav";
 import { SidebarWebsiteNav } from "@/components/layout/SidebarWebsiteNav";
 import { LocationSwitcher } from "@/components/workspace/LocationSwitcher";
+import { useWorkspace } from "@/components/providers/WorkspaceProvider";
 import { useSettings } from "@/components/providers/SettingsProvider";
 import { ROUTES } from "@/lib/navigation/routes";
 import {
@@ -34,7 +35,7 @@ function NavLinkItem({ item, pathname }: { item: NavLink; pathname: string }) {
         href={item.href}
         prefetch={false}
         className={cn(
-          "flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors",
+          "flex items-center gap-3 rounded-lg px-2.5 py-2.5 text-sm font-medium transition-colors",
           isActive
             ? "bg-white/10 text-white"
             : "text-slate-300 hover:bg-white/5 hover:text-white",
@@ -68,7 +69,7 @@ function NavDropdownSection({
         onClick={onToggle}
         aria-expanded={open}
         className={cn(
-          "flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors",
+          "flex w-full items-center gap-3 rounded-lg px-2.5 py-2.5 text-sm font-medium transition-colors",
           childActive ? "text-white" : "text-slate-300 hover:bg-white/5 hover:text-white",
         )}
       >
@@ -100,6 +101,7 @@ function NavDropdownSection({
 export function Sidebar() {
   const pathname = usePathname();
   const { capabilities } = useCapabilities();
+  const { hasMultipleLocations } = useWorkspace();
   const visibleNav = filterNavigation(navigation, capabilities);
   const { settings, isReady } = useSettings();
   const { branding } = settings;
@@ -175,12 +177,14 @@ export function Sidebar() {
           </p>
         </div>
       </div>
-      <div className="border-b border-white/10 px-3 pb-3">
-        <LocationSwitcher />
-      </div>
+      {hasMultipleLocations ? (
+        <div className="border-b border-white/10 px-3 pb-3 pt-1">
+          <LocationSwitcher />
+        </div>
+      ) : null}
 
-      <nav className="flex-1 overflow-y-auto px-3 py-4">
-        <ul className="space-y-0.5">
+      <nav className="flex-1 overflow-y-auto px-3 py-5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+        <ul className="space-y-1">
           {visibleNav.map((entry) =>
             entry.type === "link" ? (
               entry.href === "/inbox" ? (

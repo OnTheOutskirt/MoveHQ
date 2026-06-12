@@ -12,9 +12,14 @@ import {
   WALKTHROUGH_LINK_EXPIRY_DAYS,
   type WalkthroughLinkMode,
 } from "@/lib/moves/walkthrough-scheduling-link";
-import { walkthroughDayOneOriginAddress } from "@/lib/moves/walkthroughs";
+import {
+  formatWalkthroughDateTime,
+  formatWalkthroughScheduleLine,
+  resolveMoveWalkthrough,
+  walkthroughDayOneOriginAddress,
+} from "@/lib/moves/walkthroughs";
 import { cn } from "@/lib/utils";
-import { Calendar, CheckCircle2, Mail, MapPin, Phone, User, Video } from "lucide-react";
+import { Calendar, CheckCircle2, Mail, MapPin, Phone, User, Video, XCircle } from "lucide-react";
 import Image from "next/image";
 import { useMemo, useState } from "react";
 
@@ -41,12 +46,21 @@ export function WalkthroughSchedulingPortal({
   accentColor,
   companyPhone,
 }: WalkthroughSchedulingPortalProps) {
-  const { scheduleWalkthrough } = useMovesActions();
-  const [mode, setMode] = useState<WalkthroughMode>(() => resolvedBookingMode(linkMode));
+  const { scheduleWalkthrough, cancelWalkthrough } = useMovesActions();
+  const existingWalkthrough = resolveMoveWalkthrough(move);
+  const [mode, setMode] = useState<WalkthroughMode>(() =>
+    existingWalkthrough?.mode ?? resolvedBookingMode(linkMode),
+  );
   const startingAddress = useMemo(() => walkthroughDayOneOriginAddress(move), [move]);
-  const [selectedDay, setSelectedDay] = useState<string | null>(null);
-  const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+  const [selectedDay, setSelectedDay] = useState<string | null>(
+    existingWalkthrough?.scheduledDate ?? null,
+  );
+  const [selectedSlot, setSelectedSlot] = useState<string | null>(
+    existingWalkthrough?.startTime ?? null,
+  );
   const [booked, setBooked] = useState(false);
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+  const [cancelled, setCancelled] = useState(false);
 
   const days = useMemo(() => buildWalkthroughDayOptions(new Date()), []);
   const slots = useMemo(
@@ -74,7 +88,30 @@ export function WalkthroughSchedulingPortal({
     setBooked(true);
   }
 
-  if (booked && selectedDay && selectedSlot) {
+  function handleCancel() {
+    cancelWalkthrough(move.id, {
+      cancelledBy: "customer",
+      actor: `${move.customerName} (scheduling link)`,
+    });
+    setCancelConfirmOpen(false);
+    setCancelled(true);
+    setBooked(false);
+  }
+
+  const displayWalkthrough =
+    booked && selectedDay && selectedSlot
+      ? {
+          scheduledDate: selectedDay,
+          startTime: selectedSlot,
+          mode,
+          assignedTo: assignee,
+          location,
+        }
+      : existingWalkthrough?.status === "scheduled"
+        ? existingWalkthrough
+        : null;
+
+  if (cancelled) {
     return (
       <div className="mx-auto min-h-dvh w-full max-w-lg bg-white">
         <header
@@ -84,25 +121,119 @@ export function WalkthroughSchedulingPortal({
           }}
         >
           <CheckCircle2 className="h-10 w-10 text-emerald-200" />
-          <h1 className="mt-4 text-2xl font-bold tracking-tight">You&apos;re booked</h1>
+          <h1 className="mt-4 text-2xl font-bold tracking-tight">Walkthrough cancelled</h1>
           <p className="mt-2 text-sm text-white/85">
-            {mode === "virtual" ? "Virtual" : "In-person"} walkthrough with {assignee}
+            Pick a new time below or contact {companyName} if you need help.
+          </p>
+        </header>
+        <div className="px-5 py-6">
+          <Button
+            type="button"
+            className="w-full"
+            style={{ backgroundColor: accentColor }}
+            onClick={() => {
+              setCancelled(false);
+              setSelectedDay(null);
+              setSelectedSlot(null);
+            }}
+          >
+            Schedule a new walkthrough
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (displayWalkthrough && !cancelConfirmOpen) {
+    const bookedLocation =
+      displayWalkthrough.mode === "virtual"
+        ? "Video call — link sent after booking"
+        : displayWalkthrough.location ?? startingAddress;
+
+    return (
+      <div className="mx-auto min-h-dvh w-full max-w-lg bg-white">
+        <header
+          className="px-6 py-8 text-white"
+          style={{
+            background: `linear-gradient(135deg, ${accentColor} 0%, color-mix(in srgb, ${accentColor} 72%, #0f172a) 100%)`,
+          }}
+        >
+          <CheckCircle2 className="h-10 w-10 text-emerald-200" />
+          <h1 className="mt-4 text-2xl font-bold tracking-tight">
+            {booked ? "You&apos;re booked" : "Walkthrough scheduled"}
+          </h1>
+          <p className="mt-2 text-sm text-white/85">
+            {displayWalkthrough.mode === "virtual" ? "Virtual" : "In-person"} walkthrough with{" "}
+            {displayWalkthrough.assignedTo}
           </p>
         </header>
         <div className="space-y-4 px-5 py-6">
           <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 text-sm">
             <p className="font-semibold text-slate-900">
-              {formatMoveDate(selectedDay)} at {selectedSlot}
+              {formatWalkthroughDateTime(
+                displayWalkthrough.scheduledDate,
+                displayWalkthrough.startTime,
+              )}
             </p>
-            <p className="mt-1 text-slate-600">{location}</p>
+            <p className="mt-1 text-slate-600">{bookedLocation}</p>
             <p className="mt-2 text-xs text-slate-500">
               {move.reference} · {move.customerName}
             </p>
           </div>
           <p className="text-sm leading-relaxed text-slate-600">
-            {assignee} will confirm by text or email. Need to change your time? Reply to your
-            confirmation message or call {companyPhone || companyName}.
+            {displayWalkthrough.assignedTo} will confirm by text or email. Your confirmation
+            message includes a link to cancel if your plans change.
           </p>
+          <Button
+            type="button"
+            variant="secondary"
+            className="w-full text-red-700 hover:bg-red-50"
+            onClick={() => setCancelConfirmOpen(true)}
+          >
+            Cancel walkthrough
+          </Button>
+          {!booked ? (
+            <p className="text-center text-[11px] text-slate-400">
+              Need a different time? Cancel first, then pick a new slot below.
+            </p>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
+
+  if (displayWalkthrough && cancelConfirmOpen) {
+    return (
+      <div className="mx-auto min-h-dvh w-full max-w-lg bg-white">
+        <header
+          className="px-6 py-6 text-white"
+          style={{
+            background: `linear-gradient(135deg, ${accentColor} 0%, color-mix(in srgb, ${accentColor} 72%, #0f172a) 100%)`,
+          }}
+        >
+          <XCircle className="h-9 w-9 text-white/90" />
+          <h1 className="mt-3 text-xl font-bold tracking-tight">Cancel walkthrough?</h1>
+        </header>
+        <div className="space-y-4 px-5 py-6">
+          <p className="text-sm text-slate-700">
+            Cancel your{" "}
+            {formatWalkthroughDateTime(
+              displayWalkthrough.scheduledDate,
+              displayWalkthrough.startTime,
+            )}{" "}
+            appointment with {displayWalkthrough.assignedTo}?
+          </p>
+          <Button type="button" variant="danger" className="w-full" onClick={handleCancel}>
+            Yes, cancel walkthrough
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            className="w-full"
+            onClick={() => setCancelConfirmOpen(false)}
+          >
+            Keep appointment
+          </Button>
         </div>
       </div>
     );

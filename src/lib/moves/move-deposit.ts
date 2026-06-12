@@ -1,4 +1,5 @@
 import { getMoveEstimatedValue } from "@/lib/moves/move-priority-tier";
+import { sumCrewHotelClientCharges } from "@/lib/moves/job-day-crew-hotel";
 import {
   computeQuoteDiscount,
   effectiveFlatQuoteTotal,
@@ -38,21 +39,22 @@ function effectiveQuoteTotalForDeposit(
   if (move.quoteType === "flat" && move.quoteAmount != null) {
     const quoted = effectiveFlatQuoteTotal(move, discountReasons);
     const core = flatQuoteCoreAmount(quoted, move.intake.liabilityPremium ?? 0);
-    return core + valuation.premium;
+    return core + valuation.premium + sumCrewHotelClientCharges(move);
   }
   if (move.quoteType === "hourly" && move.quoteAmount != null) {
     const discount = computeQuoteDiscount(move, discountReasons);
     if (discount?.kind === "dollar" && discount.discountedBallparkTotal != null) {
-      return discount.discountedBallparkTotal + valuation.premium;
+      return discount.discountedBallparkTotal + valuation.premium + sumCrewHotelClientCharges(move);
     }
     const hours = resolveBallparkHours(move);
     if (hours != null) {
       const rate = discount?.discountedLaborRate ?? move.quoteAmount;
-      return estimateHourlyMoveTotal(move, hours, rate) + valuation.premium;
+      return estimateHourlyMoveTotal(move, hours, rate) + valuation.premium + sumCrewHotelClientCharges(move);
     }
-    return move.quoteAmount;
+    return move.quoteAmount + sumCrewHotelClientCharges(move);
   }
-  return move.quoteAmount ?? getMoveEstimatedValue(move) ?? 0;
+  const base = move.quoteAmount ?? getMoveEstimatedValue(move) ?? 0;
+  return base + sumCrewHotelClientCharges(move);
 }
 
 export function computeMoveDeposit(
@@ -68,7 +70,9 @@ export function computeMoveDeposit(
       : defaults.depositValue;
 
   let depositReceived = 0;
-  if (move.pipelineStage === "booked" || move.pipelineStage === "completed") {
+  if (move.sentContract?.depositAmount != null && move.sentContract.depositAmount > 0) {
+    depositReceived = move.sentContract.depositAmount;
+  } else if (move.pipelineStage === "booked" || move.pipelineStage === "completed") {
     depositReceived =
       move.pipelineStage === "completed" ? depositDue : Math.round(depositDue * 0.5);
   }

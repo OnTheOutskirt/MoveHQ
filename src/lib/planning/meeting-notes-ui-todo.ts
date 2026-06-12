@@ -16,7 +16,8 @@ export const UI_TODO_GROUPS: PlanningGroup[] = [
       },
       {
         id: "ui-todo-inbox",
-        label: "Finalize Inbox (Needs Reply?)",
+        label: "Finalize Inbox",
+        note: "Awaiting response filter — customer sent last message with no team reply since.",
       },
       {
         id: "ui-todo-pipeline",
@@ -150,4 +151,10 @@ export const UI_TODO_GROUPS: PlanningGroup[] = [
   },
 ];
 
-export const UI_TODO_DEFAULT_DONE_IDS = [] as const;
+export const UI_TODO_DEFAULT_DONE_IDS = [
+  "ui-todo-pipeline",
+  "ui-todo-fleet",
+  "ui-todo-sidebar",
+  "ui-todo-inbox",
+  "ui-todo-new-move-form",
+] as const;

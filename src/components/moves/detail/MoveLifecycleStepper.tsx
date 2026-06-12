@@ -1,5 +1,6 @@
 "use client";
 
+import { useGuardedPipelineStageChange } from "@/components/moves/hooks/use-guarded-pipeline-stage-change";
 import { useMoves } from "@/components/moves/MovesProvider";
 import { useSettings } from "@/components/providers/SettingsProvider";
 import {
@@ -43,7 +44,7 @@ type MoveLifecycleStepperProps = {
 };
 
 export function MoveLifecycleStepper({ move, className }: MoveLifecycleStepperProps) {
-  const { updateMovePipelineStage } = useMoves();
+  const { requestStageChange, pipelineStageChangeDialogs } = useGuardedPipelineStageChange();
   const { settings } = useSettings();
   const pipelineStages = settings.fieldCatalog.pipelineStages;
   const stageIds = pipelineStages.map((s) => s.id);
@@ -80,7 +81,7 @@ export function MoveLifecycleStepper({ move, className }: MoveLifecycleStepperPr
                 <button
                   type="button"
                   disabled={lost}
-                  onClick={() => updateMovePipelineStage(move.id, stageId as PipelineStageId)}
+                  onClick={() => requestStageChange(move, stageId as PipelineStageId)}
                   title={moveDetailPipelineStageLabel(stageId)}
                   aria-label={`${moveDetailPipelineStageLabel(stageId)}${isCurrent ? " (current)" : ""}`}
                   aria-current={isCurrent ? "step" : undefined}
@@ -131,6 +132,7 @@ export function MoveLifecycleStepper({ move, className }: MoveLifecycleStepperPr
           </p>
         ) : null}
       </div>
+      {pipelineStageChangeDialogs}
     </nav>
   );
 }

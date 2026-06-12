@@ -18,12 +18,14 @@ import { SessionProvider } from "@/components/providers/SessionProvider";
 import { RoleTemplatesProvider } from "@/components/providers/RoleTemplatesProvider";
 import { EmployeeHrDocsProvider } from "@/components/providers/EmployeeHrDocsProvider";
 import { TeamMembersProvider } from "@/components/providers/TeamMembersProvider";
+import { TesterFeedbackProvider } from "@/components/providers/TesterFeedbackProvider";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <SettingsProvider>
       <EquipmentCatalogProvider>
         <SessionProvider>
+          <TesterFeedbackProvider>
           <TeamMembersProvider>
             <EmployeeHrDocsProvider>
             <RoleTemplatesProvider>
@@ -57,6 +59,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </RoleTemplatesProvider>
             </EmployeeHrDocsProvider>
           </TeamMembersProvider>
+          </TesterFeedbackProvider>
         </SessionProvider>
       </EquipmentCatalogProvider>
     </SettingsProvider>

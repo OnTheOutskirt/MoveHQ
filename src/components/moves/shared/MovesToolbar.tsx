@@ -24,8 +24,10 @@ export function MovesToolbar({ filters, view, onViewChange }: MovesToolbarProps)
   const {
     repFilter,
     setRepFilter,
-    quoteChannelFilter,
-    setQuoteChannelFilter,
+    quoteSourceFilter,
+    setQuoteSourceFilter,
+    quoteTypeFilter,
+    setQuoteTypeFilter,
     leadScoreFilter,
     setLeadScoreFilter,
     reps,
@@ -56,18 +58,27 @@ export function MovesToolbar({ filters, view, onViewChange }: MovesToolbarProps)
         </select>
 
         <select
-          value={quoteChannelFilter}
+          value={quoteSourceFilter}
           onChange={(e) =>
-            setQuoteChannelFilter(e.target.value as typeof quoteChannelFilter)
+            setQuoteSourceFilter(e.target.value as typeof quoteSourceFilter)
           }
-          aria-label="Filter by how the quote was built"
+          aria-label="Filter by quote source"
           className={SELECT_CLASS}
         >
-          <option value="all">All sources</option>
-          <option value="web_ai">AI web quotes</option>
-          <option value="phone">Phone quotes</option>
-          <option value="office">Office quotes</option>
-          <option value="web_review">Web booking · needs review</option>
+          <option value="all">All quote sources</option>
+          <option value="web">Web quotes</option>
+          <option value="manual">Manual quotes</option>
+        </select>
+
+        <select
+          value={quoteTypeFilter}
+          onChange={(e) => setQuoteTypeFilter(e.target.value as typeof quoteTypeFilter)}
+          aria-label="Filter by quote type"
+          className={SELECT_CLASS}
+        >
+          <option value="all">All quote types</option>
+          <option value="hourly">Hourly</option>
+          <option value="flat">Flat rate</option>
         </select>
 
         <select

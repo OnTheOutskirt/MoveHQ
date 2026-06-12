@@ -80,7 +80,7 @@ export function InboxThreadList({ threads, selectedId, onSelect }: InboxThreadLi
                 <div className="mt-1.5 flex flex-wrap gap-1">
                   {thread.needsReply ? (
                     <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900">
-                      Needs reply
+                      Awaiting response
                     </span>
                   ) : null}
                   {thread.unreadCount > 0 ? (

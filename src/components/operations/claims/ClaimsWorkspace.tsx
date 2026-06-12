@@ -1,6 +1,5 @@
 "use client";
 
-import { ClaimsPipelineBoard } from "@/components/operations/claims/ClaimsPipelineBoard";
 import { ClaimsDetailSidebar } from "@/components/operations/claims/ClaimsDetailSidebar";
 import { useClaims } from "@/components/providers/ClaimsProvider";
 import { useMoves } from "@/components/moves/MovesProvider";
@@ -9,7 +8,6 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { DataTable, type Column } from "@/components/ui/DataTable";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { ViewSwitcher } from "@/components/ui/ViewSwitcher";
 import { usePersistedState } from "@/lib/hooks/use-persisted-state";
 import {
   CLAIM_CATEGORY_LABELS,
@@ -27,7 +25,7 @@ import type { MoveClaim } from "@/lib/operations/claims-types";
 import { formatMoveDate } from "@/lib/moves/format";
 import { pageMeta } from "@/lib/navigation/page-meta";
 import { salesMovePath } from "@/lib/navigation/routes";
-import { LayoutGrid, List, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -40,11 +38,6 @@ const STATUS_TABS: { id: ClaimStatusTab; label: string }[] = [
   { id: "waiting_vendor", label: "Waiting on vendor" },
   { id: "pending", label: "Pending" },
   { id: "completed", label: "Completed" },
-];
-
-const VIEW_OPTIONS = [
-  { id: "table" as const, label: "Table", icon: List },
-  { id: "pipeline" as const, label: "Pipeline", icon: LayoutGrid },
 ];
 
 type PanelMode =
@@ -60,21 +53,12 @@ export function ClaimsWorkspace() {
     "jm-tab-/operations/claims",
     "new",
   );
-  const [storedView, setStoredView] = usePersistedState<"table" | "pipeline">(
-    "jm-view-/operations/claims",
-    "table",
-  );
   const [tab, setTab] = useState<ClaimStatusTab>(storedTab);
-  const [view, setView] = useState<"table" | "pipeline">(storedView);
   const [panel, setPanel] = useState<PanelMode>({ type: "closed" });
 
   useEffect(() => {
     setTab(storedTab);
   }, [storedTab]);
-
-  useEffect(() => {
-    setView(storedView);
-  }, [storedView]);
 
   useEffect(() => {
     const addMoveId = searchParams.get("addMove");
@@ -219,11 +203,6 @@ export function ClaimsWorkspace() {
     setStoredTab(next);
   }
 
-  function changeView(next: "table" | "pipeline") {
-    setView(next);
-    setStoredView(next);
-  }
-
   const emptyMessages: Record<ClaimStatusTab, string> = {
     new: "No new claims — intake from move detail or add one below.",
     in_progress: "No claims actively being worked.",
@@ -253,32 +232,14 @@ export function ClaimsWorkspace() {
         />
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <ViewSwitcher
-          options={VIEW_OPTIONS}
-          value={view}
-          onChange={changeView}
-          ariaLabel="Claims view"
-        />
-      </div>
-
-      {view === "table" ? (
-        <>
-          <TabBar tabs={tabsWithCounts} activeTab={tab} onChange={changeTab} />
-          <DataTable
-            columns={columns}
-            data={filtered}
-            emptyMessage={emptyMessages[tab]}
-            onRowClick={(row) => setPanel({ type: "view", claimId: row.id })}
-            getRowKey={(row) => row.id}
-          />
-        </>
-      ) : (
-        <ClaimsPipelineBoard
-          claims={claims}
-          onClaimClick={(claimId) => setPanel({ type: "view", claimId })}
-        />
-      )}
+      <TabBar tabs={tabsWithCounts} activeTab={tab} onChange={changeTab} />
+      <DataTable
+        columns={columns}
+        data={filtered}
+        emptyMessage={emptyMessages[tab]}
+        onRowClick={(row) => setPanel({ type: "view", claimId: row.id })}
+        getRowKey={(row) => row.id}
+      />
 
       <ClaimsDetailSidebar mode={panel} moves={moves} onClose={() => setPanel({ type: "closed" })} />
     </div>

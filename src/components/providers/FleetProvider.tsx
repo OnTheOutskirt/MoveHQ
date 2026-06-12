@@ -84,6 +84,8 @@ type FleetContextValue = {
   removeTemporaryRental: (id: string) => void;
   addTruckOutage: (input: Omit<TruckOutage, "id">) => TruckOutage;
   removeTruckOutage: (id: string) => void;
+  addMaintenance: (input: Omit<TruckMaintenanceRecord, "id">) => TruckMaintenanceRecord;
+  removeMaintenance: (id: string) => void;
 };
 
 const FleetContext = createContext<FleetContextValue | null>(null);
@@ -326,6 +328,27 @@ export function FleetProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const addMaintenance = useCallback((input: Omit<TruckMaintenanceRecord, "id">) => {
+    const record: TruckMaintenanceRecord = { ...input, id: generateFleetId("maint") };
+    setStore((prev) => {
+      const next = { ...prev, maintenance: [...prev.maintenance, record] };
+      saveFleetStore(next);
+      return next;
+    });
+    return record;
+  }, []);
+
+  const removeMaintenance = useCallback((id: string) => {
+    setStore((prev) => {
+      const next = {
+        ...prev,
+        maintenance: prev.maintenance.filter((m) => m.id !== id),
+      };
+      saveFleetStore(next);
+      return next;
+    });
+  }, []);
+
   const addTemporaryRental = useCallback((input: TemporaryTruckFormInput) => {
     const record = temporaryRentalFromFormInput(generateFleetId("rental"), input);
     setStore((prev) => {
@@ -431,6 +454,8 @@ export function FleetProvider({ children }: { children: ReactNode }) {
       removeTemporaryRental,
       addTruckOutage,
       removeTruckOutage,
+      addMaintenance,
+      removeMaintenance,
     }),
     [
       isReady,
@@ -451,6 +476,8 @@ export function FleetProvider({ children }: { children: ReactNode }) {
       removeTemporaryRental,
       addTruckOutage,
       removeTruckOutage,
+      addMaintenance,
+      removeMaintenance,
     ],
   );
 

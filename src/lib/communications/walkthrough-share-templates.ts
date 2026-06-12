@@ -45,6 +45,9 @@ export function buildWalkthroughShareFillContext(input: {
   linkUrl: string;
   assignee?: string;
   slotLabel?: string;
+  cancelLinkUrl?: string;
+  walkthroughMode?: "in_person" | "virtual";
+  walkthroughLocation?: string;
 }): WalkthroughShareFillContext {
   const fullName = input.customerName.split("(")[0]?.trim() || input.customerName;
   const firstName = firstNameFromFullName(fullName);
@@ -66,6 +69,19 @@ export function buildWalkthroughShareFillContext(input: {
   }
 
   const slot_sms = slot ? `virtual walkthrough ${slot}` : "join your virtual walkthrough";
+  const cancelLink = input.cancelLinkUrl?.trim() ?? "";
+  const mode =
+    input.walkthroughMode === "virtual"
+      ? "Virtual"
+      : input.walkthroughMode === "in_person"
+        ? "In-person"
+        : "";
+  const location_line =
+    input.walkthroughMode === "virtual"
+      ? "Join via video call — link sent separately for virtual walkthroughs."
+      : input.walkthroughLocation?.trim()
+        ? `Location: ${input.walkthroughLocation.trim()}`
+        : "";
 
   return {
     firstName,
@@ -78,6 +94,9 @@ export function buildWalkthroughShareFillContext(input: {
     slot,
     slot_sentence,
     slot_sms,
+    cancelLink,
+    mode,
+    location_line,
   };
 }
 
@@ -94,6 +113,9 @@ function fillTemplateString(text: string, context: WalkthroughShareFillContext):
     .replace(/\{\{slot\}\}/g, context.slot)
     .replace(/\{\{slot_sentence\}\}/g, context.slot_sentence)
     .replace(/\{\{slot_sms\}\}/g, context.slot_sms)
+    .replace(/\{\{cancelLink\}\}/g, context.cancelLink)
+    .replace(/\{\{mode\}\}/g, context.mode)
+    .replace(/\{\{location_line\}\}/g, context.location_line)
     .replace(/\{\{reference\}\}/g, "");
 }
 

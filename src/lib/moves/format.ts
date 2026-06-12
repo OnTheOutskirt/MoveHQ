@@ -14,7 +14,10 @@ const MONTH_SHORT = [
 ] as const;
 
 /** Format a `YYYY-MM-DD` date key — deterministic for SSR and hydration. */
-export function formatMoveDate(dateKey: string): string {
+export function formatMoveDate(
+  dateKey: string,
+  options?: { omitYear?: boolean },
+): string {
   const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(dateKey);
   if (!match) return dateKey;
   const year = Number(match[1]);
@@ -22,6 +25,7 @@ export function formatMoveDate(dateKey: string): string {
   const day = Number(match[3]);
   const label = MONTH_SHORT[month - 1];
   if (!label) return dateKey;
+  if (options?.omitYear) return `${label} ${day}`;
   return `${label} ${day}, ${year}`;
 }
 

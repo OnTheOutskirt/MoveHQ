@@ -13,9 +13,10 @@ import type { InboxChannel, InboxThread } from "@/lib/inbox/types";
 import { pipelineStageLabel } from "@/lib/moves/move-pipeline";
 import { salesMovePath } from "@/lib/navigation/routes";
 import { cn } from "@/lib/utils";
-import { ExternalLink, Mail, MessageSquare, Phone } from "lucide-react";
+import { ExternalLink, Mail, MessageSquare, Phone, X } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { useInbox } from "@/components/providers/InboxProvider";
 
 const CHANNEL_TABS: { id: InboxChannel | "all"; label: string; icon?: typeof Phone }[] = [
   { id: "all", label: "All" },
@@ -30,6 +31,7 @@ type InboxConversationProps = {
 
 export function InboxConversation({ thread }: InboxConversationProps) {
   const { getMoveById } = useMoves();
+  const { dismissNeedsReply } = useInbox();
   const move = getMoveById(thread.moveId);
   const [channelTab, setChannelTab] = useState<InboxChannel | "all">("all");
 
@@ -77,9 +79,16 @@ export function InboxConversation({ thread }: InboxConversationProps) {
               {showDial ? <CallDialHeaderAction phone={move.customerPhone!} /> : null}
               {showOpenMail ? <EmailOpenMailHeaderButton /> : null}
               {thread.needsReply ? (
-                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-900">
-                  Needs reply
-                </span>
+                <button
+                  type="button"
+                  onClick={() => dismissNeedsReply(thread.id)}
+                  className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-900 hover:bg-amber-200"
+                  title="Clear awaiting response — reappears if the customer sends a new message"
+                >
+                  Awaiting response
+                  <X className="h-3 w-3" aria-hidden />
+                  <span className="sr-only">Clear awaiting response</span>
+                </button>
               ) : null}
             </div>
           </div>

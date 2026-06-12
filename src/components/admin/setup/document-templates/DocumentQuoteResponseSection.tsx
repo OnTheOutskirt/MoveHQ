@@ -1,9 +1,11 @@
 "use client";
 
 import { QuoteBookingConfirmation } from "@/components/admin/setup/document-templates/QuoteBookingConfirmation";
+import { buildCustomerPortalHomePath, isStaffPortalPreview } from "@/lib/moves/customer-portal-home";
 import { cn } from "@/lib/utils";
 import { ArrowRight, CalendarClock, ThumbsDown } from "lucide-react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 const NOT_READY_REASONS = [
@@ -47,8 +49,11 @@ export function DocumentQuoteResponseSection({
   onBookMove,
 }: DocumentQuoteResponseSectionProps) {
   const router = useRouter();
-  const pathname = usePathname();
   const searchParams = useSearchParams();
+  const staffPreview = isStaffPortalPreview(searchParams);
+  const portalHomeHref = moveId
+    ? buildCustomerPortalHomePath(moveId, { staffPreview })
+    : undefined;
   const [mode, setMode] = useState<ResponseMode>(null);
   const [reason, setReason] = useState("");
   const [submitted, setSubmitted] = useState<string | null>(null);
@@ -64,10 +69,7 @@ export function DocumentQuoteResponseSection({
     if (moveId) params.set("move", moveId);
     if (moveDate) params.set("moveDate", moveDate);
     if (moveReference) params.set("ref", moveReference);
-    const returnTo = searchParams.toString()
-      ? `${pathname}?${searchParams.toString()}`
-      : pathname;
-    params.set("return", returnTo);
+    if (isStaffPortalPreview(searchParams)) params.set("staff", "1");
     router.push(`/portal/quote/booking-requested?${params.toString()}`);
   }
 
@@ -86,6 +88,15 @@ export function DocumentQuoteResponseSection({
         <p className="mt-3 text-[11px] text-emerald-700">
           Our team will follow up shortly. Questions? Call or email anytime.
         </p>
+        {portalHomeHref ? (
+          <Link
+            href={portalHomeHref}
+            className="mt-4 inline-flex w-full items-center justify-center rounded-lg py-2.5 text-sm font-semibold text-white"
+            style={{ backgroundColor: accentColor }}
+          >
+            Return to your portal
+          </Link>
+        ) : null}
       </div>
     );
   }

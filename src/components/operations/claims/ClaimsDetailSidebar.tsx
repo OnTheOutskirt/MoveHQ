@@ -201,6 +201,7 @@ export function ClaimsDetailSidebar({ mode, moves, onClose }: ClaimsDetailSideba
       pendingReason: claim.pendingReason,
       amountPaid: claim.amountPaid,
       vendorId: claim.vendorId,
+      vendorTypeId: claim.vendorTypeId,
       acknowledgementSentAt: claim.acknowledgementSentAt,
       vendorSentAt: claim.vendorSentAt,
       vendorResponseDue: claim.vendorResponseDue,

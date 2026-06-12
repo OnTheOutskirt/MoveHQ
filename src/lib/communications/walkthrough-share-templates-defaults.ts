@@ -41,6 +41,23 @@ Walk through each room and show what you're moving. Reply if you have questions.
 {{company}}`,
     smsBody: "Hi {{firstName}} — film your items for your move estimate: {{link}}",
   },
+  confirmation: {
+    emailSubject: "Your walkthrough is confirmed",
+    emailBody: `Hi {{firstName}},
+
+Your {{mode}} walkthrough{{assignee_with}} is confirmed for {{slot}}.
+
+{{location_line}}
+
+Need to cancel or reschedule? Use this link (no login required):
+{{cancelLink}}
+
+Reply to this email or call us if you need help.
+
+{{company}}`,
+    smsBody:
+      "Hi {{firstName}} — {{mode}} walkthrough{{assignee_with}} confirmed for {{slot}}. Cancel: {{cancelLink}}",
+  },
 };
 
 export function defaultWalkthroughShareTemplates(): WalkthroughShareTemplates {

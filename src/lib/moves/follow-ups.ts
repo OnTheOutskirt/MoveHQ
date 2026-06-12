@@ -1,4 +1,5 @@
 import { compareSalesPriority } from "./move-priority-tier";
+import { followUpOriginKind } from "./move-follow-ups";
 import {
   getFollowUpDueBucket,
   getOpenFollowUps,
@@ -6,8 +7,8 @@ import {
   moveHasNoScheduledFollowUp,
   moveHasOpenFollowUp,
   moveHasOverdueFollowUp,
-  resolveFollowUpSource,
   type FollowUpDueBucket,
+  type FollowUpOriginKind,
 } from "./move-follow-ups";
 import { showOnPipelineBoard } from "./move-condition";
 import type { MoveFollowUp, MoveRecord } from "./types";
@@ -119,13 +120,7 @@ export function formatFollowUpDue(followUp: MoveFollowUp): string {
   return followUp.dueAt.slice(0, 10);
 }
 
-export const FOLLOW_UP_TABS = [
-  { id: "follow_ups", label: "Follow-ups" },
-  { id: "automated", label: "Automated" },
-  { id: "scheduled", label: "Scheduled" },
-] as const;
-
-export type FollowUpTabId = (typeof FOLLOW_UP_TABS)[number]["id"];
+export type FollowUpOriginFilter = "all" | FollowUpOriginKind;
 
 export type FollowUpQueueItem = {
   followUp: MoveFollowUp;
@@ -133,29 +128,24 @@ export type FollowUpQueueItem = {
   bucket: FollowUpDueBucket;
 };
 
-export function followUpMatchesTab(followUp: MoveFollowUp, tab: FollowUpTabId): boolean {
-  const bucket = getFollowUpDueBucket(followUp);
-  const source = resolveFollowUpSource(followUp);
-  switch (tab) {
-    case "follow_ups":
-      return source === "manual" || bucket === "overdue" || bucket === "today";
-    case "automated":
-      return source === "automation";
-    case "scheduled":
-      return bucket === "upcoming" || source === "scheduled";
-  }
+export function followUpMatchesOriginFilter(
+  followUp: MoveFollowUp,
+  filter: FollowUpOriginFilter,
+): boolean {
+  if (filter === "all") return true;
+  return followUpOriginKind(followUp) === filter;
 }
 
 export function followUpQueueForRep(
   moves: MoveRecord[],
   rep: string,
-  tab: FollowUpTabId,
+  originFilter: FollowUpOriginFilter = "all",
 ): FollowUpQueueItem[] {
   const items: FollowUpQueueItem[] = [];
   for (const move of moves) {
     if (move.assignedRep !== rep) continue;
     for (const followUp of getOpenFollowUps(move)) {
-      if (!followUpMatchesTab(followUp, tab)) continue;
+      if (!followUpMatchesOriginFilter(followUp, originFilter)) continue;
       items.push({
         followUp,
         move,
@@ -170,14 +160,14 @@ export function followUpQueueForRep(
   );
 }
 
-export function followUpTabCountsForRep(
+export function followUpOriginCountsForRep(
   moves: MoveRecord[],
   rep: string,
-): Record<FollowUpTabId, number> {
+): Record<FollowUpOriginFilter, number> {
   return {
-    follow_ups: followUpQueueForRep(moves, rep, "follow_ups").length,
+    all: followUpQueueForRep(moves, rep, "all").length,
+    manual: followUpQueueForRep(moves, rep, "manual").length,
     automated: followUpQueueForRep(moves, rep, "automated").length,
-    scheduled: followUpQueueForRep(moves, rep, "scheduled").length,
   };
 }
 

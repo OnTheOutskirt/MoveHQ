@@ -1,20 +1,17 @@
 "use client";
 
 import { QuadrantBadge } from "@/components/moves/shared/QuadrantBadge";
+import { useMoves } from "@/components/moves/MovesProvider";
+import { openAutomatedFollowUps } from "@/lib/moves/cancel-automated-follow-ups";
 import { formatMoveDate, formatQuote, moveRouteLabel } from "@/lib/moves/format";
+import { followUpSourceLabel } from "@/lib/moves/follow-up-display";
 import type { FollowUpQueueItem } from "@/lib/moves/follow-ups";
-import { getFollowUpDueBucket, resolveFollowUpSource } from "@/lib/moves/move-follow-ups";
+import { followUpOriginKind, getFollowUpDueBucket } from "@/lib/moves/move-follow-ups";
 import { moveStageDisplayLabel } from "@/lib/moves/move-pipeline";
 import { salesMovePath } from "@/lib/navigation/routes";
 import { cn } from "@/lib/utils";
 import { ArrowRight, ExternalLink } from "lucide-react";
 import Link from "next/link";
-
-const SOURCE_LABEL = {
-  manual: "Manual follow-up",
-  automation: "Automated rule",
-  scheduled: "Scheduled",
-} as const;
 
 type FollowUpTaskDetailProps = {
   item: FollowUpQueueItem;
@@ -22,8 +19,11 @@ type FollowUpTaskDetailProps = {
 
 export function FollowUpTaskDetail({ item }: FollowUpTaskDetailProps) {
   const { followUp, move } = item;
+  const { cancelAutomatedFollowUps } = useMoves();
   const bucket = getFollowUpDueBucket(followUp);
-  const source = resolveFollowUpSource(followUp);
+  const originLabel = followUpSourceLabel(followUp);
+  const openAutomated = openAutomatedFollowUps(move);
+  const canCancelAutomated = openAutomated.length > 0 || move.automationsSuppressed;
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -31,7 +31,7 @@ export function FollowUpTaskDetail({ item }: FollowUpTaskDetailProps) {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-              {SOURCE_LABEL[source]}
+              {originLabel} follow-up
             </p>
             <h3 className="mt-1 text-lg font-semibold text-slate-900">{followUp.title}</h3>
             <p className="mt-1 text-sm text-slate-600">
@@ -115,6 +115,18 @@ export function FollowUpTaskDetail({ item }: FollowUpTaskDetailProps) {
       </div>
 
       <div className="shrink-0 border-t border-slate-100 px-4 py-3">
+        {canCancelAutomated && followUpOriginKind(followUp) === "automated" ? (
+          <button
+            type="button"
+            onClick={() => cancelAutomatedFollowUps(move.id)}
+            disabled={openAutomated.length === 0}
+            className="mb-3 w-full rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-800 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {move.automationsSuppressed && openAutomated.length === 0
+              ? "Automated follow-ups cancelled"
+              : `Cancel automated follow-ups (${openAutomated.length})`}
+          </button>
+        ) : null}
         <Link
           href={salesMovePath(move.id)}
           className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"

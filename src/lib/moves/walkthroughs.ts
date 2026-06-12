@@ -1,4 +1,11 @@
+import { formatMoveDate } from "@/lib/moves/format";
 import { formatJobDayLocationAddress } from "@/lib/moves/job-day-locations";
+import {
+  applyPipelineStage,
+  applyWaitingSubstage,
+  moveStageDisplayLabel,
+  waitingSubstageLabel,
+} from "@/lib/moves/move-pipeline";
 import { OFFICE_PERSONAS } from "@/lib/session/personas";
 import type { StaffCalendarEvent } from "@/lib/schedule/types";
 import type {
@@ -62,6 +69,11 @@ export function resolveMoveWalkthrough(move: MoveRecord): MoveWalkthrough | null
     return inferWalkthroughFromActivity(move);
   }
   return null;
+}
+
+/** True when a walkthrough was booked on the move (not inferred from activity alone). */
+export function hasBookedWalkthrough(move: MoveRecord): boolean {
+  return move.scheduledWalkthrough?.status === "scheduled";
 }
 
 export function isWalkthroughPipelineMove(move: MoveRecord): boolean {
@@ -173,6 +185,47 @@ export function formatWalkthroughMode(mode: WalkthroughMode): string {
   return mode === "virtual" ? "Virtual" : "In person";
 }
 
+export function formatWalkthroughScheduleLine(walkthrough: MoveWalkthrough): string {
+  return formatWalkthroughDateTime(walkthrough.scheduledDate, walkthrough.startTime);
+}
+
+export function formatWalkthroughDateTime(scheduledDate: string, startTime: string): string {
+  return `${formatMoveDate(scheduledDate)} at ${startTime}`;
+}
+
+export function formatWalkthroughDetails(walkthrough: MoveWalkthrough): string {
+  const parts = [
+    formatWalkthroughMode(walkthrough.mode),
+    walkthrough.assignedTo,
+    walkthrough.location,
+  ].filter(Boolean);
+  return parts.join(" · ");
+}
+
+function applyWalkthroughPipelineStage(move: MoveRecord): {
+  move: MoveRecord;
+  pipelineActivity: string | null;
+} {
+  if (move.pipelineStage === "new_lead") {
+    const next = applyPipelineStage(move, "waiting", "walkthrough_scheduled");
+    return {
+      move: next,
+      pipelineActivity: `Pipeline → ${moveStageDisplayLabel(next)}`,
+    };
+  }
+  if (
+    move.pipelineStage === "waiting" &&
+    move.waitingSubstage !== "walkthrough_scheduled"
+  ) {
+    const next = applyWaitingSubstage(move, "walkthrough_scheduled");
+    return {
+      move: next,
+      pipelineActivity: `Waiting → ${waitingSubstageLabel("walkthrough_scheduled")}`,
+    };
+  }
+  return { move, pipelineActivity: null };
+}
+
 /** Starting address for walkthrough — Day 1 origin on the move, else intake/origin. */
 export function walkthroughDayOneOriginAddress(move: MoveRecord): string {
   const sortedDays = [...move.jobDays].sort((a, b) => a.date.localeCompare(b.date));
@@ -212,31 +265,105 @@ export function scheduleWalkthroughOnMove(
   };
 
   const modeLabel = draft.mode === "virtual" ? "Virtual" : "On-site";
-  const summary = `${modeLabel} walkthrough ${draft.scheduledDate} at ${draft.startTime}`;
+  const summary = `${modeLabel} walkthrough ${formatMoveDate(draft.scheduledDate)} at ${draft.startTime}`;
 
-  const waitingPatch =
-    move.pipelineStage === "waiting"
-      ? {
-          pipelineStage: "waiting" as const,
-          waitingSubstage: "walkthrough_scheduled" as const,
-          status: "waiting" as const,
-        }
-      : {};
+  const { move: withPipeline, pipelineActivity } = applyWalkthroughPipelineStage(move);
+  const at = new Date().toISOString();
+  const activities = [
+    {
+      id: `act-wt-${Date.now()}`,
+      type: "note" as const,
+      at,
+      summary,
+      actor: actor ?? draft.assignedTo,
+    },
+    ...(pipelineActivity
+      ? [
+          {
+            id: `act-wt-pipeline-${Date.now()}`,
+            type: "note" as const,
+            at,
+            summary: pipelineActivity,
+            actor: actor ?? draft.assignedTo,
+          },
+        ]
+      : []),
+    ...withPipeline.activities,
+  ];
 
   return {
-    ...move,
-    ...waitingPatch,
+    ...withPipeline,
     scheduledWalkthrough: walkthrough,
-    updatedAt: new Date().toISOString(),
+    updatedAt: at,
+    activities,
+  };
+}
+
+function revertWalkthroughPipelineStage(move: MoveRecord): {
+  move: MoveRecord;
+  pipelineActivity: string | null;
+} {
+  if (
+    move.pipelineStage === "waiting" &&
+    move.waitingSubstage === "walkthrough_scheduled"
+  ) {
+    const next = applyWaitingSubstage(move, "needs_walkthrough");
+    return {
+      move: next,
+      pipelineActivity: `Waiting → ${waitingSubstageLabel("needs_walkthrough")}`,
+    };
+  }
+  return { move, pipelineActivity: null };
+}
+
+export function cancelWalkthroughOnMove(
+  move: MoveRecord,
+  options?: { actor?: string; cancelledBy?: "staff" | "customer" },
+): MoveRecord {
+  const walkthrough = resolveMoveWalkthrough(move);
+  if (!walkthrough || walkthrough.status !== "scheduled") return move;
+
+  const cancelledWalkthrough: MoveWalkthrough = {
+    ...(move.scheduledWalkthrough ?? walkthrough),
+    status: "cancelled",
+  };
+  const scheduleLine = formatWalkthroughScheduleLine(walkthrough);
+  const cancelledBy = options?.cancelledBy ?? "staff";
+  const actor =
+    options?.actor ??
+    (cancelledBy === "customer" ? move.customerName : undefined);
+
+  const { move: withPipeline, pipelineActivity } = revertWalkthroughPipelineStage(move);
+  const at = new Date().toISOString();
+  const summary =
+    cancelledBy === "customer"
+      ? `Walkthrough cancelled by customer — was ${scheduleLine}`
+      : `Walkthrough cancelled — was ${scheduleLine}`;
+
+  return {
+    ...withPipeline,
+    scheduledWalkthrough: cancelledWalkthrough,
+    updatedAt: at,
     activities: [
       {
-        id: `act-wt-${Date.now()}`,
-        type: "note",
-        at: new Date().toISOString(),
+        id: `act-wt-cancel-${Date.now()}`,
+        type: "note" as const,
+        at,
         summary,
-        actor: actor ?? draft.assignedTo,
+        actor,
       },
-      ...move.activities,
+      ...(pipelineActivity
+        ? [
+            {
+              id: `act-wt-cancel-pipeline-${Date.now()}`,
+              type: "note" as const,
+              at,
+              summary: pipelineActivity,
+              actor,
+            },
+          ]
+        : []),
+      ...withPipeline.activities,
     ],
   };
 }

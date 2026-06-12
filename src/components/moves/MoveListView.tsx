@@ -15,7 +15,7 @@ import {
   pipelineStageConfig,
   pipelineStageIndex,
 } from "@/lib/moves/move-pipeline";
-import { quoteChannelLabel } from "@/lib/moves/acquisition";
+import { quoteSourceGroupLabel } from "@/lib/moves/acquisition";
 import {
   compareSalesPriority,
   getMoveEstimatedValue,
@@ -150,7 +150,7 @@ export function MoveListView({ moves }: MoveListViewProps) {
     }
     cols.push(
       {
-        key: "tier",
+        key: "quadrant",
         header: "Q",
         sortable: true,
         cell: (move) => <QuadrantBadge move={move} />,
@@ -190,7 +190,7 @@ export function MoveListView({ moves }: MoveListViewProps) {
               {moveRouteLabel(move.originAddress, move.destinationAddress)}
             </p>
             <p className="text-xs text-slate-500">
-              {quoteChannelLabel(move.quoteChannel)}
+              {quoteSourceGroupLabel(move)}
               <span className="text-slate-300"> · </span>
               {leadChannelLabel(move.leadChannel)}
             </p>

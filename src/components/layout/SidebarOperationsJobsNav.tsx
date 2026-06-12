@@ -1,9 +1,16 @@
 "use client";
 
+import { useManualOpsPrepTasks } from "@/components/operations/jobs/use-manual-ops-prep";
 import { useOpsPrepDoneIds } from "@/components/operations/jobs/use-ops-prep-done";
 import { CountBadge } from "@/components/ui/CountBadge";
 import { useMoves } from "@/components/moves/MovesProvider";
-import { collectOpsPrepTasks, openOpsPrepTasks } from "@/lib/operations/ops-prep-tasks";
+import { useSettings } from "@/components/providers/SettingsProvider";
+import { toDateKey } from "@/lib/calendar/date-utils";
+import {
+  collectOpsPrepTasks,
+  mergeOpsPrepTasks,
+  openOpsPrepTasksDueToday,
+} from "@/lib/operations/ops-prep-tasks";
 import type { NavLink } from "@/lib/tokens/navigation";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -17,12 +24,18 @@ type SidebarOperationsJobsNavProps = {
 export function SidebarOperationsJobsNav({ item }: SidebarOperationsJobsNavProps) {
   const pathname = usePathname();
   const { moves } = useMoves();
+  const { settings } = useSettings();
   const doneIds = useOpsPrepDoneIds();
+  const manualTasks = useManualOpsPrepTasks();
 
-  const openCount = useMemo(() => {
-    const tasks = collectOpsPrepTasks(moves);
-    return openOpsPrepTasks(tasks, doneIds).length;
-  }, [moves, doneIds]);
+  const dueTodayCount = useMemo(() => {
+    const todayKey = toDateKey(new Date());
+    const tasks = mergeOpsPrepTasks(
+      collectOpsPrepTasks(moves, { rules: settings.opsPrepRules }),
+      manualTasks,
+    );
+    return openOpsPrepTasksDueToday(tasks, doneIds, todayKey).length;
+  }, [moves, doneIds, manualTasks, settings.opsPrepRules]);
 
   const Icon = item.icon;
   const linkActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -41,8 +54,8 @@ export function SidebarOperationsJobsNav({ item }: SidebarOperationsJobsNavProps
       >
         <Icon className="h-4 w-4 shrink-0 opacity-80" />
         <span className="min-w-0 flex-1 truncate">{item.label}</span>
-        {openCount > 0 ? (
-          <CountBadge count={openCount} urgent={openCount > 0} variant="sidebar" />
+        {dueTodayCount > 0 ? (
+          <CountBadge count={dueTodayCount} urgent variant="sidebar" />
         ) : null}
       </Link>
     </li>

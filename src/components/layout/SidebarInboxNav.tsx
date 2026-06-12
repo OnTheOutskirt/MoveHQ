@@ -31,11 +31,7 @@ export function SidebarInboxNav({ item }: SidebarInboxNavProps) {
       >
         <Icon className="h-4 w-4 shrink-0 opacity-80" />
         <span className="min-w-0 flex-1 truncate">{item.label}</span>
-        <CountBadge
-          count={mySummary.unread}
-          urgent={mySummary.needsReply > 0}
-          variant="sidebar"
-        />
+        <CountBadge count={mySummary.unread} variant="sidebar" />
       </Link>
     </li>
   );

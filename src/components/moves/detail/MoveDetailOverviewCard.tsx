@@ -8,8 +8,13 @@ import { PricingTypeBadge } from "@/components/moves/detail/PricingTypeBadge";
 import { QuoteChannelBadge } from "@/components/moves/shared/QuoteChannelBadge";
 import { QuadrantBadge } from "@/components/moves/shared/QuadrantBadge";
 import { MarkMoveLostAction } from "@/components/moves/detail/MarkMoveLostAction";
+import { MoveCrewFeedbackBadge } from "@/components/moves/detail/MoveCrewFeedbackPanel";
 import { formatLostMoveSummary, lostQualificationBadgeClass } from "@/lib/moves/lost-reasons";
 import { formatQuote } from "@/lib/moves/format";
+import {
+  shouldShowOverviewBookingReviewPill,
+  shouldShowOverviewConditionPill,
+} from "@/lib/moves/acquisition";
 import {
   bookingReviewConfig,
   conditionStatusConfig,
@@ -18,7 +23,13 @@ import {
   isMoveLost,
   moveDetailPipelineStageLabel,
 } from "@/lib/moves/move-pipeline";
-import { formatMoveDatesDisplay, moveDateFieldLabel } from "@/lib/moves/move-dates";
+import { formatMoveDate } from "@/lib/moves/format";
+import {
+  COMPACT_MOVE_DATES_THRESHOLD,
+  formatMoveDatesDisplay,
+  getMoveJobDateKeys,
+  moveDateFieldLabel,
+} from "@/lib/moves/move-dates";
 import { intakeJobTypeLabel } from "@/lib/moves/intake-display";
 import { getMoveEstimatedValue } from "@/lib/moves/move-priority-tier";
 import { moveDisplayTitle } from "@/lib/moves/get-move-contact";
@@ -45,6 +56,32 @@ function moveTypeLabel(moveType: MoveRecord["moveType"]): string {
   return moveType;
 }
 
+function MoveDatesMetaValue({ move }: { move: MoveRecord }) {
+  const dates = getMoveJobDateKeys(move);
+
+  if (dates.length === 0) {
+    const fallback = move.intake.moveDate || move.preferredDate;
+    return fallback ? formatMoveDate(fallback) : "—";
+  }
+
+  if (dates.length === 1) {
+    return formatMoveDate(dates[0]!);
+  }
+
+  const omitYear = dates.length > COMPACT_MOVE_DATES_THRESHOLD;
+  return (
+    <span className="inline-flex flex-wrap items-baseline gap-x-1 gap-y-0.5">
+      {dates.map((date, index) => (
+        <span key={date} className="whitespace-nowrap">
+          {index > 0 ? <span className="text-slate-300">·</span> : null}
+          {index > 0 ? " " : null}
+          {formatMoveDate(date, { omitYear })}
+        </span>
+      ))}
+    </span>
+  );
+}
+
 export function MoveDetailOverviewCard({
   move,
   className,
@@ -54,12 +91,15 @@ export function MoveDetailOverviewCard({
   const lostSummary = formatLostMoveSummary(move);
   const est = getMoveEstimatedValue(move);
   const condCfg = conditionStatusConfig[move.conditionStatus];
+  const showConditionPill = shouldShowOverviewConditionPill(move);
+  const showReviewPill = shouldShowOverviewBookingReviewPill(move);
   const reviewCfg =
-    move.bookingReviewStatus !== "not_required"
+    showReviewPill && move.bookingReviewStatus !== "not_required"
       ? bookingReviewConfig[move.bookingReviewStatus]
       : null;
   const datesLabel = formatMoveDatesDisplay(move);
   const jobDateLabel = moveDateFieldLabel(move);
+  const datesContent = <MoveDatesMetaValue move={move} />;
   return (
     <section
       className={cn(
@@ -101,9 +141,11 @@ export function MoveDetailOverviewCard({
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
             <QuadrantBadge move={move} />
             <QuoteChannelBadge move={move} showIntakeProgress />
-            <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-semibold", condCfg.badge)}>
-              {condCfg.label}
-            </span>
+            {showConditionPill ? (
+              <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-semibold", condCfg.badge)}>
+                {condCfg.label}
+              </span>
+            ) : null}
             {reviewCfg ? (
               <span
                 className={cn("rounded px-1.5 py-0.5 text-[10px] font-semibold", reviewCfg.badge)}
@@ -111,6 +153,7 @@ export function MoveDetailOverviewCard({
                 {reviewCfg.label}
               </span>
             ) : null}
+            <MoveCrewFeedbackBadge move={move} />
           </div>
         </div>
 
@@ -146,11 +189,14 @@ export function MoveDetailOverviewCard({
               type="button"
               onClick={onOpenMovePlan}
               className="text-left font-medium leading-snug text-brand-600 underline-offset-2 hover:text-brand-700 hover:underline"
+              title={datesLabel}
             >
-              {datesLabel}
+              {datesContent}
             </button>
           ) : (
-            <span className="font-medium leading-snug">{datesLabel}</span>
+            <span className="font-medium leading-snug" title={datesLabel}>
+              {datesContent}
+            </span>
           )}
         </Meta>
       </div>

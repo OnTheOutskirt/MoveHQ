@@ -11,20 +11,55 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from "react";
+
+const DISMISSED_NEEDS_REPLY_KEY = "movehq-inbox-dismissed-needs-reply-v1";
 
 type InboxContextValue = {
   threads: InboxThread[];
   summaryForRep: (repFilter: string) => InboxSummary;
   mySummary: InboxSummary;
   markThreadRead: (threadId: string) => void;
+  dismissNeedsReply: (threadId: string) => void;
   getThread: (threadId: string) => InboxThread | undefined;
 };
 
 const InboxContext = createContext<InboxContextValue | null>(null);
+
+function readDismissedNeedsReplyAt(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(DISMISSED_NEEDS_REPLY_KEY);
+    if (!raw) return {};
+    return JSON.parse(raw) as Record<string, string>;
+  } catch {
+    return {};
+  }
+}
+
+function writeDismissedNeedsReplyAt(map: Record<string, string>): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(DISMISSED_NEEDS_REPLY_KEY, JSON.stringify(map));
+}
+
+function lastInboundAt(thread: InboxThread): string | null {
+  const inbound = thread.messages
+    .filter((m) => m.direction === "inbound")
+    .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+  return inbound[0]?.at ?? null;
+}
+
+function effectiveNeedsReply(thread: InboxThread, dismissedAt: string | undefined): boolean {
+  if (!thread.needsReply) return false;
+  if (!dismissedAt) return true;
+  const inboundAt = lastInboundAt(thread);
+  if (!inboundAt) return false;
+  return new Date(inboundAt).getTime() > new Date(dismissedAt).getTime();
+}
 
 function applyReadState(
   built: InboxThread[],
@@ -41,17 +76,37 @@ function applyReadState(
   });
 }
 
+function applyNeedsReplyDismissals(
+  threads: InboxThread[],
+  dismissedAtByThread: Record<string, string>,
+): InboxThread[] {
+  return threads.map((thread) => ({
+    ...thread,
+    needsReply: effectiveNeedsReply(thread, dismissedAtByThread[thread.id]),
+  }));
+}
+
 export function InboxProvider({ children }: { children: ReactNode }) {
   const { user } = useSession();
   const { moves } = useMovesData();
   const [readByMessage, setReadByMessage] = useState<Record<string, Record<string, boolean>>>(
     {},
   );
+  const [dismissedNeedsReplyAt, setDismissedNeedsReplyAt] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    setDismissedNeedsReplyAt(readDismissedNeedsReplyAt());
+  }, []);
+
+  useEffect(() => {
+    writeDismissedNeedsReplyAt(dismissedNeedsReplyAt);
+  }, [dismissedNeedsReplyAt]);
 
   const threads = useMemo(() => {
     const built = buildInboxThreadsFromMoves(moves);
-    return applyReadState(built, readByMessage);
-  }, [moves, readByMessage]);
+    const withRead = applyReadState(built, readByMessage);
+    return applyNeedsReplyDismissals(withRead, dismissedNeedsReplyAt);
+  }, [moves, readByMessage, dismissedNeedsReplyAt]);
 
   const markThreadRead = useCallback((threadId: string) => {
     setReadByMessage((prev) => {
@@ -64,6 +119,13 @@ export function InboxProvider({ children }: { children: ReactNode }) {
       return { ...prev, [threadId]: nextThread };
     });
   }, [threads]);
+
+  const dismissNeedsReply = useCallback((threadId: string) => {
+    setDismissedNeedsReplyAt((prev) => ({
+      ...prev,
+      [threadId]: new Date().toISOString(),
+    }));
+  }, []);
 
   const getThread = useCallback(
     (threadId: string) => threads.find((t) => t.id === threadId),
@@ -86,9 +148,10 @@ export function InboxProvider({ children }: { children: ReactNode }) {
       summaryForRep,
       mySummary,
       markThreadRead,
+      dismissNeedsReply,
       getThread,
     }),
-    [threads, summaryForRep, mySummary, markThreadRead, getThread],
+    [threads, summaryForRep, mySummary, markThreadRead, dismissNeedsReply, getThread],
   );
 
   return <InboxContext.Provider value={value}>{children}</InboxContext.Provider>;

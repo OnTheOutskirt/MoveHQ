@@ -1,6 +1,7 @@
 "use client";
 
 import { useMoves } from "@/components/moves/MovesProvider";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { cn } from "@/lib/utils";
 import { ChevronDown } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -14,12 +15,19 @@ type MoveSalesRepPickerProps = {
 export function MoveSalesRepPicker({ moveId, value, className }: MoveSalesRepPickerProps) {
   const { moves, updateAssignedRep } = useMoves();
   const [open, setOpen] = useState(false);
+  const [pendingRep, setPendingRep] = useState<string | null>(null);
 
   const reps = useMemo(() => {
     const names = new Set(moves.map((m) => m.assignedRep));
     names.add(value);
     return [...names].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
   }, [moves, value]);
+
+  function requestRepChange(rep: string) {
+    setOpen(false);
+    if (rep === value) return;
+    setPendingRep(rep);
+  }
 
   return (
     <div className={cn("relative", className)}>
@@ -51,10 +59,7 @@ export function MoveSalesRepPicker({ moveId, value, className }: MoveSalesRepPic
                   type="button"
                   role="option"
                   aria-selected={rep === value}
-                  onClick={() => {
-                    updateAssignedRep(moveId, rep);
-                    setOpen(false);
-                  }}
+                  onClick={() => requestRepChange(rep)}
                   className={cn(
                     "w-full px-3 py-1.5 text-left text-sm hover:bg-slate-50",
                     rep === value && "bg-brand-50 font-medium text-brand-800",
@@ -67,6 +72,22 @@ export function MoveSalesRepPicker({ moveId, value, className }: MoveSalesRepPic
           </ul>
         </>
       ) : null}
+
+      <ConfirmDialog
+        open={pendingRep !== null}
+        onClose={() => setPendingRep(null)}
+        onConfirm={() => {
+          if (pendingRep) updateAssignedRep(moveId, pendingRep);
+        }}
+        title="Change sales rep?"
+        description={
+          pendingRep
+            ? `Reassign this move from ${value} to ${pendingRep}? Follow-ups and activity will stay on the move record.`
+            : ""
+        }
+        confirmLabel="Yes, reassign"
+        cancelLabel="Cancel"
+      />
     </div>
   );
 }
