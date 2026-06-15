@@ -23,7 +23,6 @@ import {
   Truck,
   UserCog,
   Users,
-  Upload,
 } from "lucide-react";
 
 export type NavLink = {
@@ -31,6 +30,8 @@ export type NavLink = {
   label: string;
   href: string;
   icon: LucideIcon;
+  /** Sidebar marker — module still in active development. */
+  devIncomplete?: boolean;
 };
 
 export type NavDropdown = {
@@ -48,6 +49,7 @@ export const navigation: NavEntry[] = [
     label: "Dashboard",
     href: "/dashboard",
     icon: LayoutDashboard,
+    devIncomplete: true,
   },
   {
     type: "link",
@@ -72,6 +74,7 @@ export const navigation: NavEntry[] = [
     label: "Sales",
     icon: MapPin,
     items: [
+      { type: "link", label: "Dashboard", href: ROUTES.salesDashboard, icon: LayoutDashboard },
       { type: "link", label: "Moves", href: ROUTES.salesMoves, icon: Package },
       { type: "link", label: "AI Web Quotes", href: ROUTES.salesWebQuotes, icon: Globe },
       { type: "link", label: "Walkthroughs", href: ROUTES.salesWalkthroughs, icon: Footprints },
@@ -85,12 +88,13 @@ export const navigation: NavEntry[] = [
     label: "Operations",
     icon: Truck,
     items: [
+      { type: "link", label: "Dashboard", href: "/operations/dashboard", icon: LayoutDashboard },
       { type: "link", label: "Jobs", href: "/operations/jobs", icon: ClipboardList },
       { type: "link", label: "Dispatch", href: "/operations/dispatch", icon: Route },
-      { type: "link", label: "Claims", href: "/operations/claims", icon: Scale },
+      { type: "link", label: "Claims", href: "/operations/claims", icon: Scale, devIncomplete: true },
       { type: "link", label: "Crew", href: "/operations/crew", icon: Users },
       { type: "link", label: "Fleet", href: "/operations/fleet", icon: Truck },
-      { type: "link", label: "Inventory", href: "/operations/inventory", icon: Package },
+      { type: "link", label: "Inventory", href: "/operations/inventory", icon: Package, devIncomplete: true },
       {
         type: "link",
         label: "Payroll & Time",
@@ -104,6 +108,7 @@ export const navigation: NavEntry[] = [
     label: "Reports",
     href: "/operations/reports",
     icon: BarChart2,
+    devIncomplete: true,
   },
   {
     type: "link",
@@ -119,8 +124,7 @@ export const navigation: NavEntry[] = [
       { type: "link", label: "Staff", href: "/admin/staff", icon: UserCog },
       { type: "link", label: "Company", href: "/admin/company", icon: Building2 },
       { type: "link", label: "Integrations", href: "/admin/integrations", icon: Plug },
-      { type: "link", label: "Import data", href: "/admin/import", icon: Upload },
-      { type: "link", label: "Setup", href: "/admin/setup", icon: Sliders },
+      { type: "link", label: "Setup", href: "/admin/setup", icon: Sliders, devIncomplete: true },
     ],
   },
 ];

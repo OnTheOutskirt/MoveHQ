@@ -40,7 +40,7 @@ export function fallbackPathForCapabilities(
 ): string {
   if (has("nav.dashboard")) return "/dashboard";
   if (has("nav.sales")) return "/sales/moves";
-  if (has("nav.operations")) return "/operations/jobs";
+  if (has("nav.operations")) return "/operations/dashboard";
   if (has("nav.payroll")) return "/operations/payroll";
   if (has("app.crew")) return "/crew";
   return "/sign-in";

@@ -22,7 +22,7 @@ export type TimeEntry = {
   date: string;
   jobRef: string | null;
   categories: TimeCategoryHours;
-  /** Billable hours — move + drive + extra + office */
+  /** Paid hours — all time except breaks (move + drive + extra + office) */
   hours: number;
   hourlyRate: number | null;
   status: TimeEntryStatus;
@@ -59,4 +59,32 @@ export type TimeEntryDaySelection = {
   personName: string;
   date: string;
   entries: TimeEntry[];
+};
+
+export type TipEntryStatus = "pending" | "approved";
+
+export type TipEntrySource = "crew_app" | "customer_payment" | "manager_edit";
+
+export type TipEntry = {
+  id: string;
+  personId: string;
+  personName: string;
+  date: string;
+  jobRef: string;
+  amount: number;
+  status: TipEntryStatus;
+  source: TipEntrySource;
+  notes?: string;
+};
+
+export type TipEntryDaySelection = {
+  personId: string;
+  personName: string;
+  date: string;
+  entries: TipEntry[];
+};
+
+export type PayrollReadinessBlocker = {
+  kind: "time_pending" | "tips_pending";
+  message: string;
 };

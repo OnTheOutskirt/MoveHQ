@@ -10,13 +10,13 @@ export function dashboardViewForPermission(level: PermissionLevel): DashboardVie
     case "admin":
       return "executive";
     case "manager":
-      return "manager";
+      return "sales";
     case "sales":
       return "sales";
     case "operations":
     case "crew":
       return "ops";
     default:
-      return "manager";
+      return "sales";
   }
 }

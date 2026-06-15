@@ -12,7 +12,7 @@ import type { TimeEntry } from "@/lib/payroll/types";
 import { useBusinessCalendar } from "@/lib/settings/use-business-calendar";
 import { useEffect, useMemo, useState } from "react";
 
-/** Billable crew hours for the week containing `dateKey`, keyed by fleet crew id. */
+/** Paid crew hours for the week containing `dateKey`, keyed by fleet crew id. */
 export function useCrewWeeklyHours(dateKey: string): Map<string, number> {
   const { startOfWeek } = useBusinessCalendar();
   const clientReady = useClientReady();

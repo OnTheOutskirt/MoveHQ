@@ -1,6 +1,7 @@
 "use client";
 
 import { TimeEntryDaySidebar } from "@/components/payroll/TimeEntryDaySidebar";
+import { AddTimeEntrySidebar } from "@/components/payroll/AddTimeEntrySidebar";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import {
@@ -22,22 +23,34 @@ import { isOfficeClockEntry } from "@/lib/payroll/category-labels";
 import type { TimeEntry, TimeEntryDaySelection, WorkerType } from "@/lib/payroll/types";
 import { useBusinessCalendar } from "@/lib/settings/use-business-calendar";
 import { cn } from "@/lib/utils";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Check, Plus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 type TimeEntriesTabProps = {
   entries: TimeEntry[];
   onUpdateEntry: (id: string, patch: Partial<TimeEntry>) => void;
+  onBulkApproveEntries: (ids: string[]) => void;
+  onAddEntry: (entry: TimeEntry) => void;
+  onDeleteEntry: (id: string) => void;
+  canApprove?: boolean;
 };
 
 type WorkerFilter = "all" | WorkerType;
 
-export function TimeEntriesTab({ entries, onUpdateEntry }: TimeEntriesTabProps) {
+export function TimeEntriesTab({
+  entries,
+  onUpdateEntry,
+  onBulkApproveEntries,
+  onAddEntry,
+  onDeleteEntry,
+  canApprove = false,
+}: TimeEntriesTabProps) {
   const { today, startOfWeek, weekStartsOn, weekRangeLabel } = useBusinessCalendar();
   const weekHeaders = useMemo(() => weekdayHeadersForWeek(weekStartsOn), [weekStartsOn]);
   const [weekStart, setWeekStart] = useState(() => startOfWeek(today));
   const [workerFilter, setWorkerFilter] = useState<WorkerFilter>("all");
   const [selection, setSelection] = useState<TimeEntryDaySelection | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
 
   useEffect(() => {
     setWeekStart(startOfWeek(today));
@@ -69,15 +82,23 @@ export function TimeEntriesTab({ entries, onUpdateEntry }: TimeEntriesTabProps) 
     setSelection(null);
   }
 
+  function approveIds(ids: string[]) {
+    if (!canApprove || ids.length === 0) return;
+    onBulkApproveEntries(ids);
+  }
+
+  function handleDeleteEntry(id: string) {
+    onDeleteEntry(id);
+    setSelection((prev) => {
+      if (!prev) return null;
+      const nextEntries = prev.entries.filter((e) => e.id !== id);
+      if (nextEntries.length === 0) return null;
+      return { ...prev, entries: nextEntries };
+    });
+  }
+
   return (
     <div className="space-y-4">
-      <p className="text-sm text-slate-600">
-        Crew hours roll up from the crew app clock (move, drive, extra, and break). Hourly office
-        staff clock in from the header — those punches appear here as{" "}
-        <span className="font-medium text-emerald-800">office time</span>, pending until you approve.
-        Click a day cell to review breakdown, fix hours, and approve before payroll export.
-      </p>
-
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Button type="button" size="sm" variant="secondary" onClick={() => shiftWeek(-1)}>
@@ -104,6 +125,12 @@ export function TimeEntriesTab({ entries, onUpdateEntry }: TimeEntriesTabProps) 
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {canApprove ? (
+            <Button type="button" size="sm" variant="secondary" onClick={() => setAddOpen(true)}>
+              <Plus className="h-4 w-4" />
+              Add time
+            </Button>
+          ) : null}
           {pendingCount > 0 ? (
             <Badge variant="warning">{pendingCount} pending this week</Badge>
           ) : (
@@ -143,20 +170,35 @@ export function TimeEntriesTab({ entries, onUpdateEntry }: TimeEntriesTabProps) 
               <th className="sticky left-0 z-10 bg-slate-50/95 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Team member
               </th>
-              {weekKeys.map((dateKey, i) => (
-                <th
-                  key={dateKey}
-                  className={cn(
-                    "px-2 py-2 text-center text-xs font-semibold uppercase tracking-wide",
-                    dateKey === todayKey ? "text-brand-700" : "text-slate-500",
-                  )}
-                >
-                  <span className="block">{weekHeaders[i]}</span>
-                  <span className="mt-0.5 block font-normal normal-case text-slate-400">
-                    {dateKey.slice(5).replace("-", "/")}
-                  </span>
-                </th>
-              ))}
+              {weekKeys.map((dateKey, i) => {
+                const dayPending = weekEntries.filter(
+                  (e) => e.date === dateKey && e.status === "pending",
+                );
+                return (
+                  <th
+                    key={dateKey}
+                    className={cn(
+                      "px-2 py-2 text-center text-xs font-semibold uppercase tracking-wide",
+                      dateKey === todayKey ? "text-brand-700" : "text-slate-500",
+                    )}
+                  >
+                    <span className="block">{weekHeaders[i]}</span>
+                    <span className="mt-0.5 block font-normal normal-case text-slate-400">
+                      {dateKey.slice(5).replace("-", "/")}
+                    </span>
+                    {canApprove && dayPending.length > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => approveIds(dayPending.map((e) => e.id))}
+                        className="mt-1 inline-flex items-center gap-0.5 rounded-md border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold normal-case text-emerald-800 hover:bg-emerald-100"
+                      >
+                        <Check className="h-3 w-3" />
+                        Approve all
+                      </button>
+                    ) : null}
+                  </th>
+                );
+              })}
               <th className="px-3 py-2 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Week
               </th>
@@ -218,8 +260,25 @@ export function TimeEntriesTab({ entries, onUpdateEntry }: TimeEntriesTabProps) 
                         </td>
                       );
                     })}
-                    <td className="px-3 py-2 text-right font-semibold tabular-nums text-slate-900">
-                      {formatHoursShort(weeklyHoursTotal(personWeekEntries))}
+                    <td className="px-3 py-2 text-right">
+                      <p className="font-semibold tabular-nums text-slate-900">
+                        {formatHoursShort(weeklyHoursTotal(personWeekEntries))}
+                      </p>
+                      {canApprove && personWeekEntries.some((e) => e.status === "pending") ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            approveIds(
+                              personWeekEntries
+                                .filter((e) => e.status === "pending")
+                                .map((e) => e.id),
+                            )
+                          }
+                          className="mt-1 text-[10px] font-semibold text-emerald-700 hover:text-emerald-900"
+                        >
+                          Approve week
+                        </button>
+                      ) : null}
                     </td>
                   </tr>
                 );
@@ -233,6 +292,24 @@ export function TimeEntriesTab({ entries, onUpdateEntry }: TimeEntriesTabProps) 
         selection={selection}
         onClose={() => setSelection(null)}
         onUpdateEntry={onUpdateEntry}
+        onDeleteEntry={canApprove ? handleDeleteEntry : undefined}
+        canApprove={canApprove}
+      />
+
+      <AddTimeEntrySidebar
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        onAdd={(entry) => {
+          onAddEntry(entry);
+          const existing = entriesForPersonDate(entries, entry.personId, entry.date);
+          setSelection({
+            personId: entry.personId,
+            personName: entry.personName,
+            date: entry.date,
+            entries: [...existing, entry],
+          });
+        }}
+        defaultDate={todayKey}
       />
     </div>
   );

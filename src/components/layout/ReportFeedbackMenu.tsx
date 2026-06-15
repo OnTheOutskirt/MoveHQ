@@ -26,6 +26,7 @@ export function ReportFeedbackMenu() {
   const [description, setDescription] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -41,6 +42,7 @@ export function ReportFeedbackMenu() {
   useEffect(() => {
     if (!open) {
       setSubmitted(false);
+      setSubmitError(null);
       setDescription("");
       setKind("bug");
     }
@@ -51,22 +53,28 @@ export function ReportFeedbackMenu() {
   const pageTitle =
     typeof document !== "undefined" ? document.title.replace(/\s*·.*$/, "").trim() : undefined;
 
-  function handleSubmit() {
+  async function handleSubmit() {
     const trimmed = description.trim();
     if (!trimmed || submitting) return;
 
     setSubmitting(true);
-    submitFeedback({
-      kind,
-      description: trimmed,
-      pagePath: pathname,
-      pageTitle: pageTitle || undefined,
-      reporterId: user.id,
-      reporterName: user.name,
-    });
-    setSubmitted(true);
-    setDescription("");
-    setSubmitting(false);
+    setSubmitError(null);
+    try {
+      await submitFeedback({
+        kind,
+        description: trimmed,
+        pagePath: pathname,
+        pageTitle: pageTitle || undefined,
+        reporterId: user.id,
+        reporterName: user.name,
+      });
+      setSubmitted(true);
+      setDescription("");
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "Could not save report.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -148,6 +156,12 @@ export function ReportFeedbackMenu() {
               <p className="text-[11px] text-slate-500">
                 Page: <span className="font-medium text-slate-700">{pathname}</span>
               </p>
+
+              {submitError ? (
+                <p className="rounded-lg border border-red-200 bg-red-50 px-2.5 py-2 text-xs text-red-800">
+                  {submitError}
+                </p>
+              ) : null}
 
               <div className="flex justify-end gap-2 pt-1">
                 <Button type="button" size="sm" variant="secondary" onClick={() => setOpen(false)}>

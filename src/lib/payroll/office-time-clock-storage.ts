@@ -1,6 +1,6 @@
 import { toDateKey } from "@/lib/calendar/date-utils";
 import { CURRENT_USER } from "@/lib/session/current-user";
-import { billableHoursFromCategories, normalizeTimeEntry } from "./time-entry-utils";
+import { totalHoursFromCategories, normalizeTimeEntry } from "./time-entry-utils";
 import type { TimeEntry } from "./types";
 
 export type OfficeClockPhase = "out" | "in" | "break";
@@ -272,7 +272,7 @@ export function officePunchToTimeEntry(punch: OfficeClockPunch): TimeEntry {
     date: punch.dateKey,
     jobRef: null,
     categories,
-    hours: billableHoursFromCategories(categories),
+    hours: totalHoursFromCategories(categories),
     hourlyRate: person.hourlyRate,
     status: "pending",
     source: "office_clock",
@@ -318,7 +318,7 @@ export function officeActiveClockToTimeEntry(
     date: state.dateKey,
     jobRef: null,
     categories,
-    hours: billableHoursFromCategories(categories),
+    hours: totalHoursFromCategories(categories),
     hourlyRate: person.hourlyRate,
     status: "pending",
     source: "office_clock",

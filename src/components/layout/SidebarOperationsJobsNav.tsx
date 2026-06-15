@@ -2,6 +2,7 @@
 
 import { useManualOpsPrepTasks } from "@/components/operations/jobs/use-manual-ops-prep";
 import { useOpsPrepDoneIds } from "@/components/operations/jobs/use-ops-prep-done";
+import { DevIncompleteIndicator } from "@/components/layout/DevIncompleteIndicator";
 import { CountBadge } from "@/components/ui/CountBadge";
 import { useMoves } from "@/components/moves/MovesProvider";
 import { useSettings } from "@/components/providers/SettingsProvider";
@@ -54,6 +55,7 @@ export function SidebarOperationsJobsNav({ item }: SidebarOperationsJobsNavProps
       >
         <Icon className="h-4 w-4 shrink-0 opacity-80" />
         <span className="min-w-0 flex-1 truncate">{item.label}</span>
+        {item.devIncomplete ? <DevIncompleteIndicator /> : null}
         {dueTodayCount > 0 ? (
           <CountBadge count={dueTodayCount} urgent variant="sidebar" />
         ) : null}

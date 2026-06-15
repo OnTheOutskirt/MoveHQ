@@ -5,7 +5,7 @@ import {
   startOfWeek,
 } from "@/lib/settings/business-calendar";
 import type { WeekStartsOn } from "@/lib/settings/types";
-import type { TimeCategoryHours, TimeEntry } from "./types";
+import type { TimeCategoryHours, TimeEntry, TipEntry } from "./types";
 
 export function weekdayHeadersForWeek(weekStartsOn: WeekStartsOn): string[] {
   const startDay = weekStartsOn === "sunday" ? 0 : 1;
@@ -16,11 +16,14 @@ export function weekdayHeadersForWeek(weekStartsOn: WeekStartsOn): string[] {
 /** @deprecated Use weekdayHeadersForWeek(weekStartsOn) */
 export const WEEKDAY_HEADERS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 
-export function billableHoursFromCategories(categories: TimeCategoryHours): number {
+export function totalHoursFromCategories(categories: TimeCategoryHours): number {
   const total =
     categories.move + categories.drive + categories.extra + categories.office;
   return Math.round(total * 100) / 100;
 }
+
+/** @deprecated Use totalHoursFromCategories */
+export const billableHoursFromCategories = totalHoursFromCategories;
 
 export function normalizeCategories(raw: Partial<TimeCategoryHours> | undefined): TimeCategoryHours {
   const move = roundQuarter(raw?.move ?? 0);
@@ -36,7 +39,7 @@ export function normalizeTimeEntry(entry: TimeEntry): TimeEntry {
   return {
     ...entry,
     categories,
-    hours: billableHoursFromCategories(categories),
+    hours: totalHoursFromCategories(categories),
   };
 }
 
@@ -127,6 +130,40 @@ export function formatHoursShort(hours: number): string {
 
 export function isTodayKey(dateKey: string, today: Date = new Date()): boolean {
   return dateKey === toDateKey(today);
+}
+
+export function tipsForWeek(tips: TipEntry[], weekStart: Date) {
+  const keys = new Set(weekDayKeys(weekStart));
+  return tips.filter((t) => keys.has(t.date));
+}
+
+export function tipsForPersonDate(tips: TipEntry[], personId: string, date: string) {
+  return tips.filter((t) => t.personId === personId && t.date === date);
+}
+
+export function dailyTipsTotal(dayTips: TipEntry[]): number {
+  return roundQuarter(dayTips.reduce((sum, t) => sum + t.amount, 0));
+}
+
+export function weeklyTipsTotal(weekTips: TipEntry[]): number {
+  return roundQuarter(weekTips.reduce((sum, t) => sum + t.amount, 0));
+}
+
+export function uniquePeopleInTips(
+  tips: TipEntry[],
+): { personId: string; personName: string }[] {
+  const map = new Map<string, { personId: string; personName: string }>();
+  for (const t of tips) {
+    if (!map.has(t.personId)) {
+      map.set(t.personId, { personId: t.personId, personName: t.personName });
+    }
+  }
+  return [...map.values()].sort((a, b) => a.personName.localeCompare(b.personName));
+}
+
+export function formatTipAmount(amount: number): string {
+  if (amount <= 0) return "—";
+  return `$${amount.toFixed(amount % 1 === 0 ? 0 : 2)}`;
 }
 
 export function sumCategories(entries: TimeEntry[]): TimeCategoryHours {

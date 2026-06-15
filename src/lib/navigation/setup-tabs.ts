@@ -5,6 +5,7 @@ export const SETUP_TOP_TABS = [
   { id: "automations", label: "Automations" },
   { id: "terminology", label: "Terminology" },
   { id: "mobile-app", label: "Mobile app" },
+  { id: "import", label: "Import data" },
 ] as const;
 
 export type SetupTopTabId = (typeof SETUP_TOP_TABS)[number]["id"];
@@ -59,6 +60,8 @@ export const setupLegacyTabRedirect: Record<string, { tab: SetupTopTabId; sectio
   terminology: { tab: "terminology" },
   "crew-app": { tab: "mobile-app" },
   "mobile-app": { tab: "mobile-app" },
+  import: { tab: "import" },
+  "import-data": { tab: "import" },
 };
 
 export type SetupLocation = {

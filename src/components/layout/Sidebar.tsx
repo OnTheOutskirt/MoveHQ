@@ -1,5 +1,6 @@
 "use client";
 
+import { DevIncompleteIndicator } from "@/components/layout/DevIncompleteIndicator";
 import { SidebarFollowUpsNav } from "@/components/layout/SidebarFollowUpsNav";
 import { SidebarInboxNav } from "@/components/layout/SidebarInboxNav";
 import { SidebarOperationsJobsNav } from "@/components/layout/SidebarOperationsJobsNav";
@@ -42,7 +43,8 @@ function NavLinkItem({ item, pathname }: { item: NavLink; pathname: string }) {
         )}
       >
         <Icon className="h-4 w-4 shrink-0 opacity-80" />
-        <span className="truncate">{item.label}</span>
+        <span className="min-w-0 flex-1 truncate">{item.label}</span>
+        {item.devIncomplete ? <DevIncompleteIndicator /> : null}
       </Link>
     </li>
   );

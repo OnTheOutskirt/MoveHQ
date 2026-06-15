@@ -1,5 +1,5 @@
-import { DataImportWorkspace } from "@/components/admin/import/DataImportWorkspace";
+import { redirect } from "next/navigation";
 
 export default function AdminImportPage() {
-  return <DataImportWorkspace />;
+  redirect("/admin/setup?tab=import");
 }

@@ -60,8 +60,12 @@ function emptyRipplingRow(employeeName: string): RipplingPayrollRow {
   };
 }
 
-export function buildRipplingPayrollRows(entries: TimeEntry[]): RipplingPayrollRow[] {
+export function buildRipplingPayrollRows(
+  entries: TimeEntry[],
+  tips: { personName: string; amount: number }[] = [],
+): RipplingPayrollRow[] {
   const hoursByPerson = new Map<string, number>();
+  const tipsByPerson = new Map<string, number>();
 
   for (const e of entries) {
     hoursByPerson.set(
@@ -70,13 +74,27 @@ export function buildRipplingPayrollRows(entries: TimeEntry[]): RipplingPayrollR
     );
   }
 
-  return [...hoursByPerson.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([employeeName, totalHours]) => {
+  for (const tip of tips) {
+    tipsByPerson.set(
+      tip.personName,
+      roundHours((tipsByPerson.get(tip.personName) ?? 0) + tip.amount),
+    );
+  }
+
+  const names = new Set([...hoursByPerson.keys(), ...tipsByPerson.keys()]);
+
+  return [...names]
+    .sort((a, b) => a.localeCompare(b))
+    .map((employeeName) => {
       const row = emptyRipplingRow(employeeName);
+      const totalHours = hoursByPerson.get(employeeName) ?? 0;
       const { basePayHours, overtimeHours } = splitRegularAndOvertime(totalHours);
       row.basePayHours = basePayHours;
       row.overtimeHours = overtimeHours;
+      const tipTotal = tipsByPerson.get(employeeName);
+      if (tipTotal && tipTotal > 0) {
+        row.payableCashTips = roundHours(tipTotal);
+      }
       return row;
     });
 }

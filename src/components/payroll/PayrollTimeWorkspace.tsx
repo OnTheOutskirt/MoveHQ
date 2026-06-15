@@ -3,41 +3,53 @@
 import { AccessDenied } from "@/components/auth/AccessDenied";
 import { useCapabilities } from "@/lib/auth/use-capabilities";
 import { PayrollExportTab } from "@/components/payroll/PayrollExportTab";
+import { PayrollTimeOffTab } from "@/components/payroll/PayrollTimeOffTab";
 import { TimeEntriesTab } from "@/components/payroll/TimeEntriesTab";
+import { TipsEntriesTab } from "@/components/payroll/TipsEntriesTab";
 import { TabBar } from "@/components/shared/TabBar";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { Card, CardContent } from "@/components/ui/Card";
 import { buildRollingMockTimeEntries } from "@/lib/payroll/mock-time-entries";
+import { buildRollingMockTipEntries } from "@/lib/payroll/mock-tip-entries";
 import {
   mergeOfficeClockIntoEntries,
   subscribeOfficeClock,
 } from "@/lib/payroll/office-time-clock-storage";
 import { normalizeTimeEntry } from "@/lib/payroll/time-entry-utils";
-import type { TimeEntry } from "@/lib/payroll/types";
+import type { TimeEntry, TipEntry } from "@/lib/payroll/types";
 import { pageMeta } from "@/lib/navigation/page-meta";
 import { useClientReady } from "@/lib/hooks/use-client-ready";
 import { usePersistedState } from "@/lib/hooks/use-persisted-state";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 const meta = pageMeta["/operations/payroll"];
 
+type PayrollTab = "time" | "tips" | "time-off" | "payroll";
+
 export function PayrollTimeWorkspace() {
   const { can } = useCapabilities();
+  const canApprove = can("payroll.approve");
+
   const tabs = [
     can("payroll.view") ? ({ id: "time" as const, label: "Time entries" }) : null,
+    can("payroll.view") ? ({ id: "tips" as const, label: "Tips" }) : null,
+    can("payroll.view") ? ({ id: "time-off" as const, label: "Time off" }) : null,
     can("payroll.export") ? ({ id: "payroll" as const, label: "Payroll export" }) : null,
-  ].filter((t): t is { id: "time" | "payroll"; label: string } => t != null);
+  ].filter((t): t is { id: PayrollTab; label: string } => t != null);
 
   const clientReady = useClientReady();
-  const [tab, setTab] = usePersistedState<"time" | "payroll">(
+  const [tab, setTab] = usePersistedState<PayrollTab>(
     "jm-tab-/operations/payroll",
     tabs[0]?.id ?? "time",
   );
   const [entries, setEntries] = useState<TimeEntry[]>(() => buildRollingMockTimeEntries());
+  const [tips, setTips] = useState<TipEntry[]>(() => buildRollingMockTipEntries());
 
   useEffect(() => {
     if (!clientReady) return;
-    const sync = () => setEntries(mergeOfficeClockIntoEntries(buildRollingMockTimeEntries()));
+    const sync = () => {
+      setEntries(mergeOfficeClockIntoEntries(buildRollingMockTimeEntries()));
+      setTips(buildRollingMockTipEntries());
+    };
     sync();
     const unsub = subscribeOfficeClock(sync);
     const intervalId = window.setInterval(sync, 30_000);
@@ -48,6 +60,7 @@ export function PayrollTimeWorkspace() {
   }, [clientReady]);
 
   const onUpdateEntry = useCallback((id: string, patch: Partial<TimeEntry>) => {
+    if (!canApprove) return;
     setEntries((prev) =>
       prev.map((e) => {
         if (e.id !== id) return e;
@@ -55,12 +68,40 @@ export function PayrollTimeWorkspace() {
         return patch.categories ? normalizeTimeEntry(merged) : merged;
       }),
     );
-  }, []);
+  }, [canApprove]);
 
-  const pendingCount = useMemo(
-    () => entries.filter((e) => e.status === "pending").length,
-    [entries],
-  );
+  const onBulkApproveEntries = useCallback((ids: string[]) => {
+    if (!canApprove) return;
+    const idSet = new Set(ids);
+    setEntries((prev) =>
+      prev.map((e) => (idSet.has(e.id) ? { ...e, status: "approved" as const } : e)),
+    );
+  }, [canApprove]);
+
+  const onAddEntry = useCallback((entry: TimeEntry) => {
+    if (!canApprove) return;
+    setEntries((prev) => [...prev, entry]);
+  }, [canApprove]);
+
+  const onDeleteEntry = useCallback((id: string) => {
+    if (!canApprove) return;
+    setEntries((prev) => prev.filter((e) => e.id !== id));
+  }, [canApprove]);
+
+  const onUpdateTip = useCallback((id: string, patch: Partial<TipEntry>) => {
+    if (!canApprove) return;
+    setTips((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, ...patch } : t)),
+    );
+  }, [canApprove]);
+
+  const onBulkApproveTips = useCallback((ids: string[]) => {
+    if (!canApprove) return;
+    const idSet = new Set(ids);
+    setTips((prev) =>
+      prev.map((t) => (idSet.has(t.id) ? { ...t, status: "approved" as const } : t)),
+    );
+  }, [canApprove]);
 
   const activeTab = tabs.some((t) => t.id === tab) ? tab : (tabs[0]?.id ?? "time");
 
@@ -75,37 +116,35 @@ export function PayrollTimeWorkspace() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title={meta.title} description={meta.description} />
-
-      <Card className="border-slate-200 bg-slate-50/80">
-        <CardContent className="grid gap-3 py-4 text-sm text-slate-700 sm:grid-cols-2">
-          <div>
-            <p className="font-semibold text-slate-900">Weekly review</p>
-            <p className="mt-1 text-slate-600">
-              Crew hours roll up from the crew app (move, drive, extra, break). Hourly office staff
-              clock in from the header time clock — office hours land here as pending until approved.
-              Click a cell to review and approve before payroll export — {pendingCount} pending in
-              demo data.
-            </p>
-          </div>
-          <div>
-            <p className="font-semibold text-slate-900">Payroll export</p>
-            <p className="mt-1 text-slate-600">
-              Approved hours export to Rippling CSV by pay period. Crew app and office time clock
-              sync here when live.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      <PageHeader title={meta.title} description={meta.description || undefined} />
 
       {tabs.length > 1 ? (
         <TabBar tabs={tabs} activeTab={activeTab} onChange={setTab} />
       ) : null}
 
       {activeTab === "time" ? (
-        <TimeEntriesTab entries={entries} onUpdateEntry={onUpdateEntry} />
+        <TimeEntriesTab
+          entries={entries}
+          onUpdateEntry={onUpdateEntry}
+          onBulkApproveEntries={onBulkApproveEntries}
+          onAddEntry={onAddEntry}
+          onDeleteEntry={onDeleteEntry}
+          canApprove={canApprove}
+        />
+      ) : activeTab === "tips" ? (
+        <TipsEntriesTab
+          tips={tips}
+          onUpdateTip={onUpdateTip}
+          onBulkApproveTips={onBulkApproveTips}
+          canApprove={canApprove}
+        />
+      ) : activeTab === "time-off" ? (
+        <PayrollTimeOffTab />
       ) : (
-        <PayrollExportTab entries={entries.filter((e) => e.status === "approved")} />
+        <PayrollExportTab
+          allEntries={entries}
+          allTips={tips}
+        />
       )}
     </div>
   );

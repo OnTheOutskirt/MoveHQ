@@ -1,10 +1,25 @@
 import type { DashboardViewMeta } from "@/lib/dashboard/views";
+import { ExecutiveDashboardPanel } from "@/components/dashboard/ExecutiveDashboardPanel";
+import { OpsDashboardPanel } from "@/components/dashboard/OpsDashboardPanel";
+import { SalesDashboardPanel } from "@/components/dashboard/SalesDashboardPanel";
 
 type DashboardViewPanelProps = {
   view: DashboardViewMeta;
 };
 
 export function DashboardViewPanel({ view }: DashboardViewPanelProps) {
+  if (view.id === "executive") {
+    return <ExecutiveDashboardPanel />;
+  }
+
+  if (view.id === "ops") {
+    return <OpsDashboardPanel />;
+  }
+
+  if (view.id === "sales") {
+    return <SalesDashboardPanel />;
+  }
+
   return (
     <div className="space-y-6">
       <div>

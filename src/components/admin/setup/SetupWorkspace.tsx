@@ -1,6 +1,7 @@
 "use client";
 
 import { AdminSaveBar } from "@/components/admin/AdminSaveBar";
+import { DataImportWorkspace } from "@/components/admin/import/DataImportWorkspace";
 import { AutomationsTab } from "@/components/admin/setup/AutomationsTab";
 import { CrewAppTab } from "@/components/admin/setup/CrewAppTab";
 import { MessageTemplatesTab } from "@/components/admin/setup/MessageTemplatesTab";
@@ -339,8 +340,11 @@ function SetupWorkspaceInner() {
       {location.tab === "automations" ? <AutomationsTab /> : null}
       {location.tab === "terminology" ? <TerminologyTab /> : null}
       {location.tab === "mobile-app" ? <CrewAppTab /> : null}
+      {location.tab === "import" ? <DataImportWorkspace /> : null}
 
-      <AdminSaveBar dirty={dirty} onSave={saveAll} onDiscard={discardAll} />
+      {location.tab !== "import" ? (
+        <AdminSaveBar dirty={dirty} onSave={saveAll} onDiscard={discardAll} />
+      ) : null}
     </div>
   );
 }

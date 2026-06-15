@@ -47,7 +47,7 @@ export const CAPABILITY_GROUPS: CapabilityGroup[] = [
   {
     id: "dashboards",
     label: "Dashboard home screens",
-    caps: ["dashboard.executive", "dashboard.manager", "dashboard.sales", "dashboard.ops"],
+    caps: ["dashboard.executive", "dashboard.sales", "dashboard.ops"],
   },
   {
     id: "reports",

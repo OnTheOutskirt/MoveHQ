@@ -1,12 +1,10 @@
 "use client";
 
-import { JobFieldPacketSidebar } from "@/components/operations/jobs/JobFieldPacketSidebar";
 import { OpsJobDaySidebar } from "@/components/operations/jobs/OpsJobDaySidebar";
 import { JobsDayToolbar } from "@/components/operations/jobs/JobsDayToolbar";
 import { JobsList } from "@/components/operations/jobs/JobsList";
 import { OpsPrepPanel } from "@/components/operations/jobs/OpsPrepPanel";
 import { toDateKey } from "@/lib/calendar/date-utils";
-import { getJobFieldPacket } from "@/lib/operations/job-field-packet";
 import type { OpsJobDayRow } from "@/lib/operations/ops-jobs";
 import { useMoves } from "@/components/moves/MovesProvider";
 import { useSettings } from "@/components/providers/SettingsProvider";
@@ -45,7 +43,6 @@ export function JobsWorkspace() {
     "jm-ops-jobs-date",
     defaultSelectedDateForBrowse(today),
   );
-  const [packetRow, setPacketRow] = useState<OpsJobDayRow | null>(null);
   const [selectedJobRow, setSelectedJobRow] = useState<OpsJobDayRow | null>(null);
 
   const allRows = useMemo(() => collectOpsJobDays(moves), [moves]);
@@ -82,14 +79,6 @@ export function JobsWorkspace() {
   const showFieldPackets =
     view === "past" || (view === "date" && !!selectedDateKey && selectedDateKey < todayKey);
 
-  const useJobDaySidebar = true;
-
-  const openPacket = useMemo(() => {
-    if (!packetRow) return null;
-    const move = moves.find((m) => m.id === packetRow.moveId);
-    return getJobFieldPacket(packetRow, move);
-  }, [packetRow, moves]);
-
   const emptyMessage =
     view === "past"
       ? "No completed job days in the past few weeks."
@@ -119,24 +108,14 @@ export function JobsWorkspace() {
             moves={moves}
             emptyMessage={emptyMessage}
             showDateColumn={view === "past" || view === "date"}
-            showFieldPackets={showFieldPackets}
             groupByJobDayStatus={view === "today"}
-            onOpenFieldPacket={showFieldPackets ? setPacketRow : undefined}
-            onSelectJob={useJobDaySidebar ? setSelectedJobRow : undefined}
+            onSelectJob={setSelectedJobRow}
             selectedJobId={selectedJobRow?.id ?? null}
           />
-          {showFieldPackets ? (
-            <p className="text-xs text-slate-500">
-              Completed jobs include forms, signatures, and payment from the crew app — open{" "}
-              <span className="font-medium">Field packet</span> to review.
-            </p>
-          ) : null}
         </div>
 
         <OpsPrepPanel derivedTasks={prepTasks} moves={moves} />
       </div>
-
-      <JobFieldPacketSidebar packet={openPacket} onClose={() => setPacketRow(null)} />
 
       <OpsJobDaySidebar
         row={selectedJobRow}
@@ -145,6 +124,7 @@ export function JobsWorkspace() {
             ? moves.find((m) => m.id === selectedJobRow.moveId)
             : undefined
         }
+        pastMode={showFieldPackets}
         onClose={() => setSelectedJobRow(null)}
       />
     </div>

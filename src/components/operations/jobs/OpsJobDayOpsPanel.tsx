@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { opsPackingNote, opsSupplyLines, opsThirdPartyLines } from "@/lib/operations/ops-job-summary";
 import { jobDayDriveDisplay } from "@/lib/operations/job-day-drive";
 import type { MoveJobDay, MoveRecord } from "@/lib/moves/types";
@@ -11,6 +12,8 @@ type OpsJobDayOpsPanelProps = {
   onDriveHoursChange: (hours: number | null) => void;
   /** Drive time is edited in Job Info est vs actual table. */
   hideDriveSection?: boolean;
+  /** Split supplies / equipment / vendors into separate blocks for job sidebar. */
+  sidebarLayout?: boolean;
 };
 
 export function OpsJobDayOpsPanel({
@@ -18,12 +21,70 @@ export function OpsJobDayOpsPanel({
   jobDay,
   onDriveHoursChange,
   hideDriveSection,
+  sidebarLayout,
 }: OpsJobDayOpsPanelProps) {
   const intake = move.intake;
   const { supplies, equipment } = opsSupplyLines(intake);
   const thirdParty = opsThirdPartyLines(intake);
   const packing = opsPackingNote(intake);
   const drive = jobDayDriveDisplay(jobDay, move);
+
+  if (sidebarLayout) {
+    return (
+      <div className="space-y-3">
+        {thirdParty.length > 0 ? (
+          <SidebarBlock title="Third-party services">
+            <ul className="space-y-2">
+              {thirdParty.map((line, i) => (
+                <li
+                  key={i}
+                  className="rounded-md border border-violet-100 bg-violet-50/50 px-2.5 py-2 text-sm"
+                >
+                  <p className="font-medium text-slate-900">{line.service}</p>
+                  <p className="text-xs text-slate-600">{line.vendor}</p>
+                  {line.cost ? <p className="text-xs text-slate-500">{line.cost} est.</p> : null}
+                  {line.notes ? <p className="mt-0.5 text-xs text-slate-600">{line.notes}</p> : null}
+                </li>
+              ))}
+            </ul>
+          </SidebarBlock>
+        ) : null}
+
+        {equipment.length > 0 ? (
+          <SidebarBlock title="Equipment">
+            <OpsLineGroup icon={Truck} lines={equipment} />
+          </SidebarBlock>
+        ) : null}
+
+        {supplies.length > 0 ? (
+          <SidebarBlock title="Supplies needed">
+            <OpsLineGroup icon={Package} lines={supplies} />
+          </SidebarBlock>
+        ) : null}
+
+        {packing || intake.specialtyNotes ? (
+          <SidebarBlock title="Packing & specialty">
+            <div className="text-sm text-slate-700">
+              {packing ? <p>{packing}</p> : null}
+              {intake.specialtyNotes ? (
+                <p className="mt-1 text-xs text-amber-900">{intake.specialtyNotes}</p>
+              ) : null}
+            </div>
+          </SidebarBlock>
+        ) : null}
+
+        {thirdParty.length === 0 &&
+        equipment.length === 0 &&
+        supplies.length === 0 &&
+        !packing &&
+        !intake.specialtyNotes ? (
+          <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-sm text-slate-500">
+            No supplies, equipment, or vendors on this move yet.
+          </p>
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <section className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
@@ -73,11 +134,11 @@ export function OpsJobDayOpsPanel({
       ) : null}
 
       {supplies.length > 0 ? (
-        <OpsLineGroup icon={Package} title="Supplies on move" lines={supplies} />
+        <OpsLineGroupLegacy icon={Package} title="Supplies on move" lines={supplies} />
       ) : null}
 
       {equipment.length > 0 ? (
-        <OpsLineGroup icon={Truck} title="Equipment" lines={equipment} />
+        <OpsLineGroupLegacy icon={Truck} title="Equipment" lines={equipment} />
       ) : null}
 
       {thirdParty.length > 0 ? (
@@ -110,7 +171,37 @@ export function OpsJobDayOpsPanel({
   );
 }
 
+function SidebarBlock({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600">{title}</p>
+      <div className="mt-2">{children}</div>
+    </section>
+  );
+}
+
 function OpsLineGroup({
+  icon: Icon,
+  lines,
+}: {
+  icon: typeof Package;
+  lines: { label: string; quantity: number; priceNote: string }[];
+}) {
+  return (
+    <ul className="space-y-1">
+      {lines.map((line, i) => (
+        <li key={i} className="flex justify-between gap-2 text-sm text-slate-800">
+          <span>
+            {line.quantity} × {line.label}
+          </span>
+          <span className="shrink-0 text-xs text-slate-500">{line.priceNote}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function OpsLineGroupLegacy({
   icon: Icon,
   title,
   lines,

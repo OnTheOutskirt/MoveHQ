@@ -14,6 +14,11 @@ import {
   MEETING_6_12_GROUPS,
 } from "./meeting-notes-6-12";
 import {
+  MEETING_6_15_DATE_LABEL,
+  MEETING_6_15_DEFAULT_DONE_IDS,
+  MEETING_6_15_GROUPS,
+} from "./meeting-notes-6-15";
+import {
   MEETING_6_8_DATE_LABEL,
   MEETING_6_8_DEFAULT_DONE_IDS,
   MEETING_6_8_GROUPS,
@@ -45,6 +50,15 @@ export const MEETING_NOTE_SESSIONS: MeetingNotesSession[] = [
       "Remaining UI polish across MoveHQ — dashboards through crew app and shared chrome. Check off as each area is finalized.",
     groups: UI_TODO_GROUPS,
     defaultDoneIds: UI_TODO_DEFAULT_DONE_IDS,
+  },
+  {
+    id: "meeting-6-15",
+    tabLabel: `${MEETING_6_15_DATE_LABEL} meeting`,
+    dateLabel: MEETING_6_15_DATE_LABEL,
+    summary:
+      "Report pop-up, moving-company referrals, min hours bug, dispatch off-day overrides, job day stops, inbox states, holidays, jobs call/SMS, walkthrough availability, LiveSwitch invites, E-cal sync, move vendors.",
+    groups: MEETING_6_15_GROUPS,
+    defaultDoneIds: MEETING_6_15_DEFAULT_DONE_IDS,
   },
   {
     id: "meeting-6-12",
@@ -83,7 +97,7 @@ export const MEETING_NOTE_SESSIONS: MeetingNotesSession[] = [
 ];
 
 /** @deprecated Use MEETING_NOTE_SESSIONS — kept for imports that expect a single date. */
-export const MEETING_NOTES_DATE_LABEL = MEETING_6_12_DATE_LABEL;
+export const MEETING_NOTES_DATE_LABEL = MEETING_6_15_DATE_LABEL;
 
 export const PLANNING_TODO_TAB_LABEL = "Todo";
 
@@ -133,4 +147,5 @@ export const MEETING_NOTES_DEFAULT_DONE_IDS = [
   ...MEETING_6_4_DEFAULT_DONE_IDS,
   ...MEETING_6_8_DEFAULT_DONE_IDS,
   ...MEETING_6_12_DEFAULT_DONE_IDS,
+  ...MEETING_6_15_DEFAULT_DONE_IDS,
 ] as const;

@@ -9,29 +9,56 @@ import {
   payPeriodsForToday,
   ripplingPayrollCsvContent,
 } from "@/lib/payroll/mock-time-entries";
+import { assessPayPeriodReadiness } from "@/lib/payroll/payroll-readiness";
 import {
   RIPPLING_PAYROLL_COLUMNS,
   type RipplingPayrollRow,
 } from "@/lib/payroll/rippling-columns";
 import { ripplingRowDisplayValue } from "@/lib/payroll/rippling-export";
-import type { PayPeriod, TimeEntry } from "@/lib/payroll/types";
-import { Download } from "lucide-react";
+import type { PayPeriod, TimeEntry, TipEntry } from "@/lib/payroll/types";
+import { AlertTriangle, Download } from "lucide-react";
 import { useMemo, useState } from "react";
 
 type PayrollExportTabProps = {
-  entries: TimeEntry[];
+  allEntries: TimeEntry[];
+  allTips: TipEntry[];
 };
 
-export function PayrollExportTab({ entries }: PayrollExportTabProps) {
+export function PayrollExportTab({ allEntries, allTips }: PayrollExportTabProps) {
   const payPeriods = useMemo(() => payPeriodsForToday(), []);
   const [periodId, setPeriodId] = useState(payPeriods[0]!.id);
 
   const period = payPeriods.find((p) => p.id === periodId) ?? payPeriods[0]!;
   const periodEntries = useMemo(
-    () => entriesInPeriod(entries, period),
-    [entries, period],
+    () => entriesInPeriod(allEntries, period),
+    [allEntries, period],
   );
-  const rows = useMemo(() => buildRipplingPayrollRows(periodEntries), [periodEntries]);
+  const periodTips = useMemo(
+    () => allTips.filter((t) => t.date >= period.start && t.date <= period.end),
+    [allTips, period],
+  );
+  const approvedEntries = useMemo(
+    () => periodEntries.filter((e) => e.status === "approved"),
+    [periodEntries],
+  );
+  const approvedTips = useMemo(
+    () => periodTips.filter((t) => t.status === "approved"),
+    [periodTips],
+  );
+
+  const readiness = useMemo(
+    () => assessPayPeriodReadiness(allEntries, allTips, period),
+    [allEntries, allTips, period],
+  );
+
+  const rows = useMemo(
+    () =>
+      buildRipplingPayrollRows(
+        approvedEntries,
+        approvedTips.map((t) => ({ personName: t.personName, amount: t.amount })),
+      ),
+    [approvedEntries, approvedTips],
+  );
 
   const columns = useMemo<Column<RipplingPayrollRow>[]>(
     () =>
@@ -41,8 +68,11 @@ export function PayrollExportTab({ entries }: PayrollExportTabProps) {
         cell: (r) => {
           const value = ripplingRowDisplayValue(r, col.key);
           const isHours = col.key === "basePayHours" || col.key === "overtimeHours";
+          const isTips = col.key === "payableCashTips";
           return isHours && value !== "—" ? (
             <span className="font-medium tabular-nums">{value}</span>
+          ) : isTips && value !== "—" ? (
+            <span className="font-medium tabular-nums text-violet-800">{value}</span>
           ) : (
             value
           );
@@ -52,6 +82,7 @@ export function PayrollExportTab({ entries }: PayrollExportTabProps) {
   );
 
   function downloadCsv() {
+    if (!readiness.ready) return;
     const csv = ripplingPayrollCsvContent(rows);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -64,16 +95,31 @@ export function PayrollExportTab({ entries }: PayrollExportTabProps) {
 
   return (
     <div className="space-y-4">
-      <Card className="border-violet-200 bg-violet-50/40">
-        <CardContent className="py-4 text-sm text-violet-950/90">
-          <p>
-            <strong>Rippling API (V2):</strong> this tab will push approved hours automatically.
-            For now, download a CSV with Rippling&apos;s column names and upload manually. Base and
-            OT hours roll up from approved time; tips, mileage, per diem, and bonuses are left blank
-            until those flows exist.
-          </p>
-        </CardContent>
-      </Card>
+      {!readiness.ready ? (
+        <Card className="border-amber-200 bg-amber-50/60">
+          <CardContent className="flex gap-3 py-4 text-sm text-amber-950">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+            <div>
+              <p className="font-semibold">Export blocked — approvals incomplete</p>
+              <ul className="mt-2 list-disc space-y-1 pl-4 text-amber-900/90">
+                {readiness.blockers.map((blocker) => (
+                  <li key={blocker.message}>{blocker.message}</li>
+                ))}
+              </ul>
+              <p className="mt-2 text-amber-800/90">
+                Approve all pending time on the Time entries tab and tips on the Tips tab for{" "}
+                {period.label.toLowerCase()}.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="border-emerald-200 bg-emerald-50/50">
+          <CardContent className="py-3 text-sm text-emerald-900">
+            All time entries and crew tips are approved for this pay period — ready to export.
+          </CardContent>
+        </Card>
+      )}
 
       <div className="flex flex-wrap items-end gap-3">
         <label className="block">
@@ -90,7 +136,12 @@ export function PayrollExportTab({ entries }: PayrollExportTabProps) {
             ))}
           </select>
         </label>
-        <Button type="button" size="sm" onClick={downloadCsv} disabled={rows.length === 0}>
+        <Button
+          type="button"
+          size="sm"
+          onClick={downloadCsv}
+          disabled={!readiness.ready || rows.length === 0}
+        >
           <Download className="h-4 w-4" />
           Export CSV for Rippling
         </Button>
@@ -106,8 +157,9 @@ export function PayrollExportTab({ entries }: PayrollExportTabProps) {
       </div>
 
       <p className="text-xs text-slate-500">
-        {periodEntries.length} approved entries · {rows.length} employees · CSV uses Rippling
-        headers exactly ({RIPPLING_PAYROLL_COLUMNS.length} columns)
+        {approvedEntries.length} approved time entries · {approvedTips.length} approved tips ·{" "}
+        {rows.length} employees · CSV uses Rippling headers exactly (
+        {RIPPLING_PAYROLL_COLUMNS.length} columns)
       </p>
     </div>
   );

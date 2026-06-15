@@ -37,7 +37,8 @@ const STATUS_BADGE: Record<TesterFeedbackStatus, string> = {
 };
 
 export function TesterFeedbackView() {
-  const { isReady, items, updateFeedbackStatus, removeFeedback } = useTesterFeedback();
+  const { isReady, storage, syncError, items, updateFeedbackStatus, removeFeedback } =
+    useTesterFeedback();
   const [kindFilter, setKindFilter] = useState<TesterFeedbackKind | "all">("all");
   const [statusFilter, setStatusFilter] = useState<TesterFeedbackStatus>("open");
 
@@ -65,11 +66,27 @@ export function TesterFeedbackView() {
             <p className="text-sm font-semibold text-slate-900">Tester feedback</p>
             <p className="mt-1 max-w-2xl text-sm text-slate-600">
               Reports submitted from the amber Report button in the top bar while people test Move
-              HQ. Triage here — update status as items are planned or resolved.
+              HQ. Reports sync for everyone on the deployed app — triage here and update status as
+              items are planned or resolved.
             </p>
             <p className="mt-2 text-xs font-medium text-slate-500">
               {openCount} open or planned · {items.length} total
+              {storage === "blob"
+                ? " · shared storage"
+                : storage === "local"
+                  ? " · local dev storage"
+                  : null}
             </p>
+            {storage === "unconfigured" ? (
+              <p className="mt-2 text-xs text-amber-800">
+                Shared storage is not configured on Vercel yet. Add a Blob store and set{" "}
+                <code className="rounded bg-amber-100 px-1">BLOB_READ_WRITE_TOKEN</code> so reports
+                from testers persist for everyone.
+              </p>
+            ) : null}
+            {syncError ? (
+              <p className="mt-2 text-xs text-red-700">Sync issue: {syncError}</p>
+            ) : null}
           </div>
         </CardContent>
       </Card>

@@ -5,19 +5,14 @@ import {
   useOpsJobDayConfirmation,
 } from "@/components/dispatch/DayBeforeConfirmationPill";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
 import { jobDayStatusConfig, jobDayStatusLabel } from "@/lib/moves/job-days";
 import { formatMoveDate } from "@/lib/moves/format";
-import {
-  getJobFieldPacket,
-  jobFieldPacketSummary,
-} from "@/lib/operations/job-field-packet";
 import { CrewFeedbackRatingBadge } from "@/components/operations/jobs/CrewFeedbackDisplay";
 import { crewFeedbackForOpsJobRow } from "@/lib/moves/move-feedback-portal";
 import type { OpsJobDayRow } from "@/lib/operations/ops-jobs";
 import type { JobDayStatus, MoveRecord } from "@/lib/moves/types";
 import { cn } from "@/lib/utils";
-import { FileText, MapPin } from "lucide-react";
+import { MapPin } from "lucide-react";
 import { useMemo } from "react";
 
 type JobsListProps = {
@@ -25,8 +20,6 @@ type JobsListProps = {
   moves: MoveRecord[];
   emptyMessage: string;
   showDateColumn?: boolean;
-  showFieldPackets?: boolean;
-  onOpenFieldPacket?: (row: OpsJobDayRow) => void;
   /** Opens ops job-day sidebar instead of navigating to the move. */
   onSelectJob?: (row: OpsJobDayRow) => void;
   selectedJobId?: string | null;
@@ -53,8 +46,6 @@ type JobsListRowProps = {
   row: OpsJobDayRow;
   move?: MoveRecord;
   showDateColumn?: boolean;
-  showFieldPackets?: boolean;
-  onOpenFieldPacket?: (row: OpsJobDayRow) => void;
   onSelectJob?: (row: OpsJobDayRow) => void;
   selectedJobId?: string | null;
 };
@@ -63,15 +54,11 @@ function JobsListRow({
   row,
   move,
   showDateColumn,
-  showFieldPackets,
-  onOpenFieldPacket,
   onSelectJob,
   selectedJobId,
 }: JobsListRowProps) {
   const statusStyle = jobDayStatusConfig[row.status];
   const crewFeedback = crewFeedbackForOpsJobRow(move, row);
-  const packet =
-    showFieldPackets && onOpenFieldPacket ? getJobFieldPacket(row, move) : null;
   const selected = selectedJobId === row.id;
   const useSidebar = Boolean(onSelectJob);
 
@@ -110,49 +97,36 @@ function JobsListRow({
     <li className="flex flex-col sm:flex-row sm:items-stretch">
       {useSidebar ? (
         <div
+          role="button"
+          tabIndex={0}
+          onClick={() => onSelectJob?.(row)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              onSelectJob?.(row);
+            }
+          }}
           className={cn(
-            "flex min-w-0 flex-1 items-start gap-2 px-4 py-3 sm:gap-3",
-            selected ? "bg-brand-50/80" : "",
+            "flex min-w-0 flex-1 cursor-pointer items-start gap-2 px-4 py-3 text-left transition-colors sm:gap-3",
+            selected ? "bg-brand-50/80" : "hover:bg-slate-50",
           )}
         >
-          <button
-            type="button"
-            onClick={() => onSelectJob?.(row)}
-            className={cn(
-              "flex min-w-0 flex-1 flex-col gap-2 text-left transition-colors sm:flex-row sm:items-start sm:justify-between",
-              !selected && "hover:bg-slate-50",
-            )}
-          >
+          <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             {rowBody}
-          </button>
-          <JobRowConfirmation row={row} move={move} />
+          </div>
+          <div
+            className="shrink-0 self-start"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+          >
+            <JobRowConfirmation row={row} move={move} />
+          </div>
         </div>
       ) : (
         <div className="flex min-w-0 flex-1 flex-col gap-2 px-4 py-3 sm:flex-row sm:items-start sm:justify-between">
           {rowBody}
         </div>
       )}
-
-      {packet && onOpenFieldPacket ? (
-        <div className="flex shrink-0 flex-col items-stretch justify-center border-t border-slate-100 px-4 py-2 sm:w-[9.5rem] sm:border-l sm:border-t-0 sm:py-3 sm:pl-3 sm:pr-4">
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            className="w-full"
-            onClick={(e) => {
-              e.stopPropagation();
-              onOpenFieldPacket(row);
-            }}
-          >
-            <FileText className="h-3.5 w-3.5" />
-            Field packet
-          </Button>
-          <p className="mt-1 text-center text-[10px] leading-snug text-slate-500 sm:text-left">
-            {jobFieldPacketSummary(packet)}
-          </p>
-        </div>
-      ) : null}
     </li>
   );
 }
@@ -199,8 +173,6 @@ export function JobsList({
   moves,
   emptyMessage,
   showDateColumn,
-  showFieldPackets,
-  onOpenFieldPacket,
   onSelectJob,
   selectedJobId,
   groupByJobDayStatus = false,
@@ -217,8 +189,6 @@ export function JobsList({
 
   const rowProps = {
     showDateColumn,
-    showFieldPackets,
-    onOpenFieldPacket,
     onSelectJob,
     selectedJobId,
   };

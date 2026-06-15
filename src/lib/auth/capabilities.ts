@@ -18,7 +18,6 @@ export const CAPABILITIES = [
   "nav.planning",
   "nav.admin",
   "dashboard.executive",
-  "dashboard.manager",
   "dashboard.sales",
   "dashboard.ops",
   "reports.day",
@@ -109,7 +108,6 @@ export function baseCapabilitiesForLevel(level: PermissionLevel): CapabilitySet 
         "admin.company",
         "admin.integrations",
         "admin.setup",
-        "dashboard.manager",
         "dashboard.sales",
         "dashboard.ops",
         "reports.day",
@@ -286,14 +284,14 @@ export function defaultDashboardForLevel(level: PermissionLevel): DashboardView 
     case "admin":
       return "executive";
     case "manager":
-      return "manager";
+      return "sales";
     case "sales":
       return "sales";
     case "operations":
     case "crew":
       return "ops";
     default:
-      return "manager";
+      return "sales";
   }
 }
 
@@ -314,7 +312,6 @@ export function resolveAccess(
 export function allowedDashboardViews(capabilities: CapabilitySet): DashboardView[] {
   const views: DashboardView[] = [];
   if (capabilities.has("dashboard.executive")) views.push("executive");
-  if (capabilities.has("dashboard.manager")) views.push("manager");
   if (capabilities.has("dashboard.sales")) views.push("sales");
   if (capabilities.has("dashboard.ops")) views.push("ops");
   return views;
@@ -377,10 +374,6 @@ export const CAPABILITY_META: Record<Capability, CapabilityMeta> = {
   "dashboard.executive": {
     label: "Executive home",
     description: "Company-wide leadership dashboard.",
-  },
-  "dashboard.manager": {
-    label: "Manager home",
-    description: "Branch and team oversight dashboard.",
   },
   "dashboard.sales": {
     label: "Sales home",

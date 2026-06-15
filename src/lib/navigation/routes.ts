@@ -1,6 +1,7 @@
 /** Canonical app routes — prefer these over hard-coded path strings. */
 export const ROUTES = {
   schedule: "/schedule",
+  salesDashboard: "/sales/dashboard",
   salesMoves: "/sales/moves",
   salesFollowUps: "/sales/follow-ups",
   salesDocuments: "/sales/documents",

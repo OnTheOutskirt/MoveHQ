@@ -1,6 +1,6 @@
 import { addDays, startOfWeekSunday, toDateKey } from "@/lib/calendar/date-utils";
 import {
-  billableHoursFromCategories,
+  totalHoursFromCategories,
   buildCurrentPayPeriods,
   normalizeTimeEntry,
 } from "./time-entry-utils";
@@ -8,7 +8,7 @@ import type { PayPeriod, TimeEntry, TimeCategoryHours } from "./types";
 
 export { buildRipplingPayrollRows, ripplingPayrollCsvContent } from "./rippling-export";
 
-type DemoPerson = {
+export type PayrollDemoPerson = {
   personId: string;
   personName: string;
   workerType: TimeEntry["workerType"];
@@ -16,7 +16,7 @@ type DemoPerson = {
   hourlyRate: number | null;
 };
 
-const CREW: DemoPerson[] = [
+const CREW: PayrollDemoPerson[] = [
   {
     personId: "crew-marcus",
     personName: "Marcus T.",
@@ -54,7 +54,7 @@ const CREW: DemoPerson[] = [
   },
 ];
 
-const OFFICE: DemoPerson[] = [
+const OFFICE: PayrollDemoPerson[] = [
   {
     personId: "office-alex",
     personName: "Alex Rivera",
@@ -71,8 +71,35 @@ const OFFICE: DemoPerson[] = [
   },
 ];
 
+export const PAYROLL_DEMO_PEOPLE: PayrollDemoPerson[] = [...CREW, ...OFFICE];
+
+export function createManualTimeEntry(input: {
+  person: PayrollDemoPerson;
+  date: string;
+  jobRef: string | null;
+  categories: TimeCategoryHours;
+  notes?: string;
+}): TimeEntry {
+  const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  return normalizeTimeEntry({
+    id: `te-manual-${input.person.personId}-${input.date}-${suffix}`,
+    personId: input.person.personId,
+    personName: input.person.personName,
+    workerType: input.person.workerType,
+    roleLabel: input.person.roleLabel,
+    date: input.date,
+    jobRef: input.jobRef,
+    categories: input.categories,
+    hours: totalHoursFromCategories(input.categories),
+    hourlyRate: input.person.hourlyRate,
+    status: "pending",
+    source: "office_manual",
+    notes: input.notes,
+  });
+}
+
 function crewEntry(
-  person: DemoPerson,
+  person: PayrollDemoPerson,
   date: string,
   jobRef: string,
   categories: TimeCategoryHours,
@@ -88,7 +115,7 @@ function crewEntry(
     date,
     jobRef,
     categories,
-    hours: billableHoursFromCategories(categories),
+    hours: totalHoursFromCategories(categories),
     hourlyRate: person.hourlyRate,
     status,
     source: "crew_app",
@@ -97,7 +124,7 @@ function crewEntry(
 }
 
 function officeEntry(
-  person: DemoPerson,
+  person: PayrollDemoPerson,
   date: string,
   categories: TimeCategoryHours,
   status: TimeEntry["status"],
@@ -112,7 +139,7 @@ function officeEntry(
     date,
     jobRef: null,
     categories,
-    hours: billableHoursFromCategories(categories),
+    hours: totalHoursFromCategories(categories),
     hourlyRate: person.hourlyRate,
     status,
     source: "office_manual",

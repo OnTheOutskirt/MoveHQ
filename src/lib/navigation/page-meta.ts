@@ -23,6 +23,11 @@ export const pageMeta: Record<string, PageMeta> = {
     description:
       "",
   },
+  "/sales/dashboard": {
+    title: "Sales dashboard",
+    description:
+      "Your pipeline, follow-ups, web quotes, walkthroughs, and bookings — or team-wide metrics when viewing all sales.",
+  },
   "/sales/follow-ups": {
     title: "Follow-Ups",
     description:
@@ -57,6 +62,11 @@ export const pageMeta: Record<string, PageMeta> = {
     description:
       "Job days by date plus upcoming ops prep. On Past (and past dates), open field packets for crew forms, signatures, and payment.",
   },
+  "/operations/dashboard": {
+    title: "Ops dashboard",
+    description:
+      "Today's jobs, prep due, dispatch readiness, claims, fleet capacity, inventory, and crew — one place for operations.",
+  },
   "/operations/dispatch": {
     title: "Dispatch",
     description: "",
@@ -73,8 +83,7 @@ export const pageMeta: Record<string, PageMeta> = {
   },
   "/operations/payroll": {
     title: "Payroll & Time",
-    description:
-      "Operations approves crew and office hours (tips, mileage, per diem later). Office/HR runs the Rippling CSV export each pay period. Role permissions can split those views later.",
+    description: "",
   },
   "/admin/integrations": {
     title: "Integrations",
