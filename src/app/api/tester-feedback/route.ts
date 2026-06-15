@@ -6,6 +6,8 @@ import {
 import { TESTER_FEEDBACK_KINDS, type NewTesterFeedback } from "@/lib/planning/tester-feedback";
 import { NextResponse } from "next/server";
 
+export const runtime = "nodejs";
+
 function isNewTesterFeedback(value: unknown): value is NewTesterFeedback {
   if (!value || typeof value !== "object") return false;
   const input = value as Partial<NewTesterFeedback>;
@@ -55,7 +57,7 @@ export async function POST(request: Request) {
     console.error("POST /api/tester-feedback failed", error);
     const message =
       error instanceof Error ? error.message : "Failed to save tester feedback.";
-    const status = message.includes("not configured") ? 503 : 500;
+    const status = message.includes("Vercel Blob") ? 503 : 500;
     return NextResponse.json({ error: message }, { status });
   }
 }

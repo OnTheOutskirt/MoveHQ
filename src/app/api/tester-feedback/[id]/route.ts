@@ -5,6 +5,8 @@ import {
 import { TESTER_FEEDBACK_STATUSES, type TesterFeedbackStatus } from "@/lib/planning/tester-feedback";
 import { NextResponse } from "next/server";
 
+export const runtime = "nodejs";
+
 type RouteContext = { params: Promise<{ id: string }> };
 
 function isTesterFeedbackStatus(value: unknown): value is TesterFeedbackStatus {
@@ -32,7 +34,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     console.error("PATCH /api/tester-feedback/[id] failed", error);
     const message =
       error instanceof Error ? error.message : "Failed to update tester feedback.";
-    const status = message.includes("not configured") ? 503 : 500;
+    const status = message.includes("Vercel Blob") ? 503 : 500;
     return NextResponse.json({ error: message }, { status });
   }
 }
@@ -50,7 +52,7 @@ export async function DELETE(_request: Request, context: RouteContext) {
     console.error("DELETE /api/tester-feedback/[id] failed", error);
     const message =
       error instanceof Error ? error.message : "Failed to delete tester feedback.";
-    const status = message.includes("not configured") ? 503 : 500;
+    const status = message.includes("Vercel Blob") ? 503 : 500;
     return NextResponse.json({ error: message }, { status });
   }
 }

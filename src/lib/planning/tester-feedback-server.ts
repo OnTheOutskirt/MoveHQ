@@ -13,27 +13,45 @@ const LOCAL_FILE = path.join(process.cwd(), ".data", "tester-feedback.json");
 
 export type TesterFeedbackStorageMode = "blob" | "local" | "unconfigured";
 
-function useBlobStore(): boolean {
-  // Legacy static token, or Vercel's OIDC-linked store (BLOB_STORE_ID + VERCEL_OIDC_TOKEN on deploy).
-  return Boolean(process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID);
+/** Read env at call time — avoids stale build-time values on Vercel. */
+function blobEnv() {
+  return {
+    readWriteToken: process.env.BLOB_READ_WRITE_TOKEN,
+    storeId: process.env.BLOB_STORE_ID,
+    isVercel: Boolean(process.env.VERCEL),
+  };
 }
 
-function isVercelRuntime(): boolean {
-  return Boolean(process.env.VERCEL);
+function hasBlobCredentials(): boolean {
+  const { readWriteToken, storeId } = blobEnv();
+  return Boolean(readWriteToken || storeId);
+}
+
+function shouldUseBlobStorage(): boolean {
+  const { isVercel } = blobEnv();
+  return hasBlobCredentials() || isVercel;
+}
+
+function blobCommandOptions() {
+  const { readWriteToken, storeId } = blobEnv();
+  return {
+    access: "private" as const,
+    ...(storeId ? { storeId } : {}),
+    ...(readWriteToken ? { token: readWriteToken } : {}),
+  };
 }
 
 export function getTesterFeedbackStorageMode(): TesterFeedbackStorageMode {
-  if (useBlobStore()) return "blob";
-  if (isVercelRuntime()) return "unconfigured";
+  if (hasBlobCredentials()) return "blob";
+  if (blobEnv().isVercel) return "unconfigured";
   return "local";
 }
 
-export function assertTesterFeedbackWritable(): void {
-  if (getTesterFeedbackStorageMode() === "unconfigured") {
-    throw new Error(
-      "Tester feedback storage is not configured. Connect a Vercel Blob store to this project, then redeploy.",
-    );
-  }
+function blobSetupError(cause: unknown): Error {
+  const detail = cause instanceof Error ? cause.message : String(cause);
+  return new Error(
+    `Could not use Vercel Blob (${detail}). Open Storage → your Blob store → Projects and confirm this MoveHQ project is connected with BLOB_STORE_ID on Production, then redeploy.`,
+  );
 }
 
 function dedupeItems(items: TesterFeedback[]): TesterFeedback[] {
@@ -46,16 +64,23 @@ function dedupeItems(items: TesterFeedback[]): TesterFeedback[] {
 }
 
 async function readAll(): Promise<TesterFeedback[]> {
-  if (useBlobStore()) {
-    const result = await get(BLOB_PATHNAME, { access: "private" });
-    if (!result || result.statusCode !== 200 || !result.stream) return [];
-    const text = await new Response(result.stream).text();
-    if (!text.trim()) return [];
-    const parsed = JSON.parse(text) as unknown;
-    return dedupeItems(Array.isArray(parsed) ? (parsed as TesterFeedback[]) : []);
+  if (shouldUseBlobStorage()) {
+    try {
+      const result = await get(BLOB_PATHNAME, blobCommandOptions());
+      if (!result || result.statusCode !== 200 || !result.stream) return [];
+      const text = await new Response(result.stream).text();
+      if (!text.trim()) return [];
+      const parsed = JSON.parse(text) as unknown;
+      return dedupeItems(Array.isArray(parsed) ? (parsed as TesterFeedback[]) : []);
+    } catch (error) {
+      if (blobEnv().isVercel && !hasBlobCredentials()) {
+        console.error("Tester feedback blob read failed — missing blob env", error);
+        return [];
+      }
+      console.error("Tester feedback blob read failed", error);
+      return [];
+    }
   }
-
-  if (isVercelRuntime()) return [];
 
   try {
     const text = await fs.readFile(LOCAL_FILE, "utf8");
@@ -68,18 +93,23 @@ async function readAll(): Promise<TesterFeedback[]> {
 }
 
 async function writeAll(items: TesterFeedback[]): Promise<void> {
-  assertTesterFeedbackWritable();
-
   const payload = JSON.stringify(dedupeItems(items), null, 2);
 
-  if (useBlobStore()) {
-    await put(BLOB_PATHNAME, payload, {
-      access: "private",
-      contentType: "application/json",
-      allowOverwrite: true,
-      addRandomSuffix: false,
-    });
-    return;
+  if (shouldUseBlobStorage()) {
+    try {
+      await put(BLOB_PATHNAME, payload, {
+        ...blobCommandOptions(),
+        contentType: "application/json",
+        allowOverwrite: true,
+        addRandomSuffix: false,
+      });
+      return;
+    } catch (error) {
+      if (blobEnv().isVercel) {
+        throw blobSetupError(error);
+      }
+      throw error;
+    }
   }
 
   await fs.mkdir(path.dirname(LOCAL_FILE), { recursive: true });
