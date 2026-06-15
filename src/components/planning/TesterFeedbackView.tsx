@@ -79,9 +79,9 @@ export function TesterFeedbackView() {
             </p>
             {storage === "unconfigured" ? (
               <p className="mt-2 text-xs text-amber-800">
-                Shared storage is not configured on Vercel yet. Add a Blob store and set{" "}
-                <code className="rounded bg-amber-100 px-1">BLOB_READ_WRITE_TOKEN</code> so reports
-                from testers persist for everyone.
+                Shared storage is not configured on Vercel yet. Connect a Blob store to this project
+                (you should see <code className="rounded bg-amber-100 px-1">BLOB_STORE_ID</code> in
+                env vars), then redeploy so reports from testers persist for everyone.
               </p>
             ) : null}
             {syncError ? (

@@ -14,7 +14,8 @@ const LOCAL_FILE = path.join(process.cwd(), ".data", "tester-feedback.json");
 export type TesterFeedbackStorageMode = "blob" | "local" | "unconfigured";
 
 function useBlobStore(): boolean {
-  return Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+  // Legacy static token, or Vercel's OIDC-linked store (BLOB_STORE_ID + VERCEL_OIDC_TOKEN on deploy).
+  return Boolean(process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID);
 }
 
 function isVercelRuntime(): boolean {
@@ -30,7 +31,7 @@ export function getTesterFeedbackStorageMode(): TesterFeedbackStorageMode {
 export function assertTesterFeedbackWritable(): void {
   if (getTesterFeedbackStorageMode() === "unconfigured") {
     throw new Error(
-      "Tester feedback storage is not configured. Add BLOB_READ_WRITE_TOKEN in Vercel project settings.",
+      "Tester feedback storage is not configured. Connect a Vercel Blob store to this project, then redeploy.",
     );
   }
 }
