@@ -50,7 +50,6 @@ export function DiscountReasonsSection() {
       title="Discount reasons"
       description="Preset reasons for flat rate and hourly quotes — percent or dollar default each."
       count={reasons.length}
-      defaultOpen
     >
       <div className="space-y-2">
         {reasons.map((reason) => (

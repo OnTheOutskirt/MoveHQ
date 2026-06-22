@@ -2,7 +2,6 @@
 
 import { CalendarColorsTab } from "@/components/calendar/settings/CalendarColorsTab";
 import { CalendarMetricsTab } from "@/components/calendar/settings/CalendarMetricsTab";
-import { CalendarSettingsLocationBar } from "@/components/calendar/settings/CalendarSettingsLocationBar";
 import { DayShareTab } from "@/components/calendar/settings/DayShareTab";
 import { DaysOffTab } from "@/components/calendar/settings/DaysOffTab";
 import { DetailSidebar } from "@/components/ui/DetailSidebar";
@@ -12,7 +11,7 @@ import { useState } from "react";
 
 const SETTINGS_TABS = [
   { id: "metrics" as const, label: "Day card metrics" },
-  { id: "day-share" as const, label: "Day share" },
+  { id: "day-share" as const, label: "Open slots" },
   { id: "days-off" as const, label: "Days off" },
   { id: "colors" as const, label: "Colors" },
 ];
@@ -32,7 +31,6 @@ export function CalendarSettingsSidebar({ open, onClose }: CalendarSettingsSideb
       description="Day card metrics, closures, and colors — per location or company-wide"
       widthClassName="max-w-xl"
     >
-      <CalendarSettingsLocationBar className="mb-4" />
       <TabBar tabs={SETTINGS_TABS} activeTab={activeTab} onChange={setActiveTab} />
       <div className="mt-4">
         {activeTab === "metrics" && <CalendarMetricsTab />}

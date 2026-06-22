@@ -13,7 +13,7 @@ import type { InboxChannel, InboxThread } from "@/lib/inbox/types";
 import { pipelineStageLabel } from "@/lib/moves/move-pipeline";
 import { salesMovePath } from "@/lib/navigation/routes";
 import { cn } from "@/lib/utils";
-import { ExternalLink, Mail, MessageSquare, Phone, X } from "lucide-react";
+import { Clock, ExternalLink, Mail, MailOpen, MessageSquare, Phone, X } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useInbox } from "@/components/providers/InboxProvider";
@@ -31,7 +31,7 @@ type InboxConversationProps = {
 
 export function InboxConversation({ thread }: InboxConversationProps) {
   const { getMoveById } = useMoves();
-  const { dismissNeedsReply } = useInbox();
+  const { dismissNeedsReply, markNeedsReply, markThreadUnread, markThreadRead } = useInbox();
   const move = getMoveById(thread.moveId);
   const [channelTab, setChannelTab] = useState<InboxChannel | "all">("all");
 
@@ -78,6 +78,28 @@ export function InboxConversation({ thread }: InboxConversationProps) {
             <div className={composerHeaderActionsClass()}>
               {showDial ? <CallDialHeaderAction phone={move.customerPhone!} /> : null}
               {showOpenMail ? <EmailOpenMailHeaderButton /> : null}
+              {thread.unreadCount > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => markThreadRead(thread.id)}
+                  className="inline-flex items-center gap-1 rounded-full bg-slate-700 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white hover:bg-slate-800"
+                  title="Mark this conversation as read"
+                >
+                  Unread
+                  <X className="h-3 w-3" aria-hidden />
+                  <span className="sr-only">Mark as read</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => markThreadUnread(thread.id)}
+                  className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 hover:bg-slate-50"
+                  title="Mark this conversation as unread"
+                >
+                  <MailOpen className="h-3 w-3" aria-hidden />
+                  Mark unread
+                </button>
+              )}
               {thread.needsReply ? (
                 <button
                   type="button"
@@ -89,7 +111,17 @@ export function InboxConversation({ thread }: InboxConversationProps) {
                   <X className="h-3 w-3" aria-hidden />
                   <span className="sr-only">Clear awaiting response</span>
                 </button>
-              ) : null}
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => markNeedsReply(thread.id)}
+                  className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 hover:bg-amber-50"
+                  title="Flag this conversation as awaiting a response"
+                >
+                  <Clock className="h-3 w-3" aria-hidden />
+                  Mark waiting
+                </button>
+              )}
             </div>
           </div>
 

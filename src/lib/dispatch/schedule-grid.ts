@@ -1,4 +1,4 @@
-import { fractionUnits } from "@/lib/day-share/units";
+import { DAY_SHARE_CAPACITY, fractionUnits } from "@/lib/day-share/units";
 import type { DayShareFraction } from "@/lib/day-share/types";
 import type { JobDayFraction } from "@/lib/moves/types";
 import type { DispatchJob } from "./types";
@@ -106,7 +106,7 @@ export function parseArrivalWindowStart(arrivalWindow: string | undefined): numb
 }
 
 export function workMinutesForFraction(fraction: JobDayFraction | DayShareFraction): number {
-  return Math.round((fractionUnits(fraction) / 6) * DISPATCH_FULL_DAY_WORK_MINUTES);
+  return Math.round((fractionUnits(fraction) / DAY_SHARE_CAPACITY) * DISPATCH_FULL_DAY_WORK_MINUTES);
 }
 
 export type ResolveScheduleBlockOptions = {

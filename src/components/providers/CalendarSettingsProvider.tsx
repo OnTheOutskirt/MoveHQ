@@ -61,6 +61,10 @@ type CalendarSettingsContextValue = {
   updateClosedDay: (id: string, patch: Partial<Pick<ClosedDayEntry, "date" | "label">>) => void;
   removeClosedDay: (id: string) => void;
   removeClosedDayForDate: (dateKey: string) => void;
+  /** Turn a saved closure on/off without deleting it. */
+  setClosedDayEnabled: (id: string, enabled: boolean) => void;
+  /** Turn a closure on/off by date (used when marking days off/on from the calendar). */
+  setClosedDayEnabledForDate: (dateKey: string, enabled: boolean) => void;
   setFederalHolidayBooked: (dateKey: string, booked: boolean) => void;
   updatePaletteColor: (key: keyof CalendarColorPalette, value: string) => void;
   resetColors: () => void;
@@ -172,7 +176,10 @@ export function CalendarSettingsProvider({ children }: { children: React.ReactNo
       const next = [...withoutDate, { ...entry, id: generateClosedDayId() }].sort((a, b) =>
         a.date.localeCompare(b.date),
       );
-      patchSettings({ closedDays: next });
+      const nextRemovedFederal = (target.removedFederalDates ?? []).filter(
+        (d) => d !== entry.date,
+      );
+      patchSettings({ closedDays: next, removedFederalDates: nextRemovedFederal });
     },
     [hasMultipleLocations, settingsResolved, viewResolved, patchSettings],
   );
@@ -194,7 +201,15 @@ export function CalendarSettingsProvider({ children }: { children: React.ReactNo
       const nextFederal = removed
         ? target.federalHolidayBookedDates.filter((d) => d !== removed.date)
         : target.federalHolidayBookedDates;
-      patchSettings({ closedDays: next, federalHolidayBookedDates: nextFederal });
+      const nextRemovedFederal =
+        removed?.source === "federal"
+          ? [...new Set([...(target.removedFederalDates ?? []), removed.date])]
+          : (target.removedFederalDates ?? []);
+      patchSettings({
+        closedDays: next,
+        federalHolidayBookedDates: nextFederal,
+        removedFederalDates: nextRemovedFederal,
+      });
     },
     [hasMultipleLocations, settingsResolved, viewResolved, patchSettings],
   );
@@ -202,9 +217,55 @@ export function CalendarSettingsProvider({ children }: { children: React.ReactNo
   const removeClosedDayForDate = useCallback(
     (dateKey: string) => {
       const target = hasMultipleLocations ? settingsResolved : viewResolved;
+      const removed = target.closedDays.filter((e) => e.date === dateKey);
       const next = target.closedDays.filter((e) => e.date !== dateKey);
       const nextFederal = target.federalHolidayBookedDates.filter((d) => d !== dateKey);
-      patchSettings({ closedDays: next, federalHolidayBookedDates: nextFederal });
+      const nextRemovedFederal = removed.some((e) => e.source === "federal")
+        ? [...new Set([...(target.removedFederalDates ?? []), dateKey])]
+        : (target.removedFederalDates ?? []);
+      patchSettings({
+        closedDays: next,
+        federalHolidayBookedDates: nextFederal,
+        removedFederalDates: nextRemovedFederal,
+      });
+    },
+    [hasMultipleLocations, settingsResolved, viewResolved, patchSettings],
+  );
+
+  const setClosedDayEnabled = useCallback(
+    (id: string, enabled: boolean) => {
+      const target = hasMultipleLocations ? settingsResolved : viewResolved;
+      const entry = target.closedDays.find((e) => e.id === id);
+      if (!entry) return;
+      if (entry.source === "federal") {
+        // Off = operate the holiday as a normal (booked) day; on = closed.
+        const nextFederal = !enabled
+          ? [...new Set([...target.federalHolidayBookedDates, entry.date])]
+          : target.federalHolidayBookedDates.filter((d) => d !== entry.date);
+        patchSettings({ federalHolidayBookedDates: nextFederal });
+        return;
+      }
+      const next = target.closedDays.map((e) => (e.id === id ? { ...e, enabled } : e));
+      patchSettings({ closedDays: next });
+    },
+    [hasMultipleLocations, settingsResolved, viewResolved, patchSettings],
+  );
+
+  const setClosedDayEnabledForDate = useCallback(
+    (dateKey: string, enabled: boolean) => {
+      const target = hasMultipleLocations ? settingsResolved : viewResolved;
+      const entries = target.closedDays.filter((e) => e.date === dateKey);
+      if (entries.length === 0) return;
+      const hasFederal = entries.some((e) => e.source === "federal");
+      const nextFederal = hasFederal
+        ? !enabled
+          ? [...new Set([...target.federalHolidayBookedDates, dateKey])]
+          : target.federalHolidayBookedDates.filter((d) => d !== dateKey)
+        : target.federalHolidayBookedDates;
+      const nextClosed = target.closedDays.map((e) =>
+        e.date === dateKey && e.source !== "federal" ? { ...e, enabled } : e,
+      );
+      patchSettings({ closedDays: nextClosed, federalHolidayBookedDates: nextFederal });
     },
     [hasMultipleLocations, settingsResolved, viewResolved, patchSettings],
   );
@@ -249,7 +310,8 @@ export function CalendarSettingsProvider({ children }: { children: React.ReactNo
 
   const value = useMemo<CalendarSettingsContextValue>(
     () => ({
-      closedDays: viewResolved.closedDays,
+      // Disabled (turned-off) custom closures stay saved but don't close the calendar.
+      closedDays: viewResolved.closedDays.filter((e) => e.enabled !== false),
       federalHolidayBookedDates: viewResolved.federalHolidayBookedDates,
       colorPalette: viewResolved.colorPalette,
       colors,
@@ -268,6 +330,8 @@ export function CalendarSettingsProvider({ children }: { children: React.ReactNo
       updateClosedDay,
       removeClosedDay,
       removeClosedDayForDate,
+      setClosedDayEnabled,
+      setClosedDayEnabledForDate,
       setFederalHolidayBooked,
       updatePaletteColor,
       resetColors,
@@ -290,6 +354,8 @@ export function CalendarSettingsProvider({ children }: { children: React.ReactNo
       updateClosedDay,
       removeClosedDay,
       removeClosedDayForDate,
+      setClosedDayEnabled,
+      setClosedDayEnabledForDate,
       setFederalHolidayBooked,
       updatePaletteColor,
       resetColors,

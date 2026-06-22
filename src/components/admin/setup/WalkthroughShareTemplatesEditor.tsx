@@ -104,7 +104,7 @@ export function WalkthroughShareTemplatesEditor({
             <CardHeader>
               <CardTitle className="text-base">Default message</CardTitle>
               <p className="text-sm text-slate-500">
-                Pre-fills the email or SMS composer when sharing this link from Book walkthrough.
+                Pre-fills the composer when sharing this link.
               </p>
             </CardHeader>
             <CardContent className="space-y-4">

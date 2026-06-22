@@ -40,7 +40,7 @@ export function MoveDetailTabSections({
     <div className="min-w-0 space-y-6">
       <div
         className={cn(
-          "sticky z-40 -mx-4 min-w-0 bg-slate-50/95 px-4 pb-1 backdrop-blur-sm lg:-mx-5 lg:px-5",
+          "sticky z-20 -mx-4 min-w-0 bg-slate-50/95 px-4 pb-1 backdrop-blur-sm lg:-mx-5 lg:px-5",
           MOVE_DETAIL_STICKY_SCOPE_TOP,
         )}
       >

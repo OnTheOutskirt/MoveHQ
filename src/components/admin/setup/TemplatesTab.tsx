@@ -22,7 +22,6 @@ import type {
   DocumentTemplate,
   DocumentTemplateType,
 } from "@/lib/settings/document-template-types";
-import { cn } from "@/lib/utils";
 import { useMemo, useRef, useState, type RefObject } from "react";
 
 type TemplatesTabProps = {
@@ -79,32 +78,12 @@ export function TemplatesTab({ templates, onChange }: TemplatesTabProps) {
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(10rem,12rem)_1fr]">
-      <Card className="h-fit">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Document types</CardTitle>
-        </CardHeader>
-        <CardContent className="p-2">
-          <ul className="space-y-0.5">
-            {templates.map((t) => (
-              <li key={t.id}>
-                <button
-                  type="button"
-                  onClick={() => setActiveId(t.id)}
-                  className={cn(
-                    "w-full rounded-lg px-3 py-2 text-left text-sm transition-colors",
-                    t.id === activeId
-                      ? "bg-brand-50 font-medium text-brand-800"
-                      : "text-slate-700 hover:bg-slate-50",
-                  )}
-                >
-                  {t.name}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </CardContent>
-      </Card>
+    <div className="space-y-4">
+      <TabBar
+        tabs={templates.map((t) => ({ id: t.id, label: t.name }))}
+        activeTab={activeId}
+        onChange={setActiveId}
+      />
 
       <div className="min-w-0 space-y-4">
         <div>

@@ -165,11 +165,11 @@ function normalizeCrewRates(
           ? saved.hourlyRate
           : fallback.hourlyRate,
       minimumHoursLocal:
-        typeof saved?.minimumHoursLocal === "number" && saved.minimumHoursLocal > 0
+        typeof saved?.minimumHoursLocal === "number" && saved.minimumHoursLocal >= 0
           ? saved.minimumHoursLocal
           : fallback.minimumHoursLocal,
       minimumHoursLongDistance:
-        typeof saved?.minimumHoursLongDistance === "number" && saved.minimumHoursLongDistance > 0
+        typeof saved?.minimumHoursLongDistance === "number" && saved.minimumHoursLongDistance >= 0
           ? saved.minimumHoursLongDistance
           : fallback.minimumHoursLongDistance,
     };
@@ -217,7 +217,7 @@ export function normalizeHourlyQuoteSettings(
 ): HourlyQuoteSettings {
   const legacyRate = typeof raw?.travelFee === "number" ? raw.travelFee : 150;
   const legacyMin =
-    typeof raw?.minimumHours === "number" && raw.minimumHours > 0 ? raw.minimumHours : 3;
+    typeof raw?.minimumHours === "number" && raw.minimumHours >= 0 ? raw.minimumHours : 3;
   const legacyCrewRate =
     typeof (raw as { hourlyCrewRate?: number })?.hourlyCrewRate === "number"
       ? (raw as { hourlyCrewRate: number }).hourlyCrewRate

@@ -1,5 +1,11 @@
 import type { PlanningGroup } from "./types";
 
+/** A high-level grouping of roadmap groups for the checklist view. */
+export type RoadmapSection = {
+  title: string;
+  groupIds: string[];
+};
+
 export const V1_GROUPS: PlanningGroup[] = [
   {
     id: "ui-desktop",
@@ -561,6 +567,35 @@ export const V1_GROUPS: PlanningGroup[] = [
   },
 ];
 
+/** Overall sections for the V1 checklist — grouped by build phase / month. */
+export const V1_SECTIONS: RoadmapSection[] = [
+  {
+    title: "June — Office app & Supabase",
+    groupIds: ["ui-desktop", "june-supabase"],
+  },
+  {
+    title: "July — Office app on live data",
+    groupIds: [
+      "intake",
+      "calendar",
+      "dashboard",
+      "crm",
+      "comms",
+      "automations",
+      "documents",
+      "payments",
+      "followups",
+      "admin",
+      "auth",
+      "operations",
+    ],
+  },
+  {
+    title: "August — Crew app & launch",
+    groupIds: ["ui-pwa", "data-import", "timetrack", "ai", "infra"],
+  },
+];
+
 export const V2_GROUPS: PlanningGroup[] = [
   {
     id: "v2-comms-sms",
@@ -820,5 +855,35 @@ export const V2_GROUPS: PlanningGroup[] = [
         builderNote: "Rippling API",
       },
     ],
+  },
+];
+
+/** Overall sections for the V2 checklist — grouped by theme. */
+export const V2_SECTIONS: RoadmapSection[] = [
+  {
+    title: "Communications & AI",
+    groupIds: [
+      "v2-comms-sms",
+      "v2-comms-voice",
+      "v2-comms-email",
+      "v2-comms-unified",
+      "v2-ai",
+    ],
+  },
+  {
+    title: "Automations & follow-ups",
+    groupIds: ["v2-automations", "v2-followups", "v2-marketing"],
+  },
+  {
+    title: "Crew & field",
+    groupIds: ["v2-crew-app", "v2-walkthrough", "v2-website"],
+  },
+  {
+    title: "Documents, time & reporting",
+    groupIds: ["v2-docs", "v2-time", "v2-reports"],
+  },
+  {
+    title: "Integrations",
+    groupIds: ["v2-integrations"],
   },
 ];

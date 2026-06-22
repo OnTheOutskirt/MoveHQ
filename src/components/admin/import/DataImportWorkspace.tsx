@@ -1,5 +1,6 @@
 "use client";
 
+import { SetupAccordion } from "@/components/admin/setup/SetupAccordion";
 import { useClaims } from "@/components/providers/ClaimsProvider";
 import { useInventory } from "@/components/providers/InventoryProvider";
 import { useMoves } from "@/components/moves/MovesProvider";
@@ -199,7 +200,7 @@ export function DataImportWorkspace() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <PageHeader title={meta.title} description={meta.description} />
+        <PageHeader title={meta.title} />
         <div className="flex flex-wrap gap-2">
           <Button type="button" variant="secondary" size="sm" onClick={() => downloadImportTemplate(dataset)}>
             <Download className="h-4 w-4" />
@@ -208,21 +209,22 @@ export function DataImportWorkspace() {
         </div>
       </div>
 
-      <div className="rounded-lg border border-brand-200 bg-brand-50/40 p-4 text-sm text-slate-700">
-        <p className="font-medium text-brand-900">Recommended import order</p>
-        <ol className="mt-2 list-decimal space-y-1 pl-5 text-xs sm:text-sm">
-          {IMPORT_DATASET_ORDER.map((kind) => (
-            <li key={kind}>
-              <span className="font-medium">{IMPORT_DATASET_LABELS[kind]}</span>
-              <span className="text-slate-600"> — {IMPORT_DATASET_HINTS[kind]}</span>
-            </li>
-          ))}
-        </ol>
-        <p className="mt-3 text-xs text-slate-600">
-          Re-uploading updates existing rows matched by external ID or move reference. Rows with errors
-          are skipped — fix the CSV and import again.
-        </p>
-      </div>
+      <SetupAccordion title="Recommended import order" defaultOpen={false}>
+        <div className="text-sm text-slate-700">
+          <ol className="list-decimal space-y-1 pl-5 text-xs sm:text-sm">
+            {IMPORT_DATASET_ORDER.map((kind) => (
+              <li key={kind}>
+                <span className="font-medium">{IMPORT_DATASET_LABELS[kind]}</span>
+                <span className="text-slate-600"> — {IMPORT_DATASET_HINTS[kind]}</span>
+              </li>
+            ))}
+          </ol>
+          <p className="mt-3 text-xs text-slate-600">
+            Re-uploading updates existing rows matched by external ID or move reference. Rows with
+            errors are skipped — fix the CSV and import again.
+          </p>
+        </div>
+      </SetupAccordion>
 
       <div className="grid gap-6 lg:grid-cols-[14rem_1fr]">
         <nav className="space-y-1">

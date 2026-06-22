@@ -67,6 +67,21 @@ export function defaultSectionForWorkspace(
 /** Admin UI grouping — a rule can match multiple categories via its actions. */
 export type AutomationRuleCategory = "follow_ups" | "messages" | "internal";
 
+/** One action in an automation sequence, fired after a delay relative to the previous step. */
+export type AutomationStep = {
+  id: string;
+  action: AutomationActionKind;
+  /** Delay (days) after the previous step; the first step is relative to the trigger firing. */
+  delayDays?: number;
+  /** Delay (minutes) after the previous step; the first step is relative to the trigger firing. */
+  delayMinutes?: number;
+  smsTemplateId?: string;
+  emailTemplateId?: string;
+  followUpTitle?: string;
+  followUpChannel?: FollowUpChannel;
+  followUpType?: FollowUpType;
+};
+
 export type PipelineAutomationRule = {
   id: string;
   label: string;
@@ -81,6 +96,8 @@ export type PipelineAutomationRule = {
   /** @deprecated Use builtin — kept for saved settings migration. */
   recommended?: boolean;
   actions: AutomationActionKind[];
+  /** Ordered action sequence. When present, supersedes the flat `actions` + timing fields. */
+  steps?: AutomationStep[];
   /** When true, do not recreate if an open or completed task/message already exists for this rule. */
   skipIfDone: boolean;
   /** Minutes after trigger (stage enter). */
@@ -151,13 +168,50 @@ const CATEGORY_ACTIONS: Record<AutomationRuleCategory, AutomationActionKind[]> =
   internal: ["office_notify", "crew_app_push"],
 };
 
+/** Stable per-action suffix so migrated builtin rules keep their original dedupe ids. */
+const ACTION_STEP_SUFFIX: Record<AutomationActionKind, string> = {
+  follow_up_task: "task",
+  send_sms: "sms",
+  send_email: "email",
+  office_notify: "notify",
+  crew_app_push: "push",
+};
+
+/** Resolve a rule's ordered steps, deriving them from the legacy actions + timing when absent. */
+export function migrateRuleToSteps(rule: PipelineAutomationRule): AutomationStep[] {
+  if (rule.steps && rule.steps.length > 0) return rule.steps;
+  const actions = rule.actions?.length
+    ? rule.actions
+    : (["follow_up_task"] as AutomationActionKind[]);
+  return actions.map((action, index) => ({
+    id: ACTION_STEP_SUFFIX[action] ?? `step-${index + 1}`,
+    action,
+    // First step inherits the rule's flat timing; later steps fire at the same time (delay 0).
+    delayMinutes: index === 0 ? rule.delayMinutes : undefined,
+    delayDays: index === 0 ? rule.delayDays : undefined,
+    smsTemplateId: action === "send_sms" ? rule.smsTemplateId : undefined,
+    emailTemplateId: action === "send_email" ? rule.emailTemplateId : undefined,
+    followUpTitle: action === "follow_up_task" ? rule.followUpTitle : undefined,
+    followUpChannel: action === "follow_up_task" ? rule.followUpChannel : undefined,
+    followUpType: action === "follow_up_task" ? rule.followUpType : undefined,
+  }));
+}
+
+/** Distinct action kinds a rule performs, derived from steps when present. */
+export function ruleActionKinds(rule: PipelineAutomationRule): AutomationActionKind[] {
+  const fromSteps =
+    rule.steps && rule.steps.length > 0 ? rule.steps.map((s) => s.action) : rule.actions;
+  return [...new Set(fromSteps?.length ? fromSteps : (["follow_up_task"] as AutomationActionKind[]))];
+}
+
 export function automationRuleCategories(rule: PipelineAutomationRule): AutomationRuleCategory[] {
+  const kinds = ruleActionKinds(rule);
   const cats: AutomationRuleCategory[] = [];
   for (const [category, actions] of Object.entries(CATEGORY_ACTIONS) as [
     AutomationRuleCategory,
     AutomationActionKind[],
   ][]) {
-    if (rule.actions.some((a) => actions.includes(a))) cats.push(category);
+    if (kinds.some((a) => actions.includes(a))) cats.push(category);
   }
   return cats.length > 0 ? cats : ["follow_ups"];
 }
@@ -462,13 +516,14 @@ export function normalizePipelineAutomations(
 
 function normalizeRule(rule: PipelineAutomationRule): PipelineAutomationRule {
   const builtin = rule.builtin ?? (rule.recommended !== false && !rule.id.startsWith("custom-"));
-  return {
+  const normalized: PipelineAutomationRule = {
     ...rule,
     builtin,
     skipIfDone: rule.skipIfDone ?? true,
     actions: rule.actions?.length ? rule.actions : ["follow_up_task"],
     recommended: undefined,
   };
+  return { ...normalized, steps: migrateRuleToSteps(normalized) };
 }
 
 export function slugFromAutomationLabel(label: string): string {

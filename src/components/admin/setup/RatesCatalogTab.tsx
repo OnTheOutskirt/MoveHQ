@@ -3,7 +3,9 @@
 import { EquipmentCatalogSection } from "@/components/admin/setup/EquipmentCatalogSection";
 import { RateHistoryPanel } from "@/components/admin/setup/RateHistoryPanel";
 import { SetupAccordion } from "@/components/admin/setup/SetupAccordion";
+import { EditableNumberInput } from "@/components/settings/EditableNumberInput";
 import { SettingsField } from "@/components/settings/SettingsField";
+import { TabBar } from "@/components/shared/TabBar";
 import type { EquipmentCatalogItem } from "@/lib/moves/equipment-catalog-types";
 import {
   crewSizeLabel,
@@ -19,7 +21,14 @@ import {
 } from "@/lib/moves/hourly-quote-settings";
 import type { PricingRateSchedule } from "@/lib/pricing/rate-history-types";
 import { cn } from "@/lib/utils";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+
+const RATES_CATALOG_SUBTABS = [
+  { id: "rates", label: "Rates & catalog" },
+  { id: "history", label: "Rate history" },
+] as const;
+
+type RatesCatalogSubTab = (typeof RATES_CATALOG_SUBTABS)[number]["id"];
 
 type RatesCatalogTabProps = {
   hourlySettings: HourlyQuoteSettings;
@@ -36,12 +45,11 @@ const COMPACT_INPUT =
 
 function moneyInput(value: number, onChange: (n: number) => void, className?: string) {
   return (
-    <input
-      type="number"
+    <EditableNumberInput
+      value={value}
+      onCommit={onChange}
       min={0}
       step={1}
-      value={value}
-      onChange={(e) => onChange(Math.max(0, Number(e.target.value) || 0))}
       className={cn(COMPACT_INPUT, "tabular-nums", className)}
     />
   );
@@ -56,6 +64,7 @@ export function RatesCatalogTab({
   onCatalogChange,
   schedule,
 }: RatesCatalogTabProps) {
+  const [subTab, setSubTab] = useState<RatesCatalogSubTab>("rates");
   const supplies = useMemo(
     () => catalog.filter((item) => item.category === "supply"),
     [catalog],
@@ -91,14 +100,13 @@ export function RatesCatalogTab({
   }
 
   return (
-    <div className="space-y-2">
-      <p className="mb-3 max-w-3xl text-sm text-slate-600">
-        Company-wide rates for quotes, contracts, and the equipment/supplies catalog on each move.
-        Saving records a new rate history entry when values change. Move types under{" "}
-        <span className="font-medium text-slate-800">Move types</span> control how travel is billed
-        on the job; amounts are set here.
-      </p>
+    <div className="space-y-4">
+      <TabBar tabs={RATES_CATALOG_SUBTABS} activeTab={subTab} onChange={setSubTab} />
 
+      {subTab === "history" ? (
+        <RateHistoryPanel entries={schedule.entries} />
+      ) : (
+    <div className="space-y-2">
       <SetupAccordion
         title="Hourly crew rates"
         description="$/hr and minimum hours by crew size (2–10+). Local vs long-distance minimums."
@@ -122,32 +130,24 @@ export function RatesCatalogTab({
                   </td>
                   <td className="px-3 py-2">{moneyInput(row.hourlyRate, (v) => patchCrewRate(row.crewSize, { hourlyRate: v }))}</td>
                   <td className="px-3 py-2">
-                    <input
-                      type="number"
-                      min={1}
+                    <EditableNumberInput
+                      value={row.minimumHoursLocal}
+                      onCommit={(v) => patchCrewRate(row.crewSize, { minimumHoursLocal: v })}
+                      min={0}
                       max={12}
                       step={0.5}
-                      value={row.minimumHoursLocal}
-                      onChange={(e) =>
-                        patchCrewRate(row.crewSize, {
-                          minimumHoursLocal: Math.max(1, Number(e.target.value) || 1),
-                        })
-                      }
+                      fallback={0}
                       className={cn(COMPACT_INPUT, "max-w-[6rem]")}
                     />
                   </td>
                   <td className="px-3 py-2">
-                    <input
-                      type="number"
-                      min={1}
+                    <EditableNumberInput
+                      value={row.minimumHoursLongDistance}
+                      onCommit={(v) => patchCrewRate(row.crewSize, { minimumHoursLongDistance: v })}
+                      min={0}
                       max={12}
                       step={0.5}
-                      value={row.minimumHoursLongDistance}
-                      onChange={(e) =>
-                        patchCrewRate(row.crewSize, {
-                          minimumHoursLongDistance: Math.max(1, Number(e.target.value) || 1),
-                        })
-                      }
+                      fallback={0}
                       className={cn(COMPACT_INPUT, "max-w-[6rem]")}
                     />
                   </td>
@@ -275,14 +275,11 @@ export function RatesCatalogTab({
               flatRateSettings.inventoryBasis === "weight" ? "Rate per lb ($)" : "Rate per cu ft ($)"
             }
           >
-            <input
-              type="number"
+            <EditableNumberInput
+              value={flatRateSettings.ratePerUnit}
+              onCommit={(v) => onFlatRateSettingsChange({ ratePerUnit: v })}
               min={0}
               step={0.01}
-              value={flatRateSettings.ratePerUnit}
-              onChange={(e) =>
-                onFlatRateSettingsChange({ ratePerUnit: Math.max(0, Number(e.target.value) || 0) })
-              }
               className={cn(COMPACT_INPUT, "tabular-nums")}
             />
           </SettingsField>
@@ -311,8 +308,8 @@ export function RatesCatalogTab({
         allItems={catalog}
         onChange={onCatalogChange}
       />
-
-      <RateHistoryPanel entries={schedule.entries} />
+    </div>
+      )}
     </div>
   );
 }

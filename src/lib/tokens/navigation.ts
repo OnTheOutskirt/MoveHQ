@@ -124,7 +124,7 @@ export const navigation: NavEntry[] = [
       { type: "link", label: "Staff", href: "/admin/staff", icon: UserCog },
       { type: "link", label: "Company", href: "/admin/company", icon: Building2 },
       { type: "link", label: "Integrations", href: "/admin/integrations", icon: Plug },
-      { type: "link", label: "Setup", href: "/admin/setup", icon: Sliders, devIncomplete: true },
+      { type: "link", label: "Setup", href: "/admin/setup", icon: Sliders },
     ],
   },
 ];

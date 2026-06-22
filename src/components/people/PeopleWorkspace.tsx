@@ -1,6 +1,7 @@
 "use client";
 
 import { DirectoryModelNote } from "@/components/people/DirectoryModelNote";
+import { MovingCompanyReferralsView } from "@/components/people/MovingCompanyReferralsView";
 import { OrganizationDetailSidebar } from "@/components/people/OrganizationDetailSidebar";
 import { OrganizationsDirectory } from "@/components/people/OrganizationsDirectory";
 import { PeopleDirectory } from "@/components/people/PeopleDirectory";
@@ -24,13 +25,20 @@ import { useEffect, useMemo, useState } from "react";
 
 const meta = pageMeta["/sales/directory"];
 
-type DirectoryTab = "people" | "organizations" | "referral-partners";
+type DirectoryTab =
+  | "people"
+  | "organizations"
+  | "referral-partners"
+  | "moving-companies";
 
 const TABS = [
   { id: "people" as const, label: "Contacts" },
   { id: "organizations" as const, label: "Organizations" },
   { id: "referral-partners" as const, label: "Referral partners" },
+  { id: "moving-companies" as const, label: "Moving companies" },
 ];
+
+const SIMPLE_TABS: DirectoryTab[] = ["people", "organizations"];
 
 function isDirectoryTab(value: string | null): value is DirectoryTab {
   return TABS.some((t) => t.id === value);
@@ -84,7 +92,7 @@ export function PeopleWorkspace() {
           title={meta.title}
           description={meta.description}
           actions={
-            tab !== "referral-partners" ? (
+            SIMPLE_TABS.includes(tab) ? (
               <Button type="button" size="sm" disabled title="Coming soon">
                 <Plus className="h-4 w-4" />
                 {tab === "people" ? "Add person" : "Add organization"}
@@ -93,7 +101,7 @@ export function PeopleWorkspace() {
           }
         />
 
-        {tab !== "referral-partners" ? (
+        {SIMPLE_TABS.includes(tab) ? (
           <>
             <div className="flex flex-wrap gap-4 text-center">
               <CountCard label="Contacts" value={counts.people} />
@@ -126,6 +134,7 @@ export function PeopleWorkspace() {
           />
         ) : null}
         {tab === "referral-partners" ? <ReferralPartnersReport /> : null}
+        {tab === "moving-companies" ? <MovingCompanyReferralsView /> : null}
       </div>
 
       <PersonDetailSidebar

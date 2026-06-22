@@ -17,7 +17,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
   const { openNewMoveDialog } = useMovesActions();
 
   return (
-    <header className="flex h-16 shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-4 lg:gap-4 lg:px-6">
+    <header className="relative z-40 flex h-16 shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-4 lg:gap-4 lg:px-6">
       <div className="flex min-w-0 flex-1 items-center gap-3">
         <button
           type="button"

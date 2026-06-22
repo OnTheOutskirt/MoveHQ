@@ -31,7 +31,12 @@ import type { MoveJobDay, MoveRecord } from "@/lib/moves/types";
 import { salesMovePath } from "@/lib/navigation/routes";
 import { CrewFeedbackDetailSection } from "@/components/operations/jobs/CrewFeedbackDisplay";
 import { crewFeedbackForOpsJobRow } from "@/lib/moves/move-feedback-portal";
-import { ClipboardList, MapPin, Phone } from "lucide-react";
+import {
+  DirectoryContactActionSidebar,
+  type DirectoryContactTarget,
+} from "@/components/people/DirectoryContactActionSidebar";
+import type { DirectoryContactChannel } from "@/lib/people/contact-communication-history";
+import { ClipboardList, MapPin, MessageSquare, Phone, PhoneCall } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -185,6 +190,15 @@ function OverviewContent({
   isMultiDay: boolean;
   scheduledJobDays: MoveJobDay[];
 }) {
+  const [contactAction, setContactAction] = useState<DirectoryContactChannel | null>(null);
+
+  const contactTarget: DirectoryContactTarget = {
+    name: move.customerName,
+    phone: move.customerPhone,
+    email: move.customerEmail,
+    moveIds: [move.id],
+  };
+
   return (
     <>
       {crewFeedback ? <CrewFeedbackDetailSection feedback={crewFeedback} /> : null}
@@ -199,6 +213,29 @@ function OverviewContent({
             <DayBeforeConfirmationPill jobId={row.id} confirmation={confirmation} />
           </div>
           <p className="mt-2 text-sm text-amber-950">{confirmation.detail}</p>
+          {move.customerPhone ? (
+            <div className="mt-2.5 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setContactAction("call")}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-100"
+              >
+                <PhoneCall className="h-3.5 w-3.5" aria-hidden />
+                Call
+              </button>
+              <button
+                type="button"
+                onClick={() => setContactAction("sms")}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-100"
+              >
+                <MessageSquare className="h-3.5 w-3.5" aria-hidden />
+                Text
+              </button>
+              <span className="inline-flex items-center text-xs font-medium text-amber-800">
+                {move.customerPhone}
+              </span>
+            </div>
+          ) : null}
           <ConfirmationCallNotesInput
             id={`ops-call-notes-${row.id}`}
             value={callNotes}
@@ -314,6 +351,12 @@ function OverviewContent({
       {jobDay.customerNotes ? (
         <StatCell label="Customer notes" value={jobDay.customerNotes} multiline />
       ) : null}
+
+      <DirectoryContactActionSidebar
+        target={contactTarget}
+        action={contactAction}
+        onClose={() => setContactAction(null)}
+      />
     </>
   );
 }

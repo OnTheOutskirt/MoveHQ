@@ -96,10 +96,6 @@ export function CalendarColorsTab() {
 
   return (
     <div className="space-y-4">
-      <Button type="button" variant="secondary" size="sm" onClick={resetColors}>
-        Reset to defaults
-      </Button>
-
       <div className="divide-y divide-slate-200 rounded-lg border border-slate-200 bg-slate-50">
         {CALENDAR_PALETTE_FIELDS.map((field) => (
           <div key={field.key} className="bg-white px-3 first:rounded-t-lg last:rounded-b-lg">
@@ -114,6 +110,10 @@ export function CalendarColorsTab() {
           </div>
         ))}
       </div>
+
+      <Button type="button" variant="secondary" size="sm" onClick={resetColors}>
+        Reset to defaults
+      </Button>
     </div>
   );
 }

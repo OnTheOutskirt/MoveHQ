@@ -10,6 +10,7 @@ function defaultCompanySettings(): CalendarLocationSettings {
   return {
     closedDays: federalHolidays2026WithIds(),
     federalHolidayBookedDates: [],
+    removedFederalDates: [],
     colorPalette: defaultCalendarPalette(),
     dayShareSettings: normalizeDayShareSettings(),
   };
@@ -43,6 +44,7 @@ function migrateV2ToV3(parsed: {
     companyDefaults: {
       closedDays,
       federalHolidayBookedDates: parsed.federalHolidayBookedDates ?? [],
+      removedFederalDates: [],
       colorPalette,
       dayShareSettings: defaults.dayShareSettings,
     },

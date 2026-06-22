@@ -6,7 +6,6 @@ import { defaultEmailSignature } from "@/lib/session/user-preferences";
 import { readSignatureImageFile } from "@/lib/session/signature-image";
 import { cn } from "@/lib/utils";
 import { ImagePlus, Trash2 } from "lucide-react";
-import Image from "next/image";
 
 type EmailSignatureEditorProps = {
   signatureText: string;
@@ -48,22 +47,22 @@ export function EmailSignatureEditor({
           Photo (optional)
         </span>
         <p className="mt-0.5 text-xs text-slate-500">
-          Shown above your signature in HTML emails — headshot or company logo.
+          Shown above your signature in HTML emails — headshot, banner, or company logo. Any shape
+          works; it keeps its natural proportions.
         </p>
         <div className="mt-3 flex flex-wrap items-start gap-4">
-          <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-dashed border-slate-300 bg-slate-50">
-            {signatureImageDataUrl ? (
-              <Image
-                src={signatureImageDataUrl}
-                alt="Signature photo"
-                fill
-                className="object-cover"
-                unoptimized
-              />
-            ) : (
+          {signatureImageDataUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={signatureImageDataUrl}
+              alt="Signature photo"
+              className="h-auto max-h-24 w-auto max-w-[16rem] shrink-0 rounded-xl border border-slate-200 bg-white object-contain"
+            />
+          ) : (
+            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50">
               <ImagePlus className="h-6 w-6 text-slate-300" aria-hidden />
-            )}
-          </div>
+            </div>
+          )}
           <div className="flex flex-col gap-2">
             <label className="inline-flex cursor-pointer">
               <input
@@ -150,15 +149,15 @@ export function SignaturePreview({
       </p>
       <div className={cn("mt-2", compact ? "text-xs" : "text-sm")}>
         {signatureImageDataUrl ? (
-          <div className="relative mb-2 h-14 w-14 overflow-hidden rounded-lg border border-slate-200 bg-white">
-            <Image
-              src={signatureImageDataUrl}
-              alt=""
-              fill
-              className="object-cover"
-              unoptimized
-            />
-          </div>
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={signatureImageDataUrl}
+            alt=""
+            className={cn(
+              "mb-2 h-auto w-auto rounded-lg border border-slate-200 bg-white object-contain",
+              compact ? "max-h-12 max-w-[10rem]" : "max-h-20 max-w-[16rem]",
+            )}
+          />
         ) : null}
         {hasText ? (
           <p className="whitespace-pre-wrap leading-relaxed text-slate-700">{signatureText}</p>

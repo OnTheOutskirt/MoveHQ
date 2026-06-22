@@ -29,10 +29,16 @@ import {
 } from "@/lib/moves/location-address";
 import { intakeLocationLabel } from "@/lib/moves/intake-display";
 import type { IntakeLocationType } from "@/lib/moves/flat-rate-intake";
-import type { JobDayLocation, MoveRecord } from "@/lib/moves/types";
+import type { JobDayLocation, JobDayStopAction, MoveRecord } from "@/lib/moves/types";
 import { cn } from "@/lib/utils";
 import { ExternalLink, MapPin, Plus, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
+
+const STOP_ACTION_LABELS: Record<JobDayStopAction, string> = {
+  pickup: "Picking up",
+  dropoff: "Dropping off",
+  both: "Picking up & dropping off",
+};
 
 type JobDayLocationsEditorProps = {
   move: MoveRecord;
@@ -188,8 +194,16 @@ function LocationSlotEditor({
                     {intakeLocationLabel(location.locationType)}
                   </p>
                 ) : null}
+                {location.role === "stop" && location.stopAction ? (
+                  <p className="mt-0.5 text-xs font-medium text-violet-700">
+                    {STOP_ACTION_LABELS[location.stopAction]}
+                  </p>
+                ) : null}
                 {location.accessNotes ? (
                   <p className="mt-0.5 text-xs text-slate-500">{location.accessNotes}</p>
+                ) : null}
+                {location.floorNotes ? (
+                  <p className="mt-0.5 text-xs text-slate-500">{location.floorNotes}</p>
                 ) : null}
                 <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
                   {location.role === "origin" && isHouseLocationType(location.locationType) ? (
@@ -230,27 +244,49 @@ function LocationSlotEditor({
           </div>
         ) : (
           <div className="space-y-2">
-            <select
-              value={isCustom ? CUSTOM_LOCATION_KEY : selectKey}
-              onChange={(e) => handleSelectChange(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 px-2.5 py-2 text-sm"
-            >
-              {options.map((o) => (
-                <option key={o.key} value={o.key}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
+            {location.role !== "stop" ? (
+              <select
+                value={isCustom ? CUSTOM_LOCATION_KEY : selectKey}
+                onChange={(e) => handleSelectChange(e.target.value)}
+                className="w-full rounded-lg border border-slate-200 px-2.5 py-2 text-sm"
+              >
+                {options.map((o) => (
+                  <option key={o.key} value={o.key}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            ) : null}
             <div className="space-y-2 rounded-md border border-slate-200 bg-slate-50/80 p-2.5">
               {location.role === "stop" ? (
-                <label className="block">
-                  <span className="text-xs font-medium text-slate-600">Stop label</span>
-                  <input
-                    value={location.label ?? ""}
-                    onChange={(e) => patch("label", e.target.value)}
-                    className="mt-0.5 w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm"
-                  />
-                </label>
+                <>
+                  <label className="block">
+                    <span className="text-xs font-medium text-slate-600">Stop label</span>
+                    <input
+                      value={location.label ?? ""}
+                      onChange={(e) => patch("label", e.target.value)}
+                      className="mt-0.5 w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="text-xs font-medium text-slate-600">At this stop</span>
+                    <select
+                      value={location.stopAction ?? ""}
+                      onChange={(e) =>
+                        patch(
+                          "stopAction",
+                          (e.target.value || undefined) as JobDayStopAction | undefined,
+                        )
+                      }
+                      className="mt-0.5 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
+                    >
+                      <option value="">—</option>
+                      <option value="pickup">Picking up</option>
+                      <option value="dropoff">Dropping off</option>
+                      <option value="both">Picking up & dropping off</option>
+                    </select>
+                  </label>
+                </>
               ) : null}
               <JobDayAddressField
                 location={location}
@@ -302,6 +338,18 @@ function LocationSlotEditor({
                   </label>
                 ))}
               </div>
+              {location.role === "stop" ? (
+                <label className="block">
+                  <span className="text-xs font-medium text-slate-600">Floor / story notes</span>
+                  <textarea
+                    value={location.floorNotes ?? ""}
+                    onChange={(e) => patch("floorNotes", e.target.value)}
+                    rows={2}
+                    placeholder="What's on the first vs. second floor, elevator, stairs…"
+                    className="mt-0.5 w-full resize-none rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm"
+                  />
+                </label>
+              ) : null}
               <div className="flex flex-wrap items-center gap-2 pt-1">
                 <button
                   type="button"

@@ -4,6 +4,8 @@ import type { MoveFollowUp, MoveRecord, PipelineStageId } from "@/lib/moves/type
 import { automationRuleAppliesToMove } from "./pipeline-automation-quadrants";
 import {
   defaultPipelineAutomations,
+  migrateRuleToSteps,
+  type AutomationStep,
   type AutomationTriggerKind,
   type PipelineAutomationRule,
   type PipelineAutomationSettings,
@@ -33,12 +35,6 @@ export function rulesForTrigger(trigger: AutomationTriggerKind): PipelineAutomat
 
 export function hasEnabledStageAutomations(stage: PipelineStageId): boolean {
   return rulesForStageEnter(stage).length > 0;
-}
-
-function dueFromDelay(baseMs: number, rule: PipelineAutomationRule): string {
-  const minutes = rule.delayMinutes ?? 0;
-  const days = rule.delayDays ?? 0;
-  return new Date(baseMs + minutes * 60_000 + days * 86_400_000).toISOString();
 }
 
 function scheduledDueOnDate(dateKey: string, hour: number): string {
@@ -99,20 +95,20 @@ export function shouldSkipAutomationFollowUp(
   return false;
 }
 
-function buildFollowUpFromRule(
+function buildFollowUpFromStep(
   move: MoveRecord,
   rule: PipelineAutomationRule,
+  step: AutomationStep,
   dueAt: string,
   linkedStage: PipelineStageId,
-): Omit<MoveFollowUp, "id" | "moveId"> | null {
-  if (!rule.actions.includes("follow_up_task")) return null;
+): Omit<MoveFollowUp, "id" | "moveId"> {
   const source = followUpSourceForMove(getMovePriorityTier(move), linkedStage);
   return {
-    type: rule.followUpType ?? "custom",
-    title: rule.followUpTitle ?? rule.label,
+    type: step.followUpType ?? rule.followUpType ?? "custom",
+    title: step.followUpTitle ?? rule.followUpTitle ?? rule.label,
     dueAt,
     assignedTo: move.assignedRep,
-    channel: rule.followUpChannel ?? "task",
+    channel: step.followUpChannel ?? rule.followUpChannel ?? "task",
     status: "open",
     linkedStage,
     source: source === "automation" ? "scheduled" : source,
@@ -120,14 +116,18 @@ function buildFollowUpFromRule(
   };
 }
 
-function messageFollowUpFromRule(
+function messageFollowUpFromStep(
   move: MoveRecord,
   rule: PipelineAutomationRule,
+  step: AutomationStep,
   dueAt: string,
   linkedStage: PipelineStageId,
   channel: "sms" | "email",
 ): Omit<MoveFollowUp, "id" | "moveId"> {
-  const templateId = channel === "sms" ? rule.smsTemplateId : rule.emailTemplateId;
+  const templateId =
+    channel === "sms"
+      ? (step.smsTemplateId ?? rule.smsTemplateId)
+      : (step.emailTemplateId ?? rule.emailTemplateId);
   const label = channel === "sms" ? "SMS" : "Email";
   return {
     type: "custom",
@@ -145,7 +145,72 @@ function messageFollowUpFromRule(
   };
 }
 
+function pushFollowUpFromStep(
+  move: MoveRecord,
+  rule: PipelineAutomationRule,
+  dueAt: string,
+  linkedStage: PipelineStageId,
+): Omit<MoveFollowUp, "id" | "moveId"> {
+  return {
+    type: "ops_coordination",
+    title: `Crew app: ${rule.label}`,
+    dueAt,
+    assignedTo: move.assignedRep,
+    channel: "task",
+    status: "open",
+    linkedStage,
+    source: "scheduled",
+    automationRuleId: rule.id,
+  };
+}
+
+function stepToFollowUp(
+  move: MoveRecord,
+  rule: PipelineAutomationRule,
+  step: AutomationStep,
+  dueAt: string,
+  linkedStage: PipelineStageId,
+): Omit<MoveFollowUp, "id" | "moveId"> | null {
+  switch (step.action) {
+    case "follow_up_task":
+      return buildFollowUpFromStep(move, rule, step, dueAt, linkedStage);
+    case "send_sms":
+      return messageFollowUpFromStep(move, rule, step, dueAt, linkedStage, "sms");
+    case "send_email":
+      return messageFollowUpFromStep(move, rule, step, dueAt, linkedStage, "email");
+    case "crew_app_push":
+      return pushFollowUpFromStep(move, rule, dueAt, linkedStage);
+    case "office_notify":
+    default:
+      // Office alerts are not materialized as follow-ups (parity with prior behavior).
+      return null;
+  }
+}
+
 export type AutomationFollowUpDraft = Omit<MoveFollowUp, "moveId"> & { ruleId: string };
+
+/** Walk a rule's steps from a base time, accumulating each step's delay, and push drafts. */
+function emitRuleSteps(
+  move: MoveRecord,
+  rule: PipelineAutomationRule,
+  baseMs: number,
+  linkedStage: PipelineStageId,
+  results: AutomationFollowUpDraft[],
+): void {
+  let cumulativeMs = 0;
+  for (const step of migrateRuleToSteps(rule)) {
+    cumulativeMs += (step.delayMinutes ?? 0) * 60_000 + (step.delayDays ?? 0) * 86_400_000;
+    const dueAt = new Date(baseMs + cumulativeMs).toISOString();
+    const partial = stepToFollowUp(move, rule, step, dueAt, linkedStage);
+    if (!partial) continue;
+    if (shouldSkipAutomationFollowUp(move.followUps, rule.id, partial, rule.skipIfDone)) continue;
+    results.push({
+      ...partial,
+      id: automationFollowUpId(move.id, rule.id, step.id),
+      ruleId: rule.id,
+    });
+  }
+}
 
 export function followUpsForStageEnter(
   move: MoveRecord,
@@ -156,36 +221,7 @@ export function followUpsForStageEnter(
 
   for (const rule of rulesForStageEnter(stage)) {
     if (!automationRuleAppliesToMove(rule, move, stage)) continue;
-    const dueAt = dueFromDelay(atMs, rule);
-    const task = buildFollowUpFromRule(move, rule, dueAt, stage);
-    if (task && !shouldSkipAutomationFollowUp(move.followUps, rule.id, task, rule.skipIfDone)) {
-      results.push({
-        ...task,
-        id: automationFollowUpId(move.id, rule.id, "task"),
-        ruleId: rule.id,
-      });
-    }
-
-    if (rule.actions.includes("send_sms")) {
-      const partial = messageFollowUpFromRule(move, rule, dueAt, stage, "sms");
-      if (!shouldSkipAutomationFollowUp(move.followUps, rule.id, partial, rule.skipIfDone)) {
-        results.push({
-          ...partial,
-          id: automationFollowUpId(move.id, rule.id, "sms"),
-          ruleId: rule.id,
-        });
-      }
-    }
-    if (rule.actions.includes("send_email")) {
-      const partial = messageFollowUpFromRule(move, rule, dueAt, stage, "email");
-      if (!shouldSkipAutomationFollowUp(move.followUps, rule.id, partial, rule.skipIfDone)) {
-        results.push({
-          ...partial,
-          id: automationFollowUpId(move.id, rule.id, "email"),
-          ruleId: rule.id,
-        });
-      }
-    }
+    emitRuleSteps(move, rule, atMs, stage, results);
   }
 
   return results;
@@ -204,63 +240,14 @@ export function scheduledFollowUpsForMove(move: MoveRecord): AutomationFollowUpD
     if (!automationRuleAppliesToMove(rule, move, linkedStage)) continue;
     const daysBefore = rule.daysBeforeMove ?? 1;
     const sendDate = subtractDays(moveDate, daysBefore);
-    const dueAt = scheduledDueOnDate(sendDate, rule.sendAtHour ?? 18);
-
-    if (rule.actions.includes("send_sms")) {
-      const partial = messageFollowUpFromRule(move, rule, dueAt, linkedStage, "sms");
-      if (!shouldSkipAutomationFollowUp(move.followUps, rule.id, partial, rule.skipIfDone)) {
-        results.push({
-          ...partial,
-          id: automationFollowUpId(move.id, rule.id, "sms"),
-          ruleId: rule.id,
-        });
-      }
-    }
-    if (rule.actions.includes("send_email")) {
-      const partial = messageFollowUpFromRule(move, rule, dueAt, linkedStage, "email");
-      if (!shouldSkipAutomationFollowUp(move.followUps, rule.id, partial, rule.skipIfDone)) {
-        results.push({
-          ...partial,
-          id: automationFollowUpId(move.id, rule.id, "email"),
-          ruleId: rule.id,
-        });
-      }
-    }
-    if (rule.actions.includes("crew_app_push")) {
-      const partial: Omit<MoveFollowUp, "id" | "moveId"> = {
-        type: "ops_coordination",
-        title: `Crew app: ${rule.label}`,
-        dueAt,
-        assignedTo: move.assignedRep,
-        channel: "task",
-        status: "open",
-        linkedStage,
-        source: "scheduled",
-        automationRuleId: rule.id,
-      };
-      if (!shouldSkipAutomationFollowUp(move.followUps, rule.id, partial, rule.skipIfDone)) {
-        results.push({
-          ...partial,
-          id: automationFollowUpId(move.id, rule.id, "push"),
-          ruleId: rule.id,
-        });
-      }
-    }
+    const baseMs = new Date(scheduledDueOnDate(sendDate, rule.sendAtHour ?? 18)).getTime();
+    emitRuleSteps(move, rule, baseMs, linkedStage, results);
   }
 
   for (const rule of rulesForTrigger("day_of_move")) {
     if (!automationRuleAppliesToMove(rule, move, linkedStage)) continue;
-    const dueAt = scheduledDueOnDate(moveDate, rule.sendAtHour ?? 7);
-    if (rule.actions.includes("send_sms")) {
-      const partial = messageFollowUpFromRule(move, rule, dueAt, linkedStage, "sms");
-      if (!shouldSkipAutomationFollowUp(move.followUps, rule.id, partial, rule.skipIfDone)) {
-        results.push({
-          ...partial,
-          id: automationFollowUpId(move.id, rule.id, "sms"),
-          ruleId: rule.id,
-        });
-      }
-    }
+    const baseMs = new Date(scheduledDueOnDate(moveDate, rule.sendAtHour ?? 7)).getTime();
+    emitRuleSteps(move, rule, baseMs, linkedStage, results);
   }
 
   return results;

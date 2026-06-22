@@ -2,7 +2,7 @@
 
 import { useSettingsEditor } from "@/lib/settings/use-settings-editor";
 import { SettingsField, SettingsInput, SettingsSelect } from "@/components/settings/SettingsField";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
+import { SetupAccordion } from "@/components/admin/setup/SetupAccordion";
 import type { DepositDefaultMode } from "@/lib/settings/types";
 import { cn } from "@/lib/utils";
 
@@ -20,11 +20,8 @@ export function DefaultsTab() {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Sales & quoting</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-5 sm:grid-cols-2">
+      <SetupAccordion title="Sales & quoting">
+        <div className="grid gap-5 sm:grid-cols-2">
           <SettingsField label="Default pricing type">
             <SettingsSelect
               value={defaults.defaultPricingType}
@@ -148,14 +145,11 @@ export function DefaultsTab() {
               />
             </div>
           </SettingsField>
-        </CardContent>
-      </Card>
+        </div>
+      </SetupAccordion>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Scheduling & dispatch</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-5 sm:grid-cols-2">
+      <SetupAccordion title="Scheduling & dispatch">
+        <div className="grid gap-5 sm:grid-cols-2">
           <SettingsField
             label="Default crew departure"
             hint="Shop/yard departure time applied to new job days. Crew sees this on dispatch."
@@ -237,14 +231,11 @@ export function DefaultsTab() {
               />
             </div>
           </SettingsField>
-        </CardContent>
-      </Card>
+        </div>
+      </SetupAccordion>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Post-move reviews</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-5 sm:grid-cols-2">
+      <SetupAccordion title="Post-move reviews">
+        <div className="grid gap-5 sm:grid-cols-2">
           <SettingsField
             label="Google review after crew rating"
             hint="Customers rate crew on the feedback portal first. At or above this score, they see your Google review link. All ratings notify ops."
@@ -277,8 +268,8 @@ export function DefaultsTab() {
               Preview on a completed move
             </a>
           </p>
-        </CardContent>
-      </Card>
+        </div>
+      </SetupAccordion>
     </div>
   );
 }

@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/Button";
 import { useCalendarSettings } from "@/components/providers/CalendarSettingsProvider";
 import type { ClosedDayEntry } from "@/lib/calendar/settings/types";
-import { Trash2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useState } from "react";
 
 function formatClosedDate(dateKey: string): string {
@@ -17,8 +17,18 @@ function formatClosedDate(dateKey: string): string {
 }
 
 export function DaysOffTab() {
-  const { settingsClosedDays, addClosedDay, updateClosedDay, removeClosedDay } =
-    useCalendarSettings();
+  const {
+    settingsClosedDays,
+    settingsFederalHolidayBookedDates,
+    addClosedDay,
+    updateClosedDay,
+    setClosedDayEnabled,
+  } = useCalendarSettings();
+
+  function isEntryEnabled(entry: ClosedDayEntry): boolean {
+    if (entry.source === "federal") return !settingsFederalHolidayBookedDates.includes(entry.date);
+    return entry.enabled !== false;
+  }
 
   const [newDate, setNewDate] = useState("");
   const [newLabel, setNewLabel] = useState("");
@@ -68,16 +78,21 @@ export function DaysOffTab() {
       </form>
 
       <div>
-        <p className="mb-2 text-sm font-semibold text-slate-900">
+        <p className="mb-1 text-sm font-semibold text-slate-900">
           Scheduled closures ({settingsClosedDays.length})
+        </p>
+        <p className="mb-2 text-xs text-slate-500">
+          Turn a closure off to reopen the day for booking — it stays saved so you can turn it back
+          on later.
         </p>
         <ul className="space-y-2">
           {settingsClosedDays.map((entry) => (
             <ClosedDayRow
               key={entry.id}
               entry={entry}
+              enabled={isEntryEnabled(entry)}
               onUpdate={(patch) => updateClosedDay(entry.id, patch)}
-              onRemove={() => removeClosedDay(entry.id)}
+              onToggle={(enabled) => setClosedDayEnabled(entry.id, enabled)}
             />
           ))}
         </ul>
@@ -86,19 +101,57 @@ export function DaysOffTab() {
   );
 }
 
-function ClosedDayRow({
-  entry,
-  onUpdate,
-  onRemove,
+function ClosureToggle({
+  enabled,
+  onToggle,
+  label,
 }: {
-  entry: ClosedDayEntry;
-  onUpdate: (patch: Partial<Pick<ClosedDayEntry, "label">>) => void;
-  onRemove: () => void;
+  enabled: boolean;
+  onToggle: (enabled: boolean) => void;
+  label: string;
 }) {
   return (
-    <li className="rounded-lg border border-slate-200 bg-white p-3">
+    <button
+      type="button"
+      role="switch"
+      aria-checked={enabled}
+      aria-label={`${enabled ? "Turn off" : "Turn on"} ${label}`}
+      onClick={() => onToggle(!enabled)}
+      className={cn(
+        "relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2",
+        enabled ? "bg-brand-600" : "bg-slate-200",
+      )}
+    >
+      <span
+        className={cn(
+          "pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow ring-0 transition-transform",
+          enabled ? "translate-x-5" : "translate-x-0",
+        )}
+      />
+    </button>
+  );
+}
+
+function ClosedDayRow({
+  entry,
+  enabled,
+  onUpdate,
+  onToggle,
+}: {
+  entry: ClosedDayEntry;
+  enabled: boolean;
+  onUpdate: (patch: Partial<Pick<ClosedDayEntry, "label">>) => void;
+  onToggle: (enabled: boolean) => void;
+}) {
+  return (
+    <li
+      className={cn(
+        "rounded-lg border p-3 transition-colors",
+        enabled ? "border-slate-200 bg-white" : "border-slate-100 bg-slate-50",
+      )}
+    >
       <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
+        <div className={cn("min-w-0 flex-1", !enabled && "opacity-60")}>
           <p className="text-sm font-semibold text-slate-900">{formatClosedDate(entry.date)}</p>
           {entry.source === "custom" ? (
             <label className="mt-1 block text-xs font-medium text-slate-500">
@@ -119,14 +172,12 @@ function ClosedDayRow({
             </span>
           )}
         </div>
-        <button
-          type="button"
-          onClick={onRemove}
-          className="shrink-0 rounded p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
-          aria-label={`Remove ${entry.label}`}
-        >
-          <Trash2 className="h-4 w-4" />
-        </button>
+        <div className="flex shrink-0 flex-col items-center gap-1">
+          <ClosureToggle enabled={enabled} onToggle={onToggle} label={entry.label} />
+          <span className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
+            {enabled ? "On" : "Off"}
+          </span>
+        </div>
       </div>
     </li>
   );

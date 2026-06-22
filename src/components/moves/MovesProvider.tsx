@@ -112,6 +112,7 @@ type MovesContextValue = {
   markAsLost: (moveId: string, payload: MarkLostPayload) => void;
   reopenMove: (moveId: string) => void;
   updateAssignedRep: (moveId: string, rep: string) => void;
+  updateMoveLocation: (moveId: string, locationId: string, locationLabel?: string) => void;
   addJobDay: (moveId: string, day: MoveJobDay) => void;
   updateJobDay: (moveId: string, day: MoveJobDay) => void;
   removeJobDay: (moveId: string, dayId: string) => void;
@@ -356,6 +357,21 @@ export function MovesProvider({ children }: { children: ReactNode }) {
       }),
     );
   }, []);
+
+  const updateMoveLocation = useCallback(
+    (moveId: string, locationId: string, locationLabel?: string) => {
+      setAllMoves((prev) =>
+        prev.map((move) => {
+          if (move.id !== moveId || move.locationId === locationId) return move;
+          return appendActivity(
+            { ...move, locationId },
+            `Location → ${locationLabel ?? locationId}`,
+          );
+        }),
+      );
+    },
+    [],
+  );
 
   const addJobDay = useCallback((moveId: string, day: MoveJobDay) => {
     setAllMoves((prev) =>
@@ -1062,6 +1078,7 @@ export function MovesProvider({ children }: { children: ReactNode }) {
       markAsLost,
       reopenMove,
       updateAssignedRep,
+      updateMoveLocation,
       addJobDay,
       updateJobDay,
       removeJobDay,
@@ -1103,6 +1120,7 @@ export function MovesProvider({ children }: { children: ReactNode }) {
       markAsLost,
       reopenMove,
       updateAssignedRep,
+      updateMoveLocation,
       addJobDay,
       updateJobDay,
       removeJobDay,

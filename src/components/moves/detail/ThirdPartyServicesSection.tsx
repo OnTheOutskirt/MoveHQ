@@ -17,9 +17,13 @@ import {
   listVendorDirectoryOptions,
   resolveVendorDirectoryLabel,
   vendorDirectoryOptionMatchesVendorType,
+  type ListVendorDirectoryOptionsConfig,
 } from "@/lib/people/vendors";
 import type { MoveRecord } from "@/lib/moves/types";
 import { Plus, Trash2 } from "lucide-react";
+
+/** Move vendor picker pulls from the organization directory, filtered by vendor type. */
+const VENDOR_PICKER_CONFIG: ListVendorDirectoryOptionsConfig = { organizationsOnly: true };
 
 type ThirdPartyServicesSectionProps = {
   move: MoveRecord;
@@ -44,7 +48,7 @@ export function ThirdPartyServicesSection({ move }: ThirdPartyServicesSectionPro
   }
 
   function addLine() {
-    const vendors = listVendorDirectoryOptions(defaultVendorTypeId);
+    const vendors = listVendorDirectoryOptions(defaultVendorTypeId, VENDOR_PICKER_CONFIG);
     updateLines([
       ...lines,
       {
@@ -63,9 +67,10 @@ export function ThirdPartyServicesSection({ move }: ThirdPartyServicesSectionPro
     const patch: Partial<IntakeThirdPartyService> = { serviceTypeId: vendorTypeId };
     if (
       line.vendorDirectoryId &&
-      !vendorDirectoryOptionMatchesVendorType(line.vendorDirectoryId, vendorTypeId)
+      !vendorDirectoryOptionMatchesVendorType(line.vendorDirectoryId, vendorTypeId, VENDOR_PICKER_CONFIG)
     ) {
-      patch.vendorDirectoryId = listVendorDirectoryOptions(vendorTypeId)[0]?.id ?? null;
+      patch.vendorDirectoryId =
+        listVendorDirectoryOptions(vendorTypeId, VENDOR_PICKER_CONFIG)[0]?.id ?? null;
     }
     patchLine(line.id, patch);
   }
@@ -83,7 +88,7 @@ export function ThirdPartyServicesSection({ move }: ThirdPartyServicesSectionPro
         ) : (
           <ul className="space-y-3">
             {lines.map((line) => {
-              const vendors = listVendorDirectoryOptions(line.serviceTypeId);
+              const vendors = listVendorDirectoryOptions(line.serviceTypeId, VENDOR_PICKER_CONFIG);
               return (
                 <li
                   key={line.id}

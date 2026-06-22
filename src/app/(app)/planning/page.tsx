@@ -12,10 +12,6 @@ import { pageMeta } from "@/lib/navigation/page-meta";
 import { cn } from "@/lib/utils";
 import { useRouter, useSearchParams } from "next/navigation";
 
-const OverallPlanView = lazyNamedWorkspace(
-  () => import("@/components/planning/OverallPlanView"),
-  (module) => module.OverallPlanView,
-);
 const V1PlanView = lazyNamedWorkspace(
   () => import("@/components/planning/V1PlanView"),
   (module) => module.V1PlanView,
@@ -38,20 +34,27 @@ const TesterFeedbackView = lazyNamedWorkspace(
 );
 
 const TABS = [
-  { id: "overall", label: "Overall Plan" },
   { id: "v1", label: "V1 Roadmap" },
   { id: "v2", label: "V2 Roadmap" },
   { id: "todo", label: PLANNING_TODO_TAB_LABEL },
   { id: "feedback", label: "Tester feedback" },
   { id: "saas", label: SAAS_PLAN_TAB_LABEL },
+  { id: "database", label: "Database Design" },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
 
+function DatabaseDesignView() {
+  return (
+    <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-6 py-16 text-center">
+      <p className="text-sm font-medium text-slate-600">Database design coming soon.</p>
+      <p className="mt-1 text-sm text-slate-400">Nothing here yet.</p>
+    </div>
+  );
+}
+
 function TabPanel({ tab }: { tab: TabId }) {
   switch (tab) {
-    case "overall":
-      return <OverallPlanView />;
     case "v1":
       return <V1PlanView />;
     case "v2":
@@ -62,8 +65,10 @@ function TabPanel({ tab }: { tab: TabId }) {
       return <TesterFeedbackView />;
     case "saas":
       return <SaasPlanView />;
+    case "database":
+      return <DatabaseDesignView />;
     default:
-      return <OverallPlanView />;
+      return <V1PlanView />;
   }
 }
 
@@ -76,7 +81,7 @@ export default function PlanningPage() {
   const normalizedTab = rawTab === "meeting-notes" ? "todo" : rawTab;
   const activeTab: TabId = TABS.some((t) => t.id === normalizedTab)
     ? (normalizedTab as TabId)
-    : "overall";
+    : "v1";
   const meta = pageMeta["/planning"];
 
   function setTab(tab: TabId) {

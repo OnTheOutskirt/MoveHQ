@@ -4,6 +4,9 @@ import { useCalendarSettings } from "@/components/providers/CalendarSettingsProv
 import { collectDispatchDay } from "@/lib/dispatch/collect-day-jobs";
 import { crewOffIdsFromCalendarNames } from "@/lib/dispatch/mock-roster";
 import { useFleet } from "@/components/providers/FleetProvider";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { resolveCrewOffDisplay } from "@/lib/dispatch/resolve-crew-off";
+import { trucksOffOnDate } from "@/lib/operations/fleet-capacity";
 import { buildMockDay } from "@/lib/calendar/mock-data";
 import { parseDateKey } from "@/lib/calendar/date-utils";
 import {
@@ -107,13 +110,41 @@ type DispatchProviderProps = {
   initialDateKey: string;
 };
 
+type PendingOffAssign =
+  | {
+      kind: "crew";
+      jobId: string;
+      slot: CrewSlotRef;
+      crewId: string;
+      name: string;
+      reasonLabel: string;
+      reasonDetail: string;
+      isTimeOff: boolean;
+    }
+  | {
+      kind: "truck";
+      jobId: string;
+      truckId: string;
+      label: string;
+      reasonLabel: string;
+      reasonDetail: string;
+    };
+
 export function DispatchProvider({ children, initialDateKey }: DispatchProviderProps) {
   const { moves } = useMoves();
-  const { activeCrewForDispatch } = useFleet();
+  const {
+    activeCrewForDispatch,
+    crew: fleetCrew,
+    timeOffRequests,
+    trucks,
+    truckOutages,
+    clearTimeOffForDate,
+  } = useFleet();
   const { dayShareSettings } = useCalendarSettings();
   const [dateKey, setDateKey] = useState(initialDateKey);
   const [assignments, setAssignments] = useState<DispatchAssignmentStore>({});
   const [publishStore, setPublishStore] = useState(() => readDispatchPublishStore());
+  const [pendingOff, setPendingOff] = useState<PendingOffAssign | null>(null);
 
   useEffect(() => {
     setAssignments(readDispatchAssignments());
@@ -207,7 +238,29 @@ export function DispatchProvider({ children, initialDateKey }: DispatchProviderP
     [findJob, getAssignmentRaw, patchJob],
   );
 
-  const assignCrewSlot = useCallback(
+  const getCrewOffState = useCallback(
+    (crewId: string) => {
+      const roster = activeCrewForDispatch();
+      const displays = resolveCrewOffDisplay(day.crewOff, day.crewOffIds, roster, {
+        dateKey,
+        timeOffRequests,
+        fleetCrew,
+      });
+      const entry = displays.find((d) => d.kind === "roster" && d.member.id === crewId);
+      if (!entry || entry.kind !== "roster") return null;
+      const isTimeOff = timeOffRequests.some(
+        (r) =>
+          r.crewId === crewId &&
+          r.status !== "denied" &&
+          dateKey >= r.startDate &&
+          dateKey <= r.endDate,
+      );
+      return { reason: entry.offReason, isTimeOff };
+    },
+    [activeCrewForDispatch, day.crewOff, day.crewOffIds, dateKey, timeOffRequests, fleetCrew],
+  );
+
+  const assignCrewSlotInternal = useCallback(
     (jobId: string, slot: CrewSlotRef, crewId: string | null) => {
       const job = findJob(jobId);
       if (!job) return;
@@ -236,6 +289,31 @@ export function DispatchProvider({ children, initialDateKey }: DispatchProviderP
     [activeCrewForDispatch, findJob, getAssignmentRaw, patchJob],
   );
 
+  const assignCrewSlot = useCallback(
+    (jobId: string, slot: CrewSlotRef, crewId: string | null) => {
+      if (crewId) {
+        const offState = getCrewOffState(crewId);
+        if (offState) {
+          const roster = activeCrewForDispatch();
+          const name = roster.find((c) => c.id === crewId)?.name ?? "This crew member";
+          setPendingOff({
+            kind: "crew",
+            jobId,
+            slot,
+            crewId,
+            name,
+            reasonLabel: offState.reason.label,
+            reasonDetail: offState.reason.detail,
+            isTimeOff: offState.isTimeOff,
+          });
+          return;
+        }
+      }
+      assignCrewSlotInternal(jobId, slot, crewId);
+    },
+    [getCrewOffState, activeCrewForDispatch, assignCrewSlotInternal],
+  );
+
   const setTrucks = useCallback(
     (jobId: string, truckIds: string[]) => {
       const job = findJob(jobId);
@@ -247,7 +325,18 @@ export function DispatchProvider({ children, initialDateKey }: DispatchProviderP
     [findJob, getAssignmentRaw, patchJob],
   );
 
-  const assignTruck = useCallback(
+  const getTruckOffState = useCallback(
+    (truckId: string) => {
+      const off = trucksOffOnDate(trucks, truckOutages, dateKey).find(
+        (e) => e.truck.id === truckId,
+      );
+      if (!off) return null;
+      return { label: off.label, detail: off.detail };
+    },
+    [trucks, truckOutages, dateKey],
+  );
+
+  const assignTruckInternal = useCallback(
     (jobId: string, truckId: string) => {
       const job = findJob(jobId);
       if (!job) return;
@@ -259,6 +348,40 @@ export function DispatchProvider({ children, initialDateKey }: DispatchProviderP
     },
     [findJob, getAssignmentRaw, patchJob],
   );
+
+  const assignTruck = useCallback(
+    (jobId: string, truckId: string) => {
+      const offState = getTruckOffState(truckId);
+      if (offState) {
+        const label =
+          trucks.find((t) => t.id === truckId)?.label ?? "This truck";
+        setPendingOff({
+          kind: "truck",
+          jobId,
+          truckId,
+          label,
+          reasonLabel: offState.label,
+          reasonDetail: offState.detail,
+        });
+        return;
+      }
+      assignTruckInternal(jobId, truckId);
+    },
+    [getTruckOffState, trucks, assignTruckInternal],
+  );
+
+  const confirmPendingOff = useCallback(() => {
+    setPendingOff((pending) => {
+      if (!pending) return null;
+      if (pending.kind === "crew") {
+        if (pending.isTimeOff) clearTimeOffForDate(pending.crewId, dateKey);
+        assignCrewSlotInternal(pending.jobId, pending.slot, pending.crewId);
+      } else {
+        assignTruckInternal(pending.jobId, pending.truckId);
+      }
+      return null;
+    });
+  }, [assignCrewSlotInternal, assignTruckInternal, clearTimeOffForDate, dateKey]);
 
   const unassignTruck = useCallback(
     (jobId: string, truckId: string) => {
@@ -483,7 +606,39 @@ export function DispatchProvider({ children, initialDateKey }: DispatchProviderP
     ],
   );
 
-  return <DispatchContext.Provider value={value}>{children}</DispatchContext.Provider>;
+  return (
+    <DispatchContext.Provider value={value}>
+      {children}
+      {pendingOff ? (
+        <ConfirmDialog
+          open
+          onClose={() => setPendingOff(null)}
+          onConfirm={confirmPendingOff}
+          title={
+            pendingOff.kind === "truck"
+              ? "Assign an off truck?"
+              : pendingOff.isTimeOff
+                ? "Schedule over time off?"
+                : "Schedule an off crew member?"
+          }
+          description={
+            pendingOff.kind === "truck"
+              ? `${pendingOff.label} is off this day (${pendingOff.reasonLabel}${
+                  pendingOff.reasonDetail ? `: ${pendingOff.reasonDetail}` : ""
+                }). Assign it anyway?`
+              : pendingOff.isTimeOff
+                ? `${pendingOff.name} has ${pendingOff.reasonLabel.toLowerCase()}${
+                    pendingOff.reasonDetail ? ` (${pendingOff.reasonDetail})` : ""
+                  }. Scheduling them will cancel their day off for this date. Assign anyway?`
+                : `${pendingOff.name} is ${pendingOff.reasonLabel.toLowerCase()}${
+                    pendingOff.reasonDetail ? ` — ${pendingOff.reasonDetail}` : ""
+                  }. This won't change their wider off schedule. Assign anyway?`
+          }
+          confirmLabel="Assign anyway"
+        />
+      ) : null}
+    </DispatchContext.Provider>
+  );
 }
 
 export function useDispatch() {

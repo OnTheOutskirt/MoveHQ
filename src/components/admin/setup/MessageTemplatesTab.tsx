@@ -125,11 +125,10 @@ export function MessageTemplatesTab({
           }
           description={
             section === "sales" ? (
-              "Snippets reps pick in inbox, move quick actions, and directory contact panels."
+              "Snippets reps pick in the inbox and quick actions."
             ) : section === "automations" ? (
               <>
-                SMS and email sent by pipeline automations — quote confirmations, booking emails,
-                day-before crew links, crew feedback requests. Turn rules on/off under{" "}
+                Sent by pipeline automations. Turn rules on/off under{" "}
                 <Link
                   href="/admin/setup?tab=automations"
                   className="font-medium text-brand-600 hover:underline"
@@ -139,7 +138,7 @@ export function MessageTemplatesTab({
                 .
               </>
             ) : (
-              "Manual ops messages — claims, crew on the way, day-before reminders, and move-day notes."
+              "Manual ops messages — claims, reminders, move-day notes."
             )
           }
         />

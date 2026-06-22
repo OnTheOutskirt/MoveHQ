@@ -3,7 +3,6 @@
 import { useWorkspace } from "@/components/providers/WorkspaceProvider";
 import { SettingsField, SettingsInput } from "@/components/settings/SettingsField";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
-import Link from "next/link";
 
 export function CompanyTab() {
   const { config, updateConfig } = useWorkspace();
@@ -44,21 +43,6 @@ export function CompanyTab() {
               placeholder="https://jonahsmovers.com"
             />
           </SettingsField>
-        </CardContent>
-      </Card>
-
-      <Card className="border-brand-100 bg-brand-50/30">
-        <CardContent className="py-4">
-          <p className="text-sm text-brand-900">
-            <span className="font-semibold">
-              Phone, address, Google review link, office hours, crew days, and timezone
-            </span>{" "}
-            live on the{" "}
-            <Link href="/admin/company?tab=locations" className="font-semibold underline">
-              Locations
-            </Link>{" "}
-            tab for each branch. With a single location, that tab is your full business profile.
-          </p>
         </CardContent>
       </Card>
     </div>

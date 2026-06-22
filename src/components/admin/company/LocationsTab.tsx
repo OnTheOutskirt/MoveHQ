@@ -146,11 +146,6 @@ export function LocationsTab() {
             <h2 className="text-lg font-semibold text-slate-900">
               {hasMultipleLocations ? "Locations" : "Location & business info"}
             </h2>
-            <p className="mt-1 max-w-2xl text-sm text-slate-500">
-              Contact details, office hours, crew calendar days, and timezone for this branch. Move
-              calendar metrics, days off, and colors are configured on the{" "}
-              <span className="font-medium text-slate-700">Move Calendar</span> settings panel.
-            </p>
           </div>
           {!hasMultipleLocations ? (
             <Button

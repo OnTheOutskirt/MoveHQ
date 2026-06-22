@@ -8,12 +8,16 @@ export type ClosedDayEntry = {
   date: string;
   label: string;
   source: ClosedDaySource;
+  /** When false, the closure is saved but turned off (the day stays open). Defaults to on. */
+  enabled?: boolean;
 };
 
 export type CalendarLocationSettings = {
   closedDays: ClosedDayEntry[];
   /** Federal holiday dates operated as booked (holiday remains in settings). */
   federalHolidayBookedDates: string[];
+  /** Federal holiday dates the user deleted — kept out of the auto-merge so they stay deleted. */
+  removedFederalDates: string[];
   colorPalette: CalendarColorPalette;
   dayShareSettings: DayShareSettings;
 };

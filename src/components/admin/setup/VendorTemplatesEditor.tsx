@@ -151,8 +151,7 @@ export function VendorTemplatesEditor({ templates, onChange }: VendorTemplatesEd
         <div>
           <h2 className="text-lg font-semibold text-slate-900">Vendor templates</h2>
           <p className="text-sm text-slate-500">
-            Reusable SMS and email for each vendor type — used when sending claim packages and other
-            vendor outreach from Operations → Claims.
+            Reusable SMS and email per vendor type for claims and outreach.
           </p>
         </div>
 

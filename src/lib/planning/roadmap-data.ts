@@ -1,7 +1,8 @@
-﻿import { V1_GROUPS, V2_GROUPS } from "./roadmap-groups";
+﻿import { V1_GROUPS, V1_SECTIONS, V2_GROUPS, V2_SECTIONS } from "./roadmap-groups";
 import type { GanttBar, GanttMilestone, TimelineRow } from "./types";
 
-export { V1_GROUPS, V2_GROUPS };
+export { V1_GROUPS, V1_SECTIONS, V2_GROUPS, V2_SECTIONS };
+export type { RoadmapSection } from "./roadmap-groups";
 
 export const V1_DEADLINE = "2026-09-01";
 export const V1_LAUNCH_LABEL = "September 1, 2026";

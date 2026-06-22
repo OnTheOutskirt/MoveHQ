@@ -100,6 +100,7 @@ export function DispatchCrewPanel({ embedded }: DispatchCrewPanelProps = {}) {
                 weekHours={weeklyHoursByCrewId.get(entry.member.id) ?? 0}
                 off
                 offReason={entry.offReason}
+                onDragStart={(id) => crewDragPayload(id)}
                 dragId={entry.member.id}
               />
             ) : (
@@ -141,16 +142,19 @@ function CrewChip({
   dragId: string;
   onDragStart?: (id: string) => string;
 }) {
+  const dragEnabled = Boolean(onDragStart) && (canDrag !== false);
   const chip = (
     <div
       className={cn(
         "flex items-center gap-1.5 rounded-lg border px-2 py-1 text-left transition-colors",
         off
-          ? "border-slate-200 bg-slate-50"
+          ? dragEnabled
+            ? "cursor-grab border-slate-200 bg-slate-50 active:cursor-grabbing hover:border-amber-300"
+            : "border-slate-200 bg-slate-50"
           : "cursor-grab border-slate-200 bg-white shadow-sm active:cursor-grabbing hover:border-brand-200",
       )}
     >
-      {canDrag && !off ? (
+      {dragEnabled ? (
         <GripVertical className="h-3 w-3 shrink-0 text-slate-300" aria-hidden />
       ) : (
         <span className="w-3 shrink-0" />
@@ -187,9 +191,9 @@ function CrewChip({
 
   return (
     <li
-      draggable={canDrag && !off}
+      draggable={dragEnabled}
       onDragStart={(e) => {
-        if (!canDrag || off || !onDragStart) return;
+        if (!dragEnabled || !onDragStart) return;
         e.dataTransfer.setData(DRAG_TYPE, onDragStart(dragId));
         e.dataTransfer.effectAllowed = "move";
       }}

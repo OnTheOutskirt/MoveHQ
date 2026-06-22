@@ -77,6 +77,8 @@ type FleetContextValue = {
     input: Omit<TimeOffRequest, "id" | "submittedAt" | "status"> & { status?: TimeOffRequest["status"] },
   ) => TimeOffRequest;
   updateTimeOffRequest: (id: string, patch: Partial<TimeOffRequest>) => void;
+  /** Remove a single day from a crew member's time off (splits/trims overlapping requests). */
+  clearTimeOffForDate: (crewId: string, dateKey: string) => void;
   addTruck: (input: TruckFormInput) => FleetTruck;
   updateTruck: (id: string, patch: Partial<TruckFormInput>) => void;
   addTemporaryRental: (input: TemporaryTruckFormInput) => TemporaryTruckRental;
@@ -270,6 +272,42 @@ export function FleetProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const clearTimeOffForDate = useCallback((crewId: string, dateKey: string) => {
+    const shiftDateKey = (key: string, days: number): string => {
+      const d = new Date(`${key}T00:00:00`);
+      d.setDate(d.getDate() + days);
+      return toDateKey(d);
+    };
+    setStore((prev) => {
+      const result: TimeOffRequest[] = [];
+      for (const r of prev.timeOffRequests) {
+        const overlaps =
+          r.crewId === crewId &&
+          r.status !== "denied" &&
+          dateKey >= r.startDate &&
+          dateKey <= r.endDate;
+        if (!overlaps) {
+          result.push(r);
+          continue;
+        }
+        if (r.startDate === dateKey && r.endDate === dateKey) continue;
+        if (r.startDate === dateKey) {
+          result.push({ ...r, startDate: shiftDateKey(dateKey, 1) });
+          continue;
+        }
+        if (r.endDate === dateKey) {
+          result.push({ ...r, endDate: shiftDateKey(dateKey, -1) });
+          continue;
+        }
+        result.push({ ...r, endDate: shiftDateKey(dateKey, -1) });
+        result.push({ ...r, id: generateFleetId("off"), startDate: shiftDateKey(dateKey, 1) });
+      }
+      const next = { ...prev, timeOffRequests: result };
+      saveFleetStore(next);
+      return next;
+    });
+  }, []);
+
   const addTruck = useCallback((input: TruckFormInput) => {
     const record = truckFromFormInput(generateFleetId("truck"), input);
     setStore((prev) => {
@@ -447,6 +485,7 @@ export function FleetProvider({ children }: { children: ReactNode }) {
       getWorkSchedule,
       addTimeOffRequest,
       updateTimeOffRequest,
+      clearTimeOffForDate,
       addTruck,
       updateTruck,
       addTemporaryRental,
@@ -469,6 +508,7 @@ export function FleetProvider({ children }: { children: ReactNode }) {
       getWorkSchedule,
       addTimeOffRequest,
       updateTimeOffRequest,
+      clearTimeOffForDate,
       addTruck,
       updateTruck,
       addTemporaryRental,

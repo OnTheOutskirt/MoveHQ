@@ -32,7 +32,7 @@ export function MoveCalendar() {
     isReady,
     setFederalHolidayBooked,
     addClosedDay,
-    removeClosedDayForDate,
+    setClosedDayEnabledForDate,
   } = useCalendarSettings();
   const { isReady: fleetReady, getTruckCapacityForDate } = useFleet();
   const { moves } = useMoves();
@@ -161,7 +161,8 @@ export function MoveCalendar() {
 
   function reopenSelectedDay() {
     if (!selectedDate) return;
-    removeClosedDayForDate(toDateKey(selectedDate));
+    // Soft toggle — keep the closure saved so it can be turned back on later.
+    setClosedDayEnabledForDate(toDateKey(selectedDate), false);
     setDaySidebarOpen(false);
   }
 

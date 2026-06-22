@@ -209,12 +209,19 @@ export type JobDayService = (typeof JOB_DAY_SERVICES)[number];
 export const JOB_DAY_LOCATION_ROLES = ["origin", "destination", "stop"] as const;
 export type JobDayLocationRole = (typeof JOB_DAY_LOCATION_ROLES)[number];
 
+export const JOB_DAY_STOP_ACTIONS = ["pickup", "dropoff", "both"] as const;
+export type JobDayStopAction = (typeof JOB_DAY_STOP_ACTIONS)[number];
+
 /** Structured address on a job day — maps to Google Places later via placeId. */
 export type JobDayLocation = {
   id: string;
   role: JobDayLocationRole;
   /** Stop label when role is stop */
   label?: string;
+  /** For stops: whether the crew is picking up, dropping off, or both here. */
+  stopAction?: JobDayStopAction;
+  /** Story / what's on the first vs. second floor (and similar) at this stop. */
+  floorNotes?: string;
   formattedAddress: string;
   street: string;
   cityStateZip: string;

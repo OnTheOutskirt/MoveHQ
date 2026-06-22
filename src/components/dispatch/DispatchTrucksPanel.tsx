@@ -81,9 +81,16 @@ export function DispatchTrucksPanel({ embedded }: DispatchTrucksPanelProps = {})
 
 function TruckOffChip({ entry }: { entry: TruckOffEntry }) {
   return (
-    <li>
+    <li
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData(DISPATCH_TRUCK_DRAG_TYPE, truckDragPayload(entry.truck.id));
+        e.dataTransfer.effectAllowed = "move";
+      }}
+    >
       <DispatchResourceTooltip label={entry.label} detail={entry.detail}>
-        <div className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1">
+        <div className="flex cursor-grab items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 active:cursor-grabbing hover:border-amber-300">
+          <GripVertical className="h-3 w-3 shrink-0 text-slate-300" aria-hidden />
           <span className="block truncate text-xs font-medium text-slate-500">
             {formatTruckInline(entry.truck)}
           </span>

@@ -43,7 +43,7 @@ export function MoveDetailMain({ move, activeTab, onTabChange }: MoveDetailMainP
       <div
         id="move-detail-tabs"
         className={cn(
-          "sticky z-50 w-full min-w-0 border-b border-slate-200 bg-white shadow-sm",
+          "sticky z-30 w-full min-w-0 border-b border-slate-200 bg-white shadow-sm",
           MOVE_DETAIL_STICKY_TABS_TOP,
         )}
       >

@@ -1,9 +1,9 @@
 "use client";
 
+import { SetupAccordion } from "@/components/admin/setup/SetupAccordion";
 import { useTerminologyEditor } from "@/lib/settings/use-settings-editor";
 import { SettingsField, SettingsInput } from "@/components/settings/SettingsField";
 import { Button } from "@/components/ui/Button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { DEFAULT_TERMINOLOGY } from "@/lib/terminology/defaults";
 import { roleInitial, roleSingular } from "@/lib/terminology/labels";
 import { mergeTerminology } from "@/lib/terminology/normalize";
@@ -37,15 +37,8 @@ export function TerminologyTab() {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Crew role labels</CardTitle>
-          <p className="text-sm text-slate-500">
-            Customize how skipper, driver, and mover appear across dispatch, operations, and the
-            crew app. More terminology settings will live here later.
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-6">
+      <SetupAccordion title="Crew role labels" defaultOpen={false}>
+        <div className="space-y-6">
           {ROLE_ORDER.map((role) => {
             const term = terminology[role];
             return (
@@ -80,8 +73,8 @@ export function TerminologyTab() {
           <Button type="button" variant="secondary" size="sm" onClick={resetAll}>
             Reset to defaults
           </Button>
-        </CardContent>
-      </Card>
+        </div>
+      </SetupAccordion>
     </div>
   );
 }

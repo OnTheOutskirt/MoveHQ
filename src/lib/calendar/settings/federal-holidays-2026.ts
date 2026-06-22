@@ -22,11 +22,18 @@ export function federalHolidays2026WithIds(): ClosedDayEntry[] {
   }));
 }
 
-/** Re-insert default federal holidays that were removed from saved settings. */
-export function mergeFederalHolidays(closedDays: ClosedDayEntry[]): ClosedDayEntry[] {
+/**
+ * Re-insert default federal holidays that were removed from saved settings,
+ * except dates the user explicitly deleted (`removedFederalDates`).
+ */
+export function mergeFederalHolidays(
+  closedDays: ClosedDayEntry[],
+  removedFederalDates: string[] = [],
+): ClosedDayEntry[] {
   const defaults = federalHolidays2026WithIds();
   const existingDates = new Set(closedDays.map((d) => d.date));
-  const missing = defaults.filter((h) => !existingDates.has(h.date));
+  const removed = new Set(removedFederalDates);
+  const missing = defaults.filter((h) => !existingDates.has(h.date) && !removed.has(h.date));
   if (missing.length === 0) return closedDays;
   return [...closedDays, ...missing].sort((a, b) => a.date.localeCompare(b.date));
 }

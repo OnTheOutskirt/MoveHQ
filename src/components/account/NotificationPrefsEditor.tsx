@@ -23,7 +23,6 @@ const CHANNEL_KEYS = [
   { key: "inApp" as const, label: NOTIFICATION_CHANNEL_LABELS.in_app },
   { key: "email" as const, label: NOTIFICATION_CHANNEL_LABELS.email },
   { key: "sms" as const, label: NOTIFICATION_CHANNEL_LABELS.sms },
-  { key: "push" as const, label: NOTIFICATION_CHANNEL_LABELS.push },
 ];
 
 export function NotificationPrefsEditor({
@@ -91,8 +90,8 @@ export function NotificationPrefsEditor({
         </tbody>
       </table>
       <p className="border-t border-slate-100 bg-slate-50/50 px-3 py-2 text-[10px] text-slate-500">
-        In-app alerts appear in the bell menu. Email, SMS, and push delivery queue when those
-        integrations are connected — toggles are saved per user now.
+        In-app alerts appear in the bell menu. Email and SMS delivery queue when those integrations
+        are connected — toggles are saved per user now.
       </p>
     </div>
   );

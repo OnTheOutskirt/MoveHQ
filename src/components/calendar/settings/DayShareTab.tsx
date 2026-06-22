@@ -1,8 +1,8 @@
 "use client";
 
 import { useCalendarSettings } from "@/components/providers/CalendarSettingsProvider";
-import { DAY_SHARE_COMBINATION_HINT } from "@/lib/day-share/units";
-import type { DayShareFraction } from "@/lib/day-share/types";
+import { DAY_PORTION_LABELS } from "@/lib/day-share/units";
+import { DAY_PORTIONS, type DayPortion, type DayShareFraction } from "@/lib/day-share/types";
 
 const FRACTION_KEYS: DayShareFraction[] = ["brief", "short", "medium", "long"];
 const CREW_SIZE_OPTIONS = [2, 3, 4, 5, 6, 7, 8];
@@ -27,9 +27,6 @@ export function DayShareTab() {
         Partial-day scheduling fills crew-days by pairing morning and afternoon jobs.
         Open slots show what still fits based on jobs already on the calendar.
       </p>
-      <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
-        {DAY_SHARE_COMBINATION_HINT}
-      </p>
 
       <div>
         <label className="text-xs font-medium text-slate-600">Section label</label>
@@ -46,9 +43,6 @@ export function DayShareTab() {
 
       <div>
         <p className="text-xs font-medium text-slate-600">Allowed crew sizes</p>
-        <p className="mt-0.5 text-[11px] text-slate-500">
-          Only these crew sizes participate in open-slot scheduling (Google Sheets used 2 &amp; 3).
-        </p>
         <div className="mt-2 flex flex-wrap gap-2">
           {CREW_SIZE_OPTIONS.map((size) => {
             const active = settings.allowedCrewSizes.includes(size);
@@ -72,19 +66,44 @@ export function DayShareTab() {
 
       <div className="space-y-3">
         <p className="text-xs font-medium text-slate-600">Duration labels</p>
+        <p className="text-[11px] text-slate-500">
+          Set each duration&apos;s name and how much of a crew-day it fills.
+        </p>
         {FRACTION_KEYS.map((key) => (
           <div key={key}>
             <label className="text-[10px] uppercase tracking-wide text-slate-500">{key}</label>
-            <input
-              type="text"
-              value={settings.fractionLabels[key]}
-              onChange={(e) =>
-                updateDayShareSettings({
-                  fractionLabels: { ...settings.fractionLabels, [key]: e.target.value },
-                })
-              }
-              className="mt-0.5 w-full rounded-lg border border-slate-200 px-3 py-1.5 text-sm"
-            />
+            <div className="mt-0.5 flex flex-wrap items-center gap-2">
+              <input
+                type="text"
+                value={settings.fractionLabels[key]}
+                onChange={(e) =>
+                  updateDayShareSettings({
+                    fractionLabels: { ...settings.fractionLabels, [key]: e.target.value },
+                  })
+                }
+                className="min-w-[8rem] flex-1 rounded-lg border border-slate-200 px-3 py-1.5 text-sm"
+                aria-label={`${key} label`}
+              />
+              <select
+                value={settings.fractionPortions[key]}
+                onChange={(e) =>
+                  updateDayShareSettings({
+                    fractionPortions: {
+                      ...settings.fractionPortions,
+                      [key]: e.target.value as DayPortion,
+                    },
+                  })
+                }
+                className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm"
+                aria-label={`${key} portion`}
+              >
+                {DAY_PORTIONS.map((portion) => (
+                  <option key={portion} value={portion}>
+                    {DAY_PORTION_LABELS[portion]}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         ))}
       </div>

@@ -398,8 +398,8 @@ export function DayDetailSidebar({
     const isFederal = closedDaySource === "federal";
 
     const reopenConfirmDescription = isFederal
-      ? "This removes the holiday from your calendar settings and shows normal capacity for this day. You can restore federal holidays from Move Calendar settings."
-      : "This removes the scheduled closure for this day. To close it again, add the day back in Move Calendar settings.";
+      ? "This opens the day for booking and shows normal capacity. The holiday stays saved in Move Calendar settings — turn it back on there anytime."
+      : "This opens the day for booking and shows normal capacity. The closure stays saved in Move Calendar settings — turn it back on there anytime.";
 
     return (
       <>
@@ -441,9 +441,8 @@ export function DayDetailSidebar({
                 Open this day
               </Button>
               <p className="mt-2 text-sm text-slate-500">
-                {isFederal
-                  ? "Permanently open this date on the calendar (removes the holiday closure)."
-                  : "Remove this closure and show normal capacity."}
+                Open this date for booking. The closure stays saved and can be turned back on in
+                Move Calendar settings.
               </p>
           </div>
         </div>

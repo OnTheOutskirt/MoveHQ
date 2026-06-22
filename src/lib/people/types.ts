@@ -46,6 +46,7 @@ export const ORGANIZATION_TYPES = [
   "senior_living",
   "commercial",
   "apartment_complex",
+  "moving_company",
   "vendor",
   "other",
 ] as const;

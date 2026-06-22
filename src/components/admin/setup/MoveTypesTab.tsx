@@ -15,7 +15,6 @@ import {
 import { patchMoveTypeRule, resolveMoveTypeRule } from "@/lib/settings/move-type-rules";
 import { useSettingsSection } from "@/lib/settings/use-settings-editor";
 import { Pencil, Plus, Trash2 } from "lucide-react";
-import Link from "next/link";
 import { useMemo, useState } from "react";
 
 export function MoveTypesTab() {
@@ -84,12 +83,6 @@ export function MoveTypesTab() {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-slate-600">
-        Move types drive hourly billing, liability coverage, and default pricing — not just labels
-        on a move card. Use <span className="font-medium text-slate-800">Edit</span> to change rules;
-        deleting a type reassigns affected moves to a new type and updates their settings.
-      </p>
-
       <SetupAccordion
         title="Move types & service rules"
         description="How each service type is billed and covered."
@@ -159,15 +152,6 @@ export function MoveTypesTab() {
           Add move type
         </Button>
       </SetupAccordion>
-
-      <p className="text-xs text-slate-500">
-        Hourly travel fees themselves are set under{" "}
-        <Link href="/admin/setup?tab=rates" className="font-medium text-brand-600 hover:underline">
-          Rates &amp; catalog
-        </Link>
-        . Long-distance moves use the flat travel fee; local moves clock drive time on the hourly
-        rate.
-      </p>
 
       <MoveTypeEditorSidebar
         open={editingId != null}

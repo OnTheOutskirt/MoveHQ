@@ -1,9 +1,10 @@
 "use client";
 
 import { RateHistoryPanel } from "@/components/admin/setup/RateHistoryPanel";
+import { EditableNumberInput } from "@/components/settings/EditableNumberInput";
 import { SettingsField } from "@/components/settings/SettingsField";
 import type { EquipmentCatalogItem } from "@/lib/moves/equipment-catalog-types";
-import { DEFAULT_HOURLY_QUOTE_SETTINGS, type HourlyQuoteSettings } from "@/lib/moves/hourly-quote-settings";
+import { type HourlyQuoteSettings } from "@/lib/moves/hourly-quote-settings";
 import type { PricingRateSchedule } from "@/lib/pricing/rate-history-types";
 import { cn } from "@/lib/utils";
 
@@ -18,12 +19,11 @@ type PricingRatesTabProps = {
 
 function moneyInput(value: number, onChange: (n: number) => void, className?: string) {
   return (
-    <input
-      type="number"
+    <EditableNumberInput
+      value={value}
+      onCommit={onChange}
       min={0}
       step={1}
-      value={value}
-      onChange={(e) => onChange(Math.max(0, Number(e.target.value) || 0))}
       className={cn(
         "w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900",
         className,
@@ -58,17 +58,13 @@ export function PricingRatesTab({
             {moneyInput(hourlySettings.travelFee, (v) => onHourlySettingsChange({ travelFee: v }))}
           </SettingsField>
           <SettingsField label="Minimum hours (local)">
-            <input
-              type="number"
-              min={1}
+            <EditableNumberInput
+              value={hourlySettings.minimumHours}
+              onCommit={(v) => onHourlySettingsChange({ minimumHours: v })}
+              min={0}
               max={12}
               step={0.5}
-              value={hourlySettings.minimumHours}
-              onChange={(e) =>
-                onHourlySettingsChange({
-                  minimumHours: Math.max(1, Number(e.target.value) || DEFAULT_HOURLY_QUOTE_SETTINGS.minimumHours),
-                })
-              }
+              fallback={0}
               className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900"
             />
           </SettingsField>

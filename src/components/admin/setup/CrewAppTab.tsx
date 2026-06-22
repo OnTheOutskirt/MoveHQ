@@ -4,6 +4,7 @@ import { CrewResourcesEditor } from "@/components/admin/setup/CrewResourcesEdito
 import { CrewAppRoleMultiSwitcher } from "@/components/crew-app/CrewAppRoleMultiSwitcher";
 import { CrewPhoneFrame } from "@/components/crew-app/CrewPhoneFrame";
 import { CrewRoleSwitcher } from "@/components/crew-app/CrewRoleSwitcher";
+import { TabBar } from "@/components/shared/TabBar";
 import { PREVIEW_CREW_MEMBER } from "@/lib/crew-app/session";
 import type { CrewAppRole } from "@/lib/crew-app/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
@@ -12,7 +13,54 @@ import { ExternalLink, Smartphone, User } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+const MOBILE_APP_TABS = [
+  { id: "crew", label: "Crew App" },
+  { id: "operations", label: "Operations App" },
+  { id: "sales", label: "Sales App" },
+] as const;
+
+type MobileAppTab = (typeof MOBILE_APP_TABS)[number]["id"];
+
 export function CrewAppTab() {
+  const [tab, setTab] = useState<MobileAppTab>("crew");
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-base font-semibold text-slate-900">Mobile apps</h2>
+      </div>
+
+      <TabBar tabs={MOBILE_APP_TABS} activeTab={tab} onChange={setTab} />
+
+      {tab === "crew" ? <CrewAppPanel /> : null}
+      {tab === "operations" ? (
+        <ComingSoonPanel
+          title="Operations app"
+          description="Field operations experience — coming soon."
+        />
+      ) : null}
+      {tab === "sales" ? (
+        <ComingSoonPanel
+          title="Sales app"
+          description="On-the-go sales experience — coming soon."
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function ComingSoonPanel({ title, description }: { title: string; description: string }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+        <p className="text-sm text-slate-500">{description}</p>
+      </CardHeader>
+    </Card>
+  );
+}
+
+function CrewAppPanel() {
   const { settings } = useSettings();
   const { branding } = settings;
   const [jobRole, setJobRole] = useState<CrewAppRole>("skipper");
@@ -67,16 +115,8 @@ export function CrewAppTab() {
   }, [previewSrc]);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-base font-semibold text-slate-900">Mobile apps</h2>
-        <p className="mt-1 text-sm text-slate-600">
-          Preview and configure field apps — crew, operations, and sales experiences will live
-          here as they roll out.
-        </p>
-      </div>
-
-      <Card className="overflow-hidden">
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
+      <Card className="min-w-0 overflow-hidden">
         <CardHeader
           className="border-b border-slate-100"
           style={{
@@ -92,11 +132,6 @@ export function CrewAppTab() {
             </span>
             Crew app preview
           </CardTitle>
-          <p className="text-sm text-slate-500">
-            Progressive web app at{" "}
-            <code className="rounded bg-slate-100 px-1 text-xs">/crew</code> — uses your MoveHQ
-            branding. Dispatch &quot;Send to crew app&quot; will feed this schedule later.
-          </p>
         </CardHeader>
         <CardContent className="space-y-5 pt-5">
           <div className="flex flex-wrap items-end justify-between gap-4">
@@ -158,28 +193,9 @@ export function CrewAppTab() {
         </CardContent>
       </Card>
 
-      <CrewResourcesEditor />
-
-      <Card>
-        <CardHeader>
-          <CardTitle>What&apos;s in this build</CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm text-slate-600">
-          <ul className="list-inside list-disc space-y-1">
-            <li>Today — combined load list + jobs (flat rate &amp; hourly demos)</li>
-            <li>
-              Schedule — upcoming days, history (past jobs &amp; hours), time off, message ops
-            </li>
-            <li>Stats — your issues log plus skipper or driver scores from operations</li>
-            <li>Inbox — notifications for time off, schedule publishes, and more</li>
-            <li>Resources — payroll &amp; benefits links (editable below)</li>
-            <li>Message ops, job media, take-home sign-off, depot time on clock</li>
-            <li>Skipper workflow — Prep · Clock · Start · Close out · Finish bottom nav</li>
-            <li>Driver / mover — load checklist, schedule, and team (no pricing or workflow tabs)</li>
-            <li>Mover route — ZIP codes only on cards and job detail</li>
-          </ul>
-        </CardContent>
-      </Card>
+      <div className="min-w-0 lg:sticky lg:top-4">
+        <CrewResourcesEditor />
+      </div>
     </div>
   );
 }

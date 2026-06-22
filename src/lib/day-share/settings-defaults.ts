@@ -1,4 +1,4 @@
-import type { DayShareSettings } from "./types";
+import { DAY_PORTIONS, type DayPortion, type DayShareFraction, type DayShareSettings } from "./types";
 
 export function defaultDayShareSettings(): DayShareSettings {
   return {
@@ -11,11 +11,21 @@ export function defaultDayShareSettings(): DayShareSettings {
       medium: "Medium (⅔ day)",
       long: "Long (full day)",
     },
+    fractionPortions: {
+      brief: "third",
+      short: "half",
+      medium: "two_thirds",
+      long: "full",
+    },
     periodLabels: {
       morning: "Morning",
       afternoon: "Afternoon",
     },
   };
+}
+
+function normalizePortion(value: unknown, fallback: DayPortion): DayPortion {
+  return DAY_PORTIONS.includes(value as DayPortion) ? (value as DayPortion) : fallback;
 }
 
 export function normalizeDayShareSettings(raw?: Partial<DayShareSettings> | null): DayShareSettings {
@@ -24,11 +34,18 @@ export function normalizeDayShareSettings(raw?: Partial<DayShareSettings> | null
   const sizes = Array.isArray(raw.allowedCrewSizes)
     ? raw.allowedCrewSizes.filter((n) => typeof n === "number" && n >= 2 && n <= 12)
     : defaults.allowedCrewSizes;
+  const rawPortions: Partial<Record<DayShareFraction, DayPortion>> = raw.fractionPortions ?? {};
   return {
     sectionLabel: raw.sectionLabel?.trim() || defaults.sectionLabel,
     slotVerb: raw.slotVerb?.trim() || defaults.slotVerb,
     allowedCrewSizes: sizes.length > 0 ? [...new Set(sizes)].sort((a, b) => a - b) : defaults.allowedCrewSizes,
     fractionLabels: { ...defaults.fractionLabels, ...raw.fractionLabels },
+    fractionPortions: {
+      brief: normalizePortion(rawPortions.brief, defaults.fractionPortions.brief),
+      short: normalizePortion(rawPortions.short, defaults.fractionPortions.short),
+      medium: normalizePortion(rawPortions.medium, defaults.fractionPortions.medium),
+      long: normalizePortion(rawPortions.long, defaults.fractionPortions.long),
+    },
     periodLabels: { ...defaults.periodLabels, ...raw.periodLabels },
   };
 }

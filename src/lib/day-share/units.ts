@@ -1,19 +1,32 @@
-import type { DayShareFraction } from "./types";
+import { defaultDayShareSettings } from "./settings-defaults";
+import type { DayPortion, DayShareFraction, DayShareSettings } from "./types";
 
-/** Day capacity in sixths — brief=⅓, short=½, medium=⅔, long=full. */
-export const DAY_SHARE_CAPACITY = 6;
+/** Day capacity in twelfths — supports ¼, ⅓, ½, ⅔, and full portions. */
+export const DAY_SHARE_CAPACITY = 12;
 
-export function fractionUnits(fraction: DayShareFraction): number {
-  switch (fraction) {
-    case "brief":
-      return 2;
-    case "short":
-      return 3;
-    case "medium":
-      return 4;
-    case "long":
-      return 6;
-  }
+/** Units (of `DAY_SHARE_CAPACITY`) consumed by each day portion. */
+export const DAY_PORTION_UNITS: Record<DayPortion, number> = {
+  quarter: 3,
+  third: 4,
+  half: 6,
+  two_thirds: 8,
+  full: 12,
+};
+
+export const DAY_PORTION_LABELS: Record<DayPortion, string> = {
+  quarter: "¼ day",
+  third: "⅓ day",
+  half: "½ day",
+  two_thirds: "⅔ day",
+  full: "Full day",
+};
+
+export function fractionUnits(
+  fraction: DayShareFraction,
+  settings: DayShareSettings = defaultDayShareSettings(),
+): number {
+  const portion = settings.fractionPortions[fraction];
+  return DAY_PORTION_UNITS[portion];
 }
 
 export function isFullDayFraction(fraction: DayShareFraction): boolean {
@@ -26,35 +39,23 @@ export const DAY_SHARE_COMBINATION_HINT =
 
 export function combinationsFillDay(
   fractions: DayShareFraction[],
+  settings: DayShareSettings = defaultDayShareSettings(),
 ): { valid: boolean; message?: string } {
   if (fractions.length === 0) return { valid: true };
-  const units = fractions.reduce((sum, f) => sum + fractionUnits(f), 0);
+  const units = fractions.reduce((sum, f) => sum + fractionUnits(f, settings), 0);
   if (units > DAY_SHARE_CAPACITY) {
     return { valid: false, message: "Combined jobs exceed one crew-day." };
   }
   if (units < DAY_SHARE_CAPACITY) {
     return { valid: false, message: "Crew-day is not fully scheduled yet." };
   }
-  const sorted = [...fractions].sort().join(",");
-  const validSets = new Set([
-    "long",
-    "brief,medium",
-    "medium,brief",
-    "short,short",
-    "brief,brief,brief",
-  ]);
-  if (validSets.has(sorted) || fractions.length === 1 && fractions[0] === "long") {
-    return { valid: true };
-  }
-  return {
-    valid: false,
-    message: `Invalid pairing (${DAY_SHARE_COMBINATION_HINT}).`,
-  };
+  return { valid: true };
 }
 
 export function canPairFractions(
   existing: DayShareFraction,
   incoming: DayShareFraction,
+  settings: DayShareSettings = defaultDayShareSettings(),
 ): boolean {
-  return combinationsFillDay([existing, incoming]).valid;
+  return combinationsFillDay([existing, incoming], settings).valid;
 }

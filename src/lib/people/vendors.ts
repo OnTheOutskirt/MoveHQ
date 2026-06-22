@@ -40,29 +40,46 @@ function personVendorOption(person: PersonRecord): VendorDirectoryOption {
   };
 }
 
-export function listVendorDirectoryOptions(vendorTypeId?: string): VendorDirectoryOption[] {
+export type ListVendorDirectoryOptionsConfig = {
+  /** Move vendor picker pulls vendors from the organization directory, not individual people. */
+  organizationsOnly?: boolean;
+};
+
+export function listVendorDirectoryOptions(
+  vendorTypeId?: string,
+  config?: ListVendorDirectoryOptionsConfig,
+): VendorDirectoryOption[] {
+  const organizationsOnly = config?.organizationsOnly ?? false;
   const people = listAllPeople().filter((person) => person.kind === "vendor");
   const orgs = listAllOrganizations();
-  const options: VendorDirectoryOption[] = [];
+  const result: VendorDirectoryOption[] = [];
 
-  for (const person of people) {
-    options.push(personVendorOption(person));
+  if (!organizationsOnly) {
+    for (const person of people) {
+      result.push(personVendorOption(person));
+    }
   }
 
   for (const org of orgs) {
     if (org.orgType !== "vendor") continue;
-    const covered = people.some((person) => person.organizationId === org.id);
-    if (!covered) options.push(orgVendorOption(org, people));
+    if (!organizationsOnly) {
+      const covered = people.some((person) => person.organizationId === org.id);
+      if (covered) continue;
+    }
+    result.push(orgVendorOption(org, people));
   }
 
   for (const org of MOCK_ORGANIZATIONS) {
     if (org.orgType !== "vendor") continue;
     if (orgs.some((stored) => stored.id === org.id)) continue;
-    const covered = people.some((person) => person.organizationId === org.id);
-    if (!covered) options.push(orgVendorOption(org, people));
+    if (!organizationsOnly) {
+      const covered = people.some((person) => person.organizationId === org.id);
+      if (covered) continue;
+    }
+    result.push(orgVendorOption(org, people));
   }
 
-  const sorted = options.sort((a, b) =>
+  const sorted = result.sort((a, b) =>
     a.label.localeCompare(b.label, undefined, { sensitivity: "base" }),
   );
 
@@ -112,7 +129,10 @@ export function resolveVendorDirectoryLabel(vendorDirectoryId: string | null | u
 export function vendorDirectoryOptionMatchesVendorType(
   vendorDirectoryId: string | null | undefined,
   vendorTypeId: string,
+  config?: ListVendorDirectoryOptionsConfig,
 ): boolean {
   if (!vendorDirectoryId) return false;
-  return listVendorDirectoryOptions(vendorTypeId).some((option) => option.id === vendorDirectoryId);
+  return listVendorDirectoryOptions(vendorTypeId, config).some(
+    (option) => option.id === vendorDirectoryId,
+  );
 }

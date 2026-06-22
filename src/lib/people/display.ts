@@ -125,6 +125,11 @@ export const organizationTypeConfig: Record<
     description: "Offices, retail, clinics — B2B accounts",
     badge: "bg-sky-50 text-sky-900",
   },
+  moving_company: {
+    label: "Moving company",
+    description: "Referral partners we send or receive moves from (10% commission)",
+    badge: "bg-amber-50 text-amber-900",
+  },
   vendor: {
     label: "Vendor",
     description: "Companies we subcontract or coordinate with",

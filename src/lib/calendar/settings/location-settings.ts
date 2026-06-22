@@ -13,6 +13,7 @@ export function normalizeLocationSettings(raw: unknown): CalendarLocationSetting
     return {
       closedDays: [],
       federalHolidayBookedDates: [],
+      removedFederalDates: [],
       colorPalette: palette,
       dayShareSettings: normalizeDayShareSettings(),
     };
@@ -23,6 +24,7 @@ export function normalizeLocationSettings(raw: unknown): CalendarLocationSetting
     federalHolidayBookedDates: Array.isArray(s.federalHolidayBookedDates)
       ? s.federalHolidayBookedDates
       : [],
+    removedFederalDates: Array.isArray(s.removedFederalDates) ? s.removedFederalDates : [],
     colorPalette: s.colorPalette ? mergeCalendarPalette(s.colorPalette) : palette,
     dayShareSettings: normalizeDayShareSettings(s.dayShareSettings),
   };
@@ -35,15 +37,23 @@ export function resolveLocationCalendarSettings(
   const override = store.locationOverrides[locationId];
   if (override && !override.useCompanyDefault && override.settings) {
     return {
-      closedDays: mergeFederalHolidays(override.settings.closedDays),
+      closedDays: mergeFederalHolidays(
+        override.settings.closedDays,
+        override.settings.removedFederalDates,
+      ),
       federalHolidayBookedDates: override.settings.federalHolidayBookedDates,
+      removedFederalDates: override.settings.removedFederalDates ?? [],
       colorPalette: override.settings.colorPalette,
       dayShareSettings: override.settings.dayShareSettings,
     };
   }
   return {
-    closedDays: mergeFederalHolidays(store.companyDefaults.closedDays),
+    closedDays: mergeFederalHolidays(
+      store.companyDefaults.closedDays,
+      store.companyDefaults.removedFederalDates,
+    ),
     federalHolidayBookedDates: store.companyDefaults.federalHolidayBookedDates,
+    removedFederalDates: store.companyDefaults.removedFederalDates ?? [],
     colorPalette: store.companyDefaults.colorPalette,
     dayShareSettings: store.companyDefaults.dayShareSettings,
   };

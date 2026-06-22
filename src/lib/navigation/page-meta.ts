@@ -105,9 +105,8 @@ export const pageMeta: Record<string, PageMeta> = {
       "Day pipeline, sales scorecards, referral partner performance, operations actuals, inventory usage, AI quote accuracy, and dispatch change impact.",
   },
   "/planning": {
-    title: "Planning",
-    description:
-      "MoveHQ roadmap — June office app + Supabase (seed), July live data, August crew + launch.",
+    title: "MoveHQ Planning",
+    description: "",
   },
   "/admin/staff": {
     title: "Staff",
@@ -115,8 +114,7 @@ export const pageMeta: Record<string, PageMeta> = {
   },
   "/admin/company": {
     title: "Company",
-    description:
-      "How the business appears in the product — branding, legal profile, defaults, and notifications.",
+    description: "",
   },
   "/admin/setup": {
     title: "Setup",

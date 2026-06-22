@@ -1,6 +1,5 @@
 "use client";
 
-import { SettingsField, SettingsInput, SettingsSelect } from "@/components/settings/SettingsField";
 import { useCalendarSettings } from "@/components/providers/CalendarSettingsProvider";
 import { useWorkspace } from "@/components/providers/WorkspaceProvider";
 import { Button } from "@/components/ui/Button";
@@ -79,97 +78,92 @@ function MetricListEditor({
         <h4 className="text-sm font-semibold text-slate-900">{title}</h4>
         <p className="text-xs text-slate-500">{hint}</p>
       </div>
-      <ul className="space-y-2">
+      <ul className="space-y-1.5">
         {slots.map((slot, index) => {
           const category = categories.find((c) => c.id === slot.resourceCategoryId);
           return (
             <li
               key={slot.id}
-              className="space-y-2 rounded-xl border border-slate-200 bg-slate-50/50 p-3"
+              className="flex flex-wrap items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50/50 px-2 py-1.5"
             >
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="w-5 text-xs font-medium text-slate-500">{index + 1}.</span>
-                <select
-                  value={slot.resourceCategoryId}
-                  onChange={(e) => patchSlot(index, { resourceCategoryId: e.target.value })}
-                  className="min-w-[8rem] flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm"
+              <span className="text-xs font-medium text-slate-500">{index + 1}.</span>
+              <select
+                value={slot.resourceCategoryId}
+                onChange={(e) => patchSlot(index, { resourceCategoryId: e.target.value })}
+                className="min-w-[6.5rem] flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-sm"
+                aria-label="Resource category"
+              >
+                {categories.map((c) => (
+                  <option
+                    key={c.id}
+                    value={c.id}
+                    disabled={usedIds.has(c.id) && c.id !== slot.resourceCategoryId}
+                  >
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={slot.displayType}
+                onChange={(e) =>
+                  patchSlot(index, {
+                    displayType: normalizeMetricDisplayType(
+                      e.target.value as CalendarMetricDisplayType,
+                      Boolean(primaryOnly),
+                    ),
+                  })
+                }
+                className="min-w-[6rem] rounded-lg border border-slate-200 bg-white px-2 py-1 text-sm"
+                aria-label="Display type"
+              >
+                {displayOptions.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+              <input
+                value={slot.customLabel ?? ""}
+                onChange={(e) =>
+                  patchSlot(index, { customLabel: e.target.value.trim() || undefined })
+                }
+                placeholder={category?.name ?? "Label"}
+                className="min-w-[5.5rem] flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-sm"
+                aria-label="Card label"
+              />
+              <div className="flex gap-0.5">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  disabled={index === 0}
+                  onClick={() => onChange(moveItem(slots, index, -1))}
+                  aria-label="Move up"
                 >
-                  {categories.map((c) => (
-                    <option
-                      key={c.id}
-                      value={c.id}
-                      disabled={usedIds.has(c.id) && c.id !== slot.resourceCategoryId}
-                    >
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-                <div className="flex gap-0.5">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0"
-                    disabled={index === 0}
-                    onClick={() => onChange(moveItem(slots, index, -1))}
-                    aria-label="Move up"
-                  >
-                    <ChevronUp className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0"
-                    disabled={index === slots.length - 1}
-                    onClick={() => onChange(moveItem(slots, index, 1))}
-                    aria-label="Move down"
-                  >
-                    <ChevronDown className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0 text-red-600"
-                    onClick={() => removeSlot(index)}
-                    aria-label="Remove metric"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-              <div className="grid gap-2 pl-7">
-                <SettingsField label="Display">
-                  <SettingsSelect
-                    value={slot.displayType}
-                    onChange={(e) =>
-                      patchSlot(index, {
-                        displayType: normalizeMetricDisplayType(
-                          e.target.value as CalendarMetricDisplayType,
-                          Boolean(primaryOnly),
-                        ),
-                      })
-                    }
-                  >
-                    {displayOptions.map((o) => (
-                      <option key={o.id} value={o.id}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </SettingsSelect>
-                </SettingsField>
-                <SettingsField label="Card label" hint="Optional">
-                  <SettingsInput
-                    value={slot.customLabel ?? ""}
-                    onChange={(e) =>
-                      patchSlot(index, {
-                        customLabel: e.target.value.trim() || undefined,
-                      })
-                    }
-                    placeholder={category?.name ?? "Label"}
-                  />
-                </SettingsField>
+                  <ChevronUp className="h-4 w-4" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  disabled={index === slots.length - 1}
+                  onClick={() => onChange(moveItem(slots, index, 1))}
+                  aria-label="Move down"
+                >
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0 text-red-600"
+                  onClick={() => removeSlot(index)}
+                  aria-label="Remove metric"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
             </li>
           );
@@ -222,20 +216,6 @@ export function CalendarMetricsTab() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-          Resource categories
-        </p>
-        <ul className="mt-2 divide-y divide-slate-100 rounded-lg border border-slate-200 text-sm">
-          {calendar.resourceCategories.map((cat) => (
-            <li key={cat.id} className="flex justify-between gap-2 px-3 py-2">
-              <span className="font-medium text-slate-800">{cat.name}</span>
-              <span className="text-xs capitalize text-slate-500">{cat.kind}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-
       {customizing ? (
         <p className="text-xs text-brand-800 bg-brand-50 rounded-lg px-3 py-2">
           Custom metrics for this branch only. Check &quot;Use company defaults&quot; above to edit
