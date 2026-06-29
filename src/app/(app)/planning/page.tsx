@@ -32,6 +32,10 @@ const TesterFeedbackView = lazyNamedWorkspace(
   () => import("@/components/planning/TesterFeedbackView"),
   (module) => module.TesterFeedbackView,
 );
+const DatabaseDesignView = lazyNamedWorkspace(
+  () => import("@/components/planning/DatabaseDesignView"),
+  (module) => module.DatabaseDesignView,
+);
 
 const TABS = [
   { id: "v1", label: "V1 Roadmap" },
@@ -43,15 +47,6 @@ const TABS = [
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
-
-function DatabaseDesignView() {
-  return (
-    <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-6 py-16 text-center">
-      <p className="text-sm font-medium text-slate-600">Database design coming soon.</p>
-      <p className="mt-1 text-sm text-slate-400">Nothing here yet.</p>
-    </div>
-  );
-}
 
 function TabPanel({ tab }: { tab: TabId }) {
   switch (tab) {

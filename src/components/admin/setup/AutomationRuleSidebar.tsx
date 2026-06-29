@@ -58,7 +58,9 @@ export function AutomationRuleSidebar({
 }: AutomationRuleSidebarProps) {
   if (!rule) return null;
   const r = rule;
-  const locked = Boolean(r.builtin);
+  // Built-in rules are fully editable like custom ones; they just can't be
+  // deleted (they're part of the seeded defaults — toggle them off instead).
+  const canDelete = !r.builtin;
   const steps = migrateRuleToSteps(r);
 
   function patch(p: Partial<PipelineAutomationRule>) {
@@ -97,14 +99,11 @@ export function AutomationRuleSidebar({
     <DetailSidebar
       open
       onClose={onClose}
-      title={locked ? r.label : "Edit automation"}
-      description={
-        locked ? "Built-in rule — toggle it on/off and swap message templates." : undefined
-      }
+      title="Edit automation"
       widthClassName="max-w-lg"
       footer={
         <div className="flex items-center justify-between gap-2">
-          {!locked ? (
+          {canDelete ? (
             <Button
               type="button"
               variant="secondary"
@@ -133,19 +132,17 @@ export function AutomationRuleSidebar({
             Name
             <input
               value={r.label}
-              disabled={locked}
               onChange={(e) => patch({ label: e.target.value })}
-              className={cn(INPUT, "font-semibold text-slate-900 disabled:bg-slate-50")}
+              className={cn(INPUT, "font-semibold text-slate-900")}
             />
           </label>
           <label className="block text-xs font-medium text-slate-600">
             Description
             <input
               value={r.description}
-              disabled={locked}
               onChange={(e) => patch({ description: e.target.value })}
               placeholder="Optional"
-              className={cn(INPUT, "text-slate-700 disabled:bg-slate-50")}
+              className={cn(INPUT, "text-slate-700")}
             />
           </label>
         </div>
@@ -154,9 +151,8 @@ export function AutomationRuleSidebar({
           Pipeline phase
           <select
             value={r.section}
-            disabled={locked}
             onChange={(e) => patch({ section: e.target.value as AutomationSectionId })}
-            className={cn(INPUT, "disabled:bg-slate-50")}
+            className={INPUT}
           >
             {SECTION_OPTIONS.map((s) => (
               <option key={s} value={s}>
@@ -172,9 +168,8 @@ export function AutomationRuleSidebar({
           </p>
           <select
             value={r.trigger}
-            disabled={locked}
             onChange={(e) => patch({ trigger: e.target.value as AutomationTriggerKind })}
-            className={cn(INPUT, "disabled:bg-white disabled:text-slate-600")}
+            className={INPUT}
           >
             {TRIGGER_OPTIONS.map((t) => (
               <option key={t} value={t}>
@@ -187,9 +182,8 @@ export function AutomationRuleSidebar({
               Pipeline stage
               <select
                 value={r.stage ?? "new_lead"}
-                disabled={locked}
                 onChange={(e) => patch({ stage: e.target.value as PipelineStageId })}
-                className={cn(INPUT, "disabled:bg-white disabled:text-slate-600")}
+                className={INPUT}
               >
                 {PIPELINE_STAGE_IDS.map((s) => (
                   <option key={s} value={s}>
@@ -202,16 +196,12 @@ export function AutomationRuleSidebar({
           {r.trigger === "days_before_move" ? (
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <span className="text-xs font-medium text-slate-600">Days before move</span>
-              {locked ? (
-                <span className="text-xs text-slate-500">{r.daysBeforeMove ?? 1} days</span>
-              ) : (
-                <DaysStepper
-                  value={r.daysBeforeMove ?? 1}
-                  onChange={(v) => patch({ daysBeforeMove: v })}
-                  max={30}
-                  unit="days"
-                />
-              )}
+              <DaysStepper
+                value={r.daysBeforeMove ?? 1}
+                onChange={(v) => patch({ daysBeforeMove: v })}
+                max={30}
+                unit="days"
+              />
             </div>
           ) : null}
           {r.trigger === "days_before_move" || r.trigger === "day_of_move" ? (
@@ -219,9 +209,8 @@ export function AutomationRuleSidebar({
               Send around
               <select
                 value={r.sendAtHour ?? (r.trigger === "day_of_move" ? 7 : 18)}
-                disabled={locked}
                 onChange={(e) => patch({ sendAtHour: Number(e.target.value) })}
-                className={cn(INPUT, "disabled:bg-white disabled:text-slate-600")}
+                className={INPUT}
               >
                 {SEND_HOURS.map((h) => (
                   <option key={h} value={h}>
@@ -238,12 +227,10 @@ export function AutomationRuleSidebar({
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
               Then (steps)
             </p>
-            {!locked ? (
-              <Button type="button" variant="secondary" size="sm" className="gap-1" onClick={addStep}>
-                <Plus className="h-3.5 w-3.5" />
-                Add step
-              </Button>
-            ) : null}
+            <Button type="button" variant="secondary" size="sm" className="gap-1" onClick={addStep}>
+              <Plus className="h-3.5 w-3.5" />
+              Add step
+            </Button>
           </div>
           <div className="space-y-2">
             {steps.map((step, index) => (
@@ -251,7 +238,6 @@ export function AutomationRuleSidebar({
                 key={step.id}
                 step={step}
                 index={index}
-                locked={locked}
                 smsTemplates={smsTemplates}
                 emailTemplates={emailTemplates}
                 isFirst={index === 0}

@@ -68,6 +68,12 @@ export type PersonRecord = {
   title: string | null;
   moveIds: string[];
   notes: string | null;
+  /** Alternate phone numbers demoted here when merging duplicate contacts. */
+  secondaryPhones?: string[];
+  /** Alternate emails demoted here when merging duplicate contacts. */
+  secondaryEmails?: string[];
+  /** Ids of records merged into this one. */
+  mergedFromIds?: string[];
   createdAt: string;
   updatedAt: string;
 };
@@ -83,6 +89,16 @@ export type OrganizationRecord = {
   primaryContactId: string | null;
   moveIds: string[];
   notes: string | null;
+  /** Alternate phone numbers demoted here when merging duplicate organizations. */
+  secondaryPhones?: string[];
+  /** Alternate emails demoted here when merging duplicate organizations. */
+  secondaryEmails?: string[];
+  /** Alternate addresses demoted here when merging duplicate organizations. */
+  secondaryAddresses?: string[];
+  /** Alternate websites demoted here when merging duplicate organizations. */
+  secondaryWebsites?: string[];
+  /** Ids of records merged into this one. */
+  mergedFromIds?: string[];
   createdAt: string;
   updatedAt: string;
 };

@@ -2,6 +2,24 @@ import { MOCK_ORGANIZATIONS } from "@/lib/people/mock-data";
 import type { OrganizationRecord } from "@/lib/people/types";
 
 const STORAGE_KEY = "jm-organizations-custom-v1";
+const DELETED_KEY = "jm-organizations-deleted-v1";
+
+function readDeletedOrganizationIds(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const raw = localStorage.getItem(DELETED_KEY);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw) as string[];
+    return Array.isArray(parsed) ? new Set(parsed) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function writeDeletedOrganizationIds(ids: Set<string>): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(DELETED_KEY, JSON.stringify([...ids]));
+}
 
 function readCustomOrganizations(): OrganizationRecord[] {
   if (typeof window === "undefined") return [];
@@ -32,6 +50,9 @@ export function listAllOrganizations(): OrganizationRecord[] {
   for (const org of readCustomOrganizations()) {
     byId.set(org.id, org);
   }
+  for (const id of readDeletedOrganizationIds()) {
+    byId.delete(id);
+  }
   return [...byId.values()];
 }
 
@@ -50,6 +71,14 @@ export function upsertCustomOrganization(org: OrganizationRecord): OrganizationR
   }
   writeCustomOrganizations(next);
   return org;
+}
+
+export function removeCustomOrganization(id: string): void {
+  const next = readCustomOrganizations().filter((o) => o.id !== id);
+  writeCustomOrganizations(next);
+  const deleted = readDeletedOrganizationIds();
+  deleted.add(id);
+  writeDeletedOrganizationIds(deleted);
 }
 
 export function bulkUpsertCustomOrganizations(orgs: OrganizationRecord[]): void {

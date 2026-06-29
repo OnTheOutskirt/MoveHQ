@@ -113,6 +113,8 @@ type MovesContextValue = {
   reopenMove: (moveId: string) => void;
   updateAssignedRep: (moveId: string, rep: string) => void;
   updateMoveLocation: (moveId: string, locationId: string, locationLabel?: string) => void;
+  /** Repoint a move's contact / linked-person references from one person to another (merge). */
+  reassignMoveContact: (moveId: string, fromPersonId: string, toPerson: PersonRecord) => void;
   addJobDay: (moveId: string, day: MoveJobDay) => void;
   updateJobDay: (moveId: string, day: MoveJobDay) => void;
   removeJobDay: (moveId: string, dayId: string) => void;
@@ -367,6 +369,47 @@ export function MovesProvider({ children }: { children: ReactNode }) {
             { ...move, locationId },
             `Location → ${locationLabel ?? locationId}`,
           );
+        }),
+      );
+    },
+    [],
+  );
+
+  const reassignMoveContact = useCallback(
+    (moveId: string, fromPersonId: string, toPerson: PersonRecord) => {
+      setAllMoves((prev) =>
+        prev.map((move) => {
+          if (move.id !== moveId) return move;
+
+          const wasContact = move.contactId === fromPersonId;
+          const touchesLinked = move.linkedPeople.some((p) => p.personId === fromPersonId);
+          if (!wasContact && !touchesLinked) return move;
+
+          const linkedPeople = move.linkedPeople.map((p) =>
+            p.personId === fromPersonId
+              ? {
+                  ...p,
+                  personId: toPerson.id,
+                  name: toPerson.name,
+                  phone: toPerson.phone ?? undefined,
+                  email: toPerson.email ?? undefined,
+                }
+              : p,
+          );
+
+          const next: MoveRecord = {
+            ...move,
+            linkedPeople,
+            ...(wasContact
+              ? {
+                  contactId: toPerson.id,
+                  customerName: toPerson.name,
+                  customerPhone: toPerson.phone ?? "",
+                  customerEmail: toPerson.email ?? "",
+                }
+              : {}),
+          };
+          return appendActivity(next, `Contact merged → ${toPerson.name}`);
         }),
       );
     },
@@ -1079,6 +1122,7 @@ export function MovesProvider({ children }: { children: ReactNode }) {
       reopenMove,
       updateAssignedRep,
       updateMoveLocation,
+      reassignMoveContact,
       addJobDay,
       updateJobDay,
       removeJobDay,
@@ -1121,6 +1165,7 @@ export function MovesProvider({ children }: { children: ReactNode }) {
       reopenMove,
       updateAssignedRep,
       updateMoveLocation,
+      reassignMoveContact,
       addJobDay,
       updateJobDay,
       removeJobDay,

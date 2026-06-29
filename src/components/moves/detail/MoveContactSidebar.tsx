@@ -17,7 +17,11 @@ export function MoveContactSidebar({ move, open, onClose }: MoveContactSidebarPr
 
   if (person) {
     return (
-      <PersonDetailSidebar person={open ? person : null} onClose={onClose} />
+      <PersonDetailSidebar
+        person={open ? person : null}
+        onClose={onClose}
+        onDeleted={onClose}
+      />
     );
   }
 

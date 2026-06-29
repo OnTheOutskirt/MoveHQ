@@ -74,7 +74,6 @@ export const navigation: NavEntry[] = [
     label: "Sales",
     icon: MapPin,
     items: [
-      { type: "link", label: "Dashboard", href: ROUTES.salesDashboard, icon: LayoutDashboard },
       { type: "link", label: "Moves", href: ROUTES.salesMoves, icon: Package },
       { type: "link", label: "AI Web Quotes", href: ROUTES.salesWebQuotes, icon: Globe },
       { type: "link", label: "Walkthroughs", href: ROUTES.salesWalkthroughs, icon: Footprints },
@@ -88,7 +87,6 @@ export const navigation: NavEntry[] = [
     label: "Operations",
     icon: Truck,
     items: [
-      { type: "link", label: "Dashboard", href: "/operations/dashboard", icon: LayoutDashboard },
       { type: "link", label: "Jobs", href: "/operations/jobs", icon: ClipboardList },
       { type: "link", label: "Dispatch", href: "/operations/dispatch", icon: Route },
       { type: "link", label: "Claims", href: "/operations/claims", icon: Scale, devIncomplete: true },

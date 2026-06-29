@@ -2,12 +2,13 @@
 
 import { useMoves } from "@/components/moves/MovesProvider";
 import { MoveLocationDialog } from "@/components/moves/detail/MoveLocationDialog";
+import { ReferMoverSidebar } from "@/components/moves/detail/ReferMoverSidebar";
 import { useWorkspace } from "@/components/providers/WorkspaceProvider";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ROUTES, salesMovePath } from "@/lib/navigation/routes";
 import type { MoveRecord } from "@/lib/moves/types";
 import { cn } from "@/lib/utils";
-import { Copy, MapPin, MoreVertical, Trash2 } from "lucide-react";
+import { Copy, MapPin, MoreVertical, Share2, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
@@ -24,6 +25,7 @@ export function MoveDetailActionsMenu({ move }: MoveDetailActionsMenuProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [dialog, setDialog] = useState<DialogKind>(null);
   const [locationOpen, setLocationOpen] = useState(false);
+  const [referOpen, setReferOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -65,6 +67,18 @@ export function MoveDetailActionsMenu({ move }: MoveDetailActionsMenuProps) {
   return (
     <>
       <div className="flex shrink-0 items-center gap-1.5">
+        {hasMultipleLocations && currentLocationLabel ? (
+          <button
+            type="button"
+            onClick={() => setLocationOpen(true)}
+            className="inline-flex max-w-[12rem] items-center gap-1 rounded-lg px-1.5 py-1 text-xs text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-600"
+            title="Change location"
+          >
+            <MapPin className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">{currentLocationLabel}</span>
+          </button>
+        ) : null}
+
         <div ref={rootRef} className="relative">
           <button
             type="button"
@@ -83,6 +97,16 @@ export function MoveDetailActionsMenu({ move }: MoveDetailActionsMenuProps) {
               className="absolute right-0 top-full z-50 mt-1 min-w-[12rem] overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg"
             >
               <MenuItem
+                icon={Share2}
+                label="Refer to mover"
+                hint="Hand off to a partner company"
+                onClick={() => {
+                  setMenuOpen(false);
+                  setReferOpen(true);
+                }}
+              />
+              <div className="my-1 border-t border-slate-100" />
+              <MenuItem
                 icon={Copy}
                 label="Duplicate move"
                 hint="New lead with same scope"
@@ -99,18 +123,6 @@ export function MoveDetailActionsMenu({ move }: MoveDetailActionsMenuProps) {
             </div>
           ) : null}
         </div>
-
-        {hasMultipleLocations && currentLocationLabel ? (
-          <button
-            type="button"
-            onClick={() => setLocationOpen(true)}
-            className="inline-flex max-w-[12rem] items-center gap-1 rounded-lg px-1.5 py-1 text-xs text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-600"
-            title="Change location"
-          >
-            <MapPin className="h-3.5 w-3.5 shrink-0" />
-            <span className="truncate">{currentLocationLabel}</span>
-          </button>
-        ) : null}
       </div>
 
       <ConfirmDialog
@@ -143,6 +155,8 @@ export function MoveDetailActionsMenu({ move }: MoveDetailActionsMenuProps) {
           updateMoveLocation(move.id, locationId, locationLabel)
         }
       />
+
+      <ReferMoverSidebar open={referOpen} onClose={() => setReferOpen(false)} move={move} />
     </>
   );
 }

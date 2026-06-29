@@ -1,7 +1,344 @@
 import { MOCK_MOVES } from "@/lib/moves/mock-data";
 import { isMoveLost } from "@/lib/moves/move-pipeline";
 import type { MoveRecord } from "@/lib/moves/types";
-import type { OrganizationRecord, PersonKind, PersonRecord } from "./types";
+import type { OrganizationRecord, PersonKind, PersonRecord, VendorType } from "./types";
+
+function vendorOrg(opts: {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  address: string;
+  website: string | null;
+  notes: string;
+}): OrganizationRecord {
+  return {
+    id: opts.id,
+    name: opts.name,
+    orgType: "vendor",
+    phone: opts.phone,
+    email: opts.email,
+    address: opts.address,
+    website: opts.website,
+    primaryContactId: `${opts.id}-contact`,
+    moveIds: [],
+    notes: opts.notes,
+    createdAt: "2025-06-01T00:00:00Z",
+    updatedAt: "2026-06-01T00:00:00Z",
+  };
+}
+
+function vendorContact(opts: {
+  orgId: string;
+  name: string;
+  vendorType: VendorType;
+  phone: string;
+  email: string;
+  title: string;
+}): PersonRecord {
+  return {
+    id: `${opts.orgId}-contact`,
+    name: opts.name,
+    kind: "vendor",
+    referralType: null,
+    vendorType: opts.vendorType,
+    phone: opts.phone,
+    email: opts.email,
+    organizationId: opts.orgId,
+    title: opts.title,
+    moveIds: [],
+    notes: null,
+    createdAt: "2025-06-01T00:00:00Z",
+    updatedAt: "2026-06-01T00:00:00Z",
+  };
+}
+
+/** New vendor organizations grouped so every vendor type has 3–4 entries. */
+const VENDOR_TEST_ORGS: OrganizationRecord[] = [
+  // truck_fleet
+  vendorOrg({
+    id: "org-penske-trucks",
+    name: "Penske Truck Rental",
+    phone: "(216) 555-9001",
+    email: "fleet@penske.example",
+    address: "4500 Tiedeman Rd, Brooklyn, OH",
+    website: "penske.example",
+    notes: "Box trucks and tractors — overflow fleet rental.",
+  }),
+  vendorOrg({
+    id: "org-ryder-fleet",
+    name: "Ryder Commercial Fleet",
+    phone: "(216) 555-9002",
+    email: "leasing@ryderfleet.example",
+    address: "7000 Grant Ave, Cleveland, OH",
+    website: "ryderfleet.example",
+    notes: "Long-term truck leasing and seasonal capacity.",
+  }),
+  // operations_materials
+  vendorOrg({
+    id: "org-uline-supply",
+    name: "Uline Packing Supply",
+    phone: "(800) 555-9100",
+    email: "orders@ulinesupply.example",
+    address: "Pleasant Prairie, WI",
+    website: "ulinesupply.example",
+    notes: "Boxes, tape, and mailers — next-day bulk delivery.",
+  }),
+  vendorOrg({
+    id: "org-cratewerks-cartons",
+    name: "CrateWerks Carton Co.",
+    phone: "(216) 555-9101",
+    email: "sales@cratewerks.example",
+    address: "1450 W 117th St, Cleveland, OH",
+    website: "cratewerks.example",
+    notes: "Wardrobe cartons, dish packs, and custom inserts.",
+  }),
+  // claim_repairs
+  vendorOrg({
+    id: "org-restorepro-furniture",
+    name: "RestorePro Furniture Repair",
+    phone: "(440) 555-9200",
+    email: "claims@restorepro.example",
+    address: "330 E Bagley Rd, Berea, OH",
+    website: "restorepro.example",
+    notes: "Furniture refinishing and transit-damage claims.",
+  }),
+  // crew_vendors
+  vendorOrg({
+    id: "org-laborlink-crews",
+    name: "LaborLink Day Crews",
+    phone: "(216) 555-9300",
+    email: "staffing@laborlink.example",
+    address: "2900 Detroit Ave, Cleveland, OH",
+    website: "laborlink.example",
+    notes: "On-demand load/unload labor for peak days.",
+  }),
+  // hr_vendors
+  vendorOrg({
+    id: "org-benefitfirst",
+    name: "BenefitFirst Group",
+    phone: "(216) 555-9400",
+    email: "advisors@benefitfirst.example",
+    address: "1375 E 9th St, Cleveland, OH",
+    website: "benefitfirst.example",
+    notes: "Health, dental, and 401(k) benefits brokerage.",
+  }),
+  vendorOrg({
+    id: "org-corp-chaplains",
+    name: "Corporate Chaplains of Ohio",
+    phone: "(440) 555-9401",
+    email: "care@corpchaplains.example",
+    address: "Strongsville, OH",
+    website: "corpchaplains.example",
+    notes: "Employee care and chaplaincy program.",
+  }),
+  vendorOrg({
+    id: "org-safework-screening",
+    name: "SafeWork Screening",
+    phone: "(216) 555-9402",
+    email: "intake@safeworkscreen.example",
+    address: "6200 Rockside Woods Blvd, Independence, OH",
+    website: "safeworkscreen.example",
+    notes: "Background checks and DOT drug screening.",
+  }),
+  // fleet_repair
+  vendorOrg({
+    id: "org-diesel-doctors",
+    name: "Diesel Doctors Truck Repair",
+    phone: "(216) 555-9500",
+    email: "shop@dieseldoctors.example",
+    address: "3801 Train Ave, Cleveland, OH",
+    website: "dieseldoctors.example",
+    notes: "Engine, brake, and DOT inspection service.",
+  }),
+  vendorOrg({
+    id: "org-liftgate-techs",
+    name: "LiftGate Techs",
+    phone: "(440) 555-9501",
+    email: "service@liftgatetechs.example",
+    address: "120 Alpha Park, Highland Heights, OH",
+    website: "liftgatetechs.example",
+    notes: "Lift gate repair and hydraulic service.",
+  }),
+  vendorOrg({
+    id: "org-fleetcare-tire",
+    name: "FleetCare Tire & Brake",
+    phone: "(216) 555-9502",
+    email: "service@fleetcaretire.example",
+    address: "5500 Brookpark Rd, Parma, OH",
+    website: "fleetcaretire.example",
+    notes: "Commercial tires, alignment, and brake work.",
+  }),
+];
+
+/**
+ * Vendor contacts — one per vendor org so each org is categorized by vendor
+ * type (existing vendor orgs included so they stop matching every type filter).
+ */
+const VENDOR_TEST_CONTACTS: PersonRecord[] = [
+  // Existing vendor orgs (org-shamrock-crating already has a vendor contact)
+  vendorContact({
+    orgId: "org-allegro-piano",
+    name: "Tony Marsh",
+    vendorType: "special_services",
+    phone: "(216) 555-8121",
+    email: "tony@allegropiano.example",
+    title: "Scheduling lead",
+  }),
+  vendorContact({
+    orgId: "org-summit-hoisting",
+    name: "Rick Vance",
+    vendorType: "special_services",
+    phone: "(216) 555-4408",
+    email: "rick@summithoisting.example",
+    title: "Rigging supervisor",
+  }),
+  vendorContact({
+    orgId: "org-proshine-cleaning",
+    name: "Dana Pruitt",
+    vendorType: "crew_vendors",
+    phone: "(440) 555-9913",
+    email: "dana@proshineclean.example",
+    title: "Crew lead",
+  }),
+  vendorContact({
+    orgId: "org-haulaway-junk",
+    name: "Marcus Lee",
+    vendorType: "crew_vendors",
+    phone: "(216) 555-6656",
+    email: "marcus@haulawayjunk.example",
+    title: "Dispatch",
+  }),
+  vendorContact({
+    orgId: "org-greatlakes-appliance",
+    name: "Priya Nair",
+    vendorType: "claim_repairs",
+    phone: "(440) 555-3381",
+    email: "priya@glappliance.example",
+    title: "Service manager",
+  }),
+  vendorContact({
+    orgId: "org-buckeye-supplies",
+    name: "Sam Okafor",
+    vendorType: "operations_materials",
+    phone: "(216) 555-2281",
+    email: "sam@buckeyesupplies.example",
+    title: "Account rep",
+  }),
+  vendorContact({
+    orgId: "org-whiteglove-auto",
+    name: "Gloria Reyes",
+    vendorType: "truck_fleet",
+    phone: "(800) 555-7042",
+    email: "gloria@whitegloveauto.example",
+    title: "Logistics coordinator",
+  }),
+  vendorContact({
+    orgId: "org-maple-handyman",
+    name: "Owen Pratt",
+    vendorType: "claim_repairs",
+    phone: "(216) 555-5191",
+    email: "owen@maplehandyman.example",
+    title: "Owner",
+  }),
+  // New vendor orgs
+  vendorContact({
+    orgId: "org-penske-trucks",
+    name: "Beth Carlson",
+    vendorType: "truck_fleet",
+    phone: "(216) 555-9003",
+    email: "beth@penske.example",
+    title: "Fleet account rep",
+  }),
+  vendorContact({
+    orgId: "org-ryder-fleet",
+    name: "Hal Dwyer",
+    vendorType: "truck_fleet",
+    phone: "(216) 555-9004",
+    email: "hal@ryderfleet.example",
+    title: "Leasing manager",
+  }),
+  vendorContact({
+    orgId: "org-uline-supply",
+    name: "Megan Ross",
+    vendorType: "operations_materials",
+    phone: "(800) 555-9102",
+    email: "megan@ulinesupply.example",
+    title: "Account rep",
+  }),
+  vendorContact({
+    orgId: "org-cratewerks-cartons",
+    name: "Victor Hsu",
+    vendorType: "operations_materials",
+    phone: "(216) 555-9103",
+    email: "victor@cratewerks.example",
+    title: "Sales",
+  }),
+  vendorContact({
+    orgId: "org-restorepro-furniture",
+    name: "Nadia Khan",
+    vendorType: "claim_repairs",
+    phone: "(440) 555-9201",
+    email: "nadia@restorepro.example",
+    title: "Repair tech lead",
+  }),
+  vendorContact({
+    orgId: "org-laborlink-crews",
+    name: "Trent Boyd",
+    vendorType: "crew_vendors",
+    phone: "(216) 555-9301",
+    email: "trent@laborlink.example",
+    title: "Staffing coordinator",
+  }),
+  vendorContact({
+    orgId: "org-benefitfirst",
+    name: "Carla Mendez",
+    vendorType: "hr_vendors",
+    phone: "(216) 555-9403",
+    email: "carla@benefitfirst.example",
+    title: "Benefits advisor",
+  }),
+  vendorContact({
+    orgId: "org-corp-chaplains",
+    name: "Dale Means",
+    vendorType: "hr_vendors",
+    phone: "(440) 555-9404",
+    email: "dale@corpchaplains.example",
+    title: "Chaplain",
+  }),
+  vendorContact({
+    orgId: "org-safework-screening",
+    name: "Janet Cole",
+    vendorType: "hr_vendors",
+    phone: "(216) 555-9405",
+    email: "janet@safeworkscreen.example",
+    title: "Account manager",
+  }),
+  vendorContact({
+    orgId: "org-diesel-doctors",
+    name: "Manny Ortiz",
+    vendorType: "fleet_repair",
+    phone: "(216) 555-9503",
+    email: "manny@dieseldoctors.example",
+    title: "Shop foreman",
+  }),
+  vendorContact({
+    orgId: "org-liftgate-techs",
+    name: "Kurt Hahn",
+    vendorType: "fleet_repair",
+    phone: "(440) 555-9504",
+    email: "kurt@liftgatetechs.example",
+    title: "Service tech",
+  }),
+  vendorContact({
+    orgId: "org-fleetcare-tire",
+    name: "Lena Park",
+    vendorType: "fleet_repair",
+    phone: "(216) 555-9505",
+    email: "lena@fleetcaretire.example",
+    title: "Service writer",
+  }),
+];
 
 export const MOCK_ORGANIZATIONS: OrganizationRecord[] = [
   {
@@ -228,6 +565,7 @@ export const MOCK_ORGANIZATIONS: OrganizationRecord[] = [
     createdAt: "2025-09-22T00:00:00Z",
     updatedAt: "2026-06-08T00:00:00Z",
   },
+  ...VENDOR_TEST_ORGS,
 ];
 
 function kindFromMove(move: MoveRecord): PersonKind {
@@ -391,6 +729,7 @@ const STANDALONE_PEOPLE: PersonRecord[] = [
     createdAt: "2026-02-15T00:00:00Z",
     updatedAt: "2026-05-20T00:00:00Z",
   },
+  ...VENDOR_TEST_CONTACTS,
 ];
 
 export const MOCK_PEOPLE: PersonRecord[] = [

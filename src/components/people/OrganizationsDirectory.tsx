@@ -33,6 +33,8 @@ import { useMemo, useState } from "react";
 
 type OrganizationsDirectoryProps = {
   onSelectOrganization: (org: OrganizationRecord) => void;
+  /** Bump to force the list to re-read storage after create / edit / delete / merge. */
+  refreshToken?: number;
 };
 
 function referralTypeLabel(id: string, entries: FieldCatalogEntry[]): string {
@@ -101,7 +103,10 @@ function organizationTypeDisplay(
   };
 }
 
-export function OrganizationsDirectory({ onSelectOrganization }: OrganizationsDirectoryProps) {
+export function OrganizationsDirectory({
+  onSelectOrganization,
+  refreshToken = 0,
+}: OrganizationsDirectoryProps) {
   const { settings } = useSettings();
   const referralTypes = settings.fieldCatalog.referralTypes;
   const vendorTypes = settings.fieldCatalog.vendorTypes;
@@ -115,7 +120,12 @@ export function OrganizationsDirectory({ onSelectOrganization }: OrganizationsDi
     const q = search.trim().toLowerCase();
     return listAllOrganizations()
       .filter((o) => {
-        if (kindFilter !== "all" && !organizationMatchesKindFilter(o, kindFilter, allPeople)) {
+        if (kindFilter === "moving_company") {
+          if (o.orgType !== "moving_company") return false;
+        } else if (
+          kindFilter !== "all" &&
+          !organizationMatchesKindFilter(o, kindFilter, allPeople)
+        ) {
           return false;
         }
         if (
@@ -145,7 +155,8 @@ export function OrganizationsDirectory({ onSelectOrganization }: OrganizationsDi
         );
       })
       .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
-  }, [search, kindFilter, referralTypeFilter, vendorTypeFilter]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, kindFilter, referralTypeFilter, vendorTypeFilter, refreshToken]);
 
   const columns = useMemo<Column<OrganizationRecord>[]>(
     () => {
@@ -257,6 +268,7 @@ export function OrganizationsDirectory({ onSelectOrganization }: OrganizationsDi
         onVendorTypeFilterChange={setVendorTypeFilter}
         referralTypes={referralTypes}
         vendorTypes={vendorTypes}
+        includeMovingCompany
       />
 
       <DataTable

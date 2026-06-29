@@ -25,6 +25,8 @@ import { useMemo, useState } from "react";
 
 type PeopleDirectoryProps = {
   onSelectPerson: (person: PersonRecord) => void;
+  /** Bump to force the list to re-read storage after create / edit / delete / merge. */
+  refreshToken?: number;
 };
 
 function referralTypeBadge(id: string, entries: FieldCatalogEntry[]): string {
@@ -39,7 +41,7 @@ function vendorTypeBadge(id: string, entries: FieldCatalogEntry[]): string {
   );
 }
 
-export function PeopleDirectory({ onSelectPerson }: PeopleDirectoryProps) {
+export function PeopleDirectory({ onSelectPerson, refreshToken = 0 }: PeopleDirectoryProps) {
   const { settings } = useSettings();
   const referralTypes = settings.fieldCatalog.referralTypes;
   const vendorTypes = settings.fieldCatalog.vendorTypes;
@@ -79,7 +81,8 @@ export function PeopleDirectory({ onSelectPerson }: PeopleDirectoryProps) {
         );
       })
       .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
-  }, [search, kindFilter, referralTypeFilter, vendorTypeFilter]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, kindFilter, referralTypeFilter, vendorTypeFilter, refreshToken]);
 
   const columns = useMemo<Column<PersonRecord>[]>(
     () => [

@@ -4,78 +4,154 @@ import { AccessDenied } from "@/components/auth/AccessDenied";
 import { useCapabilities } from "@/lib/auth/use-capabilities";
 import type { Capability } from "@/lib/auth/capabilities";
 import { useWorkspace } from "@/components/providers/WorkspaceProvider";
-import { AiQuotesAccuracyReport } from "@/components/reports/AiQuotesAccuracyReport";
-import { BudgetActualsReport } from "@/components/reports/BudgetActualsReport";
-import { CommissionReport } from "@/components/reports/CommissionReport";
 import { DayPipelineReport } from "@/components/reports/DayPipelineReport";
-import { DispatchChangeImpactReport } from "@/components/reports/DispatchChangeImpactReport";
-import { InventoryReport } from "@/components/reports/InventoryReport";
-import { LaborHoursReport } from "@/components/reports/LaborHoursReport";
-import { SalesRevenueReport } from "@/components/reports/SalesRevenueReport";
-import { SpeedToLeadReport } from "@/components/reports/SpeedToLeadReport";
+import { PlaceholderReport } from "@/components/reports/PlaceholderReport";
+import {
+  ReportFilterBar,
+  type ReportDateRangeId,
+  type ReportFilterKey,
+} from "@/components/reports/ReportFilterBar";
+import { ReportWidgetGrid } from "@/components/reports/ReportWidgets";
+import { REPORT_WIDGETS } from "@/lib/reports/report-widgets";
 import { TabBar } from "@/components/shared/TabBar";
 import { ModulePage } from "@/components/shared/ModulePage";
 import { buildMockDay } from "@/lib/calendar/mock-data";
-import { parseDateKey, toDateKey } from "@/lib/calendar/date-utils";
+import { parseDateKey } from "@/lib/calendar/date-utils";
 import { pageMeta } from "@/lib/navigation/page-meta";
 import { ROUTES } from "@/lib/navigation/routes";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
-const CATEGORY_TABS = [
-  { id: "day", label: "Day report", cap: "reports.day" as Capability },
-  { id: "sales", label: "Sales", cap: "reports.sales" as Capability },
-  { id: "operations", label: "Operations", cap: "reports.operations" as Capability },
-  { id: "ai-quotes", label: "AI quotes", cap: "reports.ai_quotes" as Capability },
-] as const;
+const ALL_REPORT_CAPS: Capability[] = [
+  "reports.day",
+  "reports.sales",
+  "reports.operations",
+  "reports.ai_quotes",
+];
 
-const SALES_REPORT_TABS = [
-  { id: "speed-to-lead", label: "Speed to lead" },
-  { id: "revenue", label: "Revenue booked" },
-  { id: "commission", label: "Commission" },
-] as const;
+type SubReport = {
+  id: string;
+  label: string;
+  /** Additional filters (beyond date range) to surface for this report. */
+  filters: ReportFilterKey[];
+};
 
-const OPERATIONS_REPORT_TABS = [
-  { id: "labor-hours", label: "Labor hours" },
-  { id: "inventory", label: "Inventory" },
-  { id: "budget-actuals", label: "Budget vs actuals" },
-  { id: "dispatch-changes", label: "Dispatch changes" },
-] as const;
+type ReportSection = {
+  id: string;
+  label: string;
+  /** Section is visible if the user has any of these capabilities. */
+  caps: Capability[];
+  subtabs: SubReport[];
+};
 
-type CategoryTabId = (typeof CATEGORY_TABS)[number]["id"];
-type SalesReportId = (typeof SALES_REPORT_TABS)[number]["id"];
-type OperationsReportId = (typeof OPERATIONS_REPORT_TABS)[number]["id"];
+const SECTIONS: ReportSection[] = [
+  {
+    id: "overview",
+    label: "Overview",
+    caps: ALL_REPORT_CAPS,
+    subtabs: [
+      { id: "dashboard", label: "Dashboard", filters: ["branch"] },
+      { id: "kpis", label: "KPIs", filters: ["branch"] },
+      { id: "trends", label: "Trends", filters: ["branch"] },
+      { id: "day-report", label: "Day report", filters: ["branch"] },
+    ],
+  },
+  {
+    id: "sales",
+    label: "Sales",
+    caps: ["reports.sales"],
+    subtabs: [
+      { id: "pipeline", label: "Pipeline", filters: ["branch", "salesperson", "leadSource", "status"] },
+      { id: "quotes", label: "Quotes", filters: ["branch", "salesperson", "jobType", "rateType", "status"] },
+      { id: "bookings", label: "Bookings", filters: ["branch", "salesperson", "jobType", "rateType", "distance"] },
+      { id: "performance", label: "Performance", filters: ["branch", "salesperson"] },
+      { id: "customers", label: "Customers", filters: ["branch", "leadSource"] },
+      {
+        id: "ai-estimating",
+        label: "AI & Estimating",
+        filters: ["branch", "jobType", "rateType", "leadSource", "distance"],
+      },
+    ],
+  },
+  {
+    id: "marketing",
+    label: "Marketing",
+    caps: ["reports.sales"],
+    subtabs: [
+      { id: "lead-sources", label: "Lead Sources", filters: ["branch", "leadSource", "jobType"] },
+      { id: "campaigns", label: "Campaigns", filters: ["branch", "leadSource"] },
+      { id: "roi", label: "ROI", filters: ["branch", "leadSource"] },
+    ],
+  },
+  {
+    id: "operations",
+    label: "Operations",
+    caps: ["reports.operations"],
+    subtabs: [
+      { id: "jobs", label: "Jobs", filters: ["branch", "jobType", "crewLeader", "truck", "distance", "status"] },
+      { id: "crews", label: "Crews", filters: ["branch", "crewLeader", "jobType"] },
+      { id: "fleet", label: "Fleet", filters: ["branch", "truck"] },
+      { id: "schedule", label: "Schedule", filters: ["branch", "crewLeader", "truck", "jobType", "status"] },
+    ],
+  },
+  {
+    id: "financial",
+    label: "Financial",
+    caps: ["reports.sales"],
+    subtabs: [
+      { id: "revenue", label: "Revenue", filters: ["branch", "jobType", "rateType", "distance"] },
+      { id: "expenses", label: "Expenses", filters: ["branch"] },
+      { id: "payments", label: "Payments", filters: ["branch", "status"] },
+      { id: "profit-loss", label: "Profit & Loss", filters: ["branch"] },
+    ],
+  },
+  {
+    id: "profitability",
+    label: "Profitability",
+    caps: ["reports.operations"],
+    subtabs: [
+      { id: "jobs", label: "Jobs", filters: ["branch", "jobType", "rateType", "distance", "crewLeader"] },
+      { id: "crews", label: "Crews", filters: ["branch", "crewLeader"] },
+      { id: "services", label: "Services", filters: ["branch", "jobType"] },
+      { id: "lead-sources", label: "Lead Sources", filters: ["branch", "leadSource"] },
+    ],
+  },
+];
 
-function isCategoryTab(value: string | null): value is CategoryTabId {
-  return CATEGORY_TABS.some((t) => t.id === value);
-}
+/** Map deprecated ?tab=/?report= deep links onto the new section/subtab ids. */
+const LEGACY_TAB_MAP: Record<string, { section: string; sub: string }> = {
+  day: { section: "overview", sub: "day-report" },
+  budget: { section: "profitability", sub: "jobs" },
+  "ai-quotes": { section: "sales", sub: "ai-estimating" },
+  "ai-estimating": { section: "sales", sub: "ai-estimating" },
+  customers: { section: "sales", sub: "customers" },
+};
 
-function isSalesReport(value: string | null): value is SalesReportId {
-  return SALES_REPORT_TABS.some((t) => t.id === value);
-}
+const PLACEHOLDER_COPY: Record<string, string> = {
+  "overview:dashboard": "At-a-glance snapshot of the whole business for the selected period.",
+  "overview:kpis": "Headline KPIs with period-over-period comparisons.",
+  "overview:trends": "Trend lines for revenue, bookings, and lead volume over time.",
+};
 
-function isOperationsReport(value: string | null): value is OperationsReportId {
-  return OPERATIONS_REPORT_TABS.some((t) => t.id === value);
+function findSection(id: string | null): ReportSection | undefined {
+  return SECTIONS.find((s) => s.id === id);
 }
 
 export function ReportsWorkspace() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { can } = useCapabilities();
-  const { isAllLocationsView, activeLocation } = useWorkspace();
+  const { isAllLocationsView, activeLocation, hasMultipleLocations, allowedLocations } =
+    useWorkspace();
   const meta = pageMeta["/operations/reports"];
 
-  const categoryTabs = CATEGORY_TABS.filter((t) => can(t.cap)).map(({ id, label }) => ({
-    id,
-    label,
-  }));
+  const visibleSections = useMemo(
+    () => SECTIONS.filter((s) => s.caps.some((c) => can(c))),
+    [can],
+  );
 
   const rawTab = searchParams.get("tab");
-  const preferredCategory: CategoryTabId = isCategoryTab(rawTab) ? rawTab : "day";
-  const activeCategory: CategoryTabId = categoryTabs.some((t) => t.id === preferredCategory)
-    ? preferredCategory
-    : (categoryTabs[0]?.id as CategoryTabId) ?? "day";
-
+  const rawSub = searchParams.get("sub");
   const rawReport = searchParams.get("report");
 
   useEffect(() => {
@@ -84,10 +160,24 @@ export function ReportsWorkspace() {
     }
   }, [rawReport, router]);
 
-  const salesReport: SalesReportId = isSalesReport(rawReport) ? rawReport : "speed-to-lead";
-  const operationsReport: OperationsReportId = isOperationsReport(rawReport)
-    ? rawReport
-    : "labor-hours";
+  // Resolve active section + subtab, honoring legacy deep links and defaults.
+  const legacy = rawTab && LEGACY_TAB_MAP[rawTab] ? LEGACY_TAB_MAP[rawTab] : null;
+  const requestedSectionId = legacy?.section ?? rawTab;
+
+  const activeSection =
+    findSection(requestedSectionId) && visibleSections.some((s) => s.id === requestedSectionId)
+      ? findSection(requestedSectionId)!
+      : visibleSections[0] ?? SECTIONS[0];
+
+  const requestedSubId = rawSub ?? legacy?.sub ?? null;
+  const activeSub =
+    activeSection.subtabs.find((t) => t.id === requestedSubId) ?? activeSection.subtabs[0];
+
+  // Global filter state (shared across reports while on the page).
+  const [dateRange, setDateRange] = useState<ReportDateRangeId>("this_month");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
+  const [filterValues, setFilterValues] = useState<Partial<Record<ReportFilterKey, string>>>({});
 
   const date = useMemo(() => {
     const raw = searchParams.get("date");
@@ -100,86 +190,99 @@ export function ReportsWorkspace() {
   const today = useMemo(() => new Date(), []);
   const dayData = useMemo(() => buildMockDay(date, today), [date, today]);
 
-  function pushParams(next: { tab: CategoryTabId; report?: string; keepDate?: boolean }) {
+  const branchOptions = useMemo(
+    () => [
+      { value: "all", label: "All locations" },
+      ...allowedLocations.map((l) => ({ value: l.id, label: l.name })),
+    ],
+    [allowedLocations],
+  );
+
+  function pushSelection(sectionId: string, subId: string) {
     const params = new URLSearchParams(searchParams.toString());
-    params.set("tab", next.tab);
-    if (next.report) {
-      params.set("report", next.report);
-    } else {
-      params.delete("report");
-    }
-    if (next.tab === "day") {
-      if (next.keepDate !== false && !params.has("date")) {
-        params.set("date", toDateKey(date));
-      }
-    } else {
+    params.set("tab", sectionId);
+    params.set("sub", subId);
+    params.delete("report");
+    if (!(sectionId === "overview" && subId === "day-report")) {
       params.delete("date");
     }
     router.push(`/operations/reports?${params.toString()}`, { scroll: false });
   }
 
-  function setCategory(tab: CategoryTabId) {
-    if (tab === "sales") {
-      pushParams({ tab, report: salesReport });
-      return;
-    }
-    if (tab === "operations") {
-      pushParams({ tab, report: operationsReport });
-      return;
-    }
-    pushParams({ tab: tab === "day" ? "day" : tab });
+  function setSection(sectionId: string) {
+    const section = findSection(sectionId);
+    if (!section) return;
+    pushSelection(sectionId, section.subtabs[0]?.id ?? "");
   }
 
-  function setSalesReport(report: SalesReportId) {
-    pushParams({ tab: "sales", report });
+  function setSub(subId: string) {
+    pushSelection(activeSection.id, subId);
   }
 
-  function setOperationsReport(report: OperationsReportId) {
-    pushParams({ tab: "operations", report });
+  function setFilter(key: ReportFilterKey, value: string) {
+    setFilterValues((prev) => ({ ...prev, [key]: value }));
   }
 
   const reportScopeLabel = isAllLocationsView
     ? "All locations — combined totals with per-branch breakdown where available."
     : `${activeLocation?.name ?? "Location"} — metrics for this branch only.`;
 
-  if (categoryTabs.length === 0) {
+  if (visibleSections.length === 0) {
     return (
       <AccessDenied
         title="No report categories available"
-        description="Your role doesn't include any report tabs. Managers and admins typically see day, sales, and operations reports."
+        description="Your role doesn't include any report tabs. Managers and admins typically see sales, operations, and AI reports."
       />
     );
   }
 
+  function renderReport(): ReactNode {
+    const key = `${activeSection.id}:${activeSub.id}`;
+
+    if (key === "overview:day-report") {
+      return <DayPipelineReport date={date} sales={dayData.sales} />;
+    }
+
+    const widgets = REPORT_WIDGETS[key];
+    if (widgets) {
+      return <ReportWidgetGrid widgets={widgets} />;
+    }
+
+    return (
+      <PlaceholderReport
+        title={`${activeSection.label} · ${activeSub.label}`}
+        description={
+          PLACEHOLDER_COPY[key] ?? `${activeSection.label} ${activeSub.label.toLowerCase()} report.`
+        }
+      />
+    );
+  }
+
+  const sectionTabs = visibleSections.map((s) => ({ id: s.id, label: s.label }));
+  const subTabs = activeSection.subtabs.map((t) => ({ id: t.id, label: t.label }));
+
   return (
-    <div className="space-y-6">
-      <ModulePage title={meta.title} description={`${meta.description} ${reportScopeLabel}`} />
+    <div className="space-y-5">
+      <ModulePage title={meta.title} description={reportScopeLabel} />
 
-      <TabBar tabs={categoryTabs} activeTab={activeCategory} onChange={setCategory} />
+      <TabBar tabs={sectionTabs} activeTab={activeSection.id} onChange={setSection} />
+      <TabBar tabs={subTabs} activeTab={activeSub.id} onChange={setSub} />
 
-      {activeCategory === "sales" && (
-        <TabBar tabs={SALES_REPORT_TABS} activeTab={salesReport} onChange={setSalesReport} />
-      )}
-      {activeCategory === "operations" && (
-        <TabBar tabs={OPERATIONS_REPORT_TABS} activeTab={operationsReport} onChange={setOperationsReport} />
-      )}
+      <ReportFilterBar
+        dateRange={dateRange}
+        onDateRangeChange={setDateRange}
+        customFrom={customFrom}
+        customTo={customTo}
+        onCustomFromChange={setCustomFrom}
+        onCustomToChange={setCustomTo}
+        filters={activeSub.filters}
+        filterValues={filterValues}
+        onFilterChange={setFilter}
+        branchOptions={branchOptions}
+        showBranch={hasMultipleLocations}
+      />
 
-      {activeCategory === "day" && <DayPipelineReport date={date} sales={dayData.sales} />}
-
-      {activeCategory === "sales" && salesReport === "speed-to-lead" && <SpeedToLeadReport />}
-      {activeCategory === "sales" && salesReport === "revenue" && <SalesRevenueReport />}
-      {activeCategory === "sales" && salesReport === "commission" && <CommissionReport />}
-
-      {activeCategory === "operations" && operationsReport === "labor-hours" && <LaborHoursReport />}
-      {activeCategory === "operations" && operationsReport === "inventory" && <InventoryReport />}
-      {activeCategory === "operations" && operationsReport === "budget-actuals" && (
-        <BudgetActualsReport />
-      )}
-      {activeCategory === "operations" && operationsReport === "dispatch-changes" && (
-        <DispatchChangeImpactReport />
-      )}
-
-      {activeCategory === "ai-quotes" && <AiQuotesAccuracyReport />}
+      {renderReport()}
     </div>
   );
 }

@@ -2,6 +2,24 @@ import { MOCK_PEOPLE } from "@/lib/people/mock-data";
 import type { PersonKind, PersonRecord } from "@/lib/people/types";
 
 const STORAGE_KEY = "jm-people-custom-v1";
+const DELETED_KEY = "jm-people-deleted-v1";
+
+function readDeletedPersonIds(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const raw = localStorage.getItem(DELETED_KEY);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw) as string[];
+    return Array.isArray(parsed) ? new Set(parsed) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function writeDeletedPersonIds(ids: Set<string>): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(DELETED_KEY, JSON.stringify([...ids]));
+}
 
 export type NewPersonInput = {
   name: string;
@@ -33,12 +51,16 @@ export function loadCustomPeople(): PersonRecord[] {
 
 export function listAllPeople(): PersonRecord[] {
   const custom = readCustomPeople();
+  const deleted = readDeletedPersonIds();
   const byId = new Map<string, PersonRecord>();
   for (const person of MOCK_PEOPLE) {
     byId.set(person.id, normalizeReferralType(person));
   }
   for (const person of custom) {
     byId.set(person.id, normalizeReferralType(person));
+  }
+  for (const id of deleted) {
+    byId.delete(id);
   }
   return [...byId.values()];
 }
@@ -117,6 +139,14 @@ export function bulkUpsertCustomPeople(people: PersonRecord[]): void {
     byId.set(person.id, person);
   }
   writeCustomPeople([...byId.values()]);
+}
+
+export function removeCustomPerson(id: string): void {
+  const next = readCustomPeople().filter((p) => p.id !== id);
+  writeCustomPeople(next);
+  const deleted = readDeletedPersonIds();
+  deleted.add(id);
+  writeDeletedPersonIds(deleted);
 }
 
 export function linkPersonToMove(personId: string, moveId: string): void {

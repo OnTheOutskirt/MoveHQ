@@ -68,3 +68,21 @@ export function saveReferralTouches(touches: ReferralTouch[]): void {
   if (typeof window === "undefined") return;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(touches));
 }
+
+/** Repoint all touches for a partner from one id to another (merge). */
+export function reassignReferralTouches(
+  partnerType: ReferralTouch["partnerType"],
+  fromPartnerId: string,
+  toPartnerId: string,
+): void {
+  const touches = loadReferralTouches();
+  let changed = false;
+  const next = touches.map((touch) => {
+    if (touch.partnerType === partnerType && touch.partnerId === fromPartnerId) {
+      changed = true;
+      return { ...touch, partnerId: toPartnerId };
+    }
+    return touch;
+  });
+  if (changed) saveReferralTouches(next);
+}

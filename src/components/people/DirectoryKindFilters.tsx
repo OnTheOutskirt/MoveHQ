@@ -12,7 +12,7 @@ import {
 import { vendorTypeConfig } from "@/lib/people/display";
 import { cn } from "@/lib/utils";
 
-export type DirectoryKindFilter = "all" | PersonKind;
+export type DirectoryKindFilter = "all" | PersonKind | "moving_company";
 
 type DirectoryKindFiltersProps = {
   kindFilter: DirectoryKindFilter;
@@ -23,6 +23,8 @@ type DirectoryKindFiltersProps = {
   onVendorTypeFilterChange: (id: string | "all") => void;
   referralTypes: FieldCatalogEntry[];
   vendorTypes: FieldCatalogEntry[];
+  /** Include a "Moving company" pill (organizations directory only). */
+  includeMovingCompany?: boolean;
 };
 
 function referralTypeLabel(id: string, entries: FieldCatalogEntry[]): string {
@@ -54,6 +56,7 @@ export function DirectoryKindFilters({
   onVendorTypeFilterChange,
   referralTypes,
   vendorTypes,
+  includeMovingCompany = false,
 }: DirectoryKindFiltersProps) {
   const kindPills: { id: DirectoryKindFilter; label: string }[] = [
     { id: "all", label: "All" },
@@ -62,6 +65,11 @@ export function DirectoryKindFilters({
       label: personKindLabel(k),
     })),
   ];
+
+  if (includeMovingCompany) {
+    const insertAt = kindPills.findIndex((p) => p.id === "lead") + 1;
+    kindPills.splice(insertAt, 0, { id: "moving_company", label: "Moving company" });
+  }
 
   return (
     <>

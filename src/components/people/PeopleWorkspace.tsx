@@ -1,5 +1,7 @@
 "use client";
 
+import { AddContactSidebar } from "@/components/people/AddContactSidebar";
+import { AddOrganizationSidebar } from "@/components/people/AddOrganizationSidebar";
 import { DirectoryModelNote } from "@/components/people/DirectoryModelNote";
 import { MovingCompanyReferralsView } from "@/components/people/MovingCompanyReferralsView";
 import { OrganizationDetailSidebar } from "@/components/people/OrganizationDetailSidebar";
@@ -49,6 +51,9 @@ export function PeopleWorkspace() {
   const [tab, setTab] = usePersistedState<DirectoryTab>("jm-tab-/sales/directory", "people");
   const [selectedPerson, setSelectedPerson] = useState<PersonRecord | null>(null);
   const [selectedOrg, setSelectedOrg] = useState<OrganizationRecord | null>(null);
+  const [addContactOpen, setAddContactOpen] = useState(false);
+  const [addOrgOpen, setAddOrgOpen] = useState(false);
+  const [refreshToken, setRefreshToken] = useState(0);
   const counts = useMemo(
     () => ({
       people: listAllPeople().length,
@@ -57,8 +62,13 @@ export function PeopleWorkspace() {
       leads: listAllPeople().filter((p) => p.kind === "lead").length,
       referrals: listAllPeople().filter((p) => p.kind === "referral").length,
     }),
-    [tab],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [tab, refreshToken],
   );
+
+  function bumpRefresh() {
+    setRefreshToken((v) => v + 1);
+  }
 
   useEffect(() => {
     const tabParam = searchParams.get("tab");
@@ -93,9 +103,15 @@ export function PeopleWorkspace() {
           description={meta.description}
           actions={
             SIMPLE_TABS.includes(tab) ? (
-              <Button type="button" size="sm" disabled title="Coming soon">
+              <Button
+                type="button"
+                size="sm"
+                onClick={() =>
+                  tab === "people" ? setAddContactOpen(true) : setAddOrgOpen(true)
+                }
+              >
                 <Plus className="h-4 w-4" />
-                {tab === "people" ? "Add person" : "Add organization"}
+                {tab === "people" ? "Add contact" : "Add organization"}
               </Button>
             ) : undefined
           }
@@ -119,6 +135,7 @@ export function PeopleWorkspace() {
 
         {tab === "people" ? (
           <PeopleDirectory
+            refreshToken={refreshToken}
             onSelectPerson={(p) => {
               setSelectedOrg(null);
               setSelectedPerson(p);
@@ -127,6 +144,7 @@ export function PeopleWorkspace() {
         ) : null}
         {tab === "organizations" ? (
           <OrganizationsDirectory
+            refreshToken={refreshToken}
             onSelectOrganization={(o) => {
               setSelectedPerson(null);
               setSelectedOrg(o);
@@ -140,11 +158,27 @@ export function PeopleWorkspace() {
       <PersonDetailSidebar
         person={selectedPerson}
         onClose={() => setSelectedPerson(null)}
+        onChanged={(next) => {
+          bumpRefresh();
+          setSelectedPerson(next);
+        }}
+        onDeleted={() => {
+          bumpRefresh();
+          setSelectedPerson(null);
+        }}
       />
 
       <OrganizationDetailSidebar
         organization={selectedOrg}
         onClose={() => setSelectedOrg(null)}
+        onChanged={(next) => {
+          bumpRefresh();
+          setSelectedOrg(next);
+        }}
+        onDeleted={() => {
+          bumpRefresh();
+          setSelectedOrg(null);
+        }}
         onSelectPerson={(personId) => {
           const person = getStoredPersonById(personId) ?? getPersonById(personId);
           if (person) {
@@ -152,6 +186,28 @@ export function PeopleWorkspace() {
             setSelectedPerson(person);
             setTab("people");
           }
+        }}
+      />
+
+      <AddContactSidebar
+        open={addContactOpen}
+        onClose={() => setAddContactOpen(false)}
+        onCreated={(person) => {
+          bumpRefresh();
+          setTab("people");
+          setSelectedOrg(null);
+          setSelectedPerson(person);
+        }}
+      />
+
+      <AddOrganizationSidebar
+        open={addOrgOpen}
+        onClose={() => setAddOrgOpen(false)}
+        onCreated={(org) => {
+          bumpRefresh();
+          setTab("organizations");
+          setSelectedPerson(null);
+          setSelectedOrg(org);
         }}
       />
     </>
